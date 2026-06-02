@@ -6,11 +6,7 @@ export const metadata: Metadata = {
   description: "Sistema Operativo de Gestión Interna de SM Soluciones",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body>{children}</body>

@@ -1,44 +1,36 @@
-# SM OS Starter
+# SM OS — Supabase Final
 
-Sistema Operativo de Gestión Interna para SM Soluciones.
+Sistema Operativo de Gestión Interna de SM Soluciones.
 
-## Stack
+## Login demo inicial
 
-- Next.js / React
-- Supabase
-- GitHub
-- Vercel
+Usuario: pako  
+PIN: 1234
+
+## Incluye
+
+- Supabase conectado desde el frontend
+- Login por usuario + PIN
+- Clientes
+- Usuarios
+- Proyectos
+- Tareas
+- Subtareas
+- Comentarios
+- Archivos / entregables como registros con URL
+- Semáforo automático visual
+- Vista lista
+- Vista Kanban
+- Vista calendario
+- Vista reportes
+- Persistencia real en Supabase
 
 ## Instalación
 
-```bash
-npm install
-npm run dev
-```
-
-## Configuración
-
-1. Crea un proyecto en Supabase.
-2. Ejecuta el archivo `supabase/schema.sql` en el SQL Editor.
-3. Copia `.env.example` como `.env.local`.
-4. Agrega tus llaves públicas de Supabase.
-5. Ejecuta `npm run dev`.
-
-## Usuario demo local
-
-Mientras no conectes Supabase Auth, puedes entrar con:
-
-```text
-Usuario: pako
-PIN: 1234
-```
-
-## Estructura
-
-```text
-app/
-components/
-lib/
-supabase/
-docs/
-```
+1. Crear proyecto en Supabase.
+2. Ejecutar `supabase/schema.sql` en SQL Editor.
+3. En Vercel agregar variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Subir este proyecto a GitHub.
+5. Deploy en Vercel.
