@@ -1,1 +1,0 @@
-# SM OS GitHub Pages Fixed\n\nLogin: pako / 1234\n
