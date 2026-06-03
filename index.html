@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SM OS | Sistema Operativo de Gestión Interna</title>
+  <style>
+    :root{
+      --bg:#f5f1ea;
+      --bg2:#f3f4f6;
+      --card:#ffffff;
+      --ink:#1f2937;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --dark:#111827;
+      --danger:#c62828;
+      --green-bg:#e8f5e9;
+      --green:#2e7d32;
+      --yellow-bg:#fff8e1;
+      --yellow:#b7791f;
+      --red-bg:#ffebee;
+      --red:#c62828;
+      --gray-bg:#f3f4f6;
+      --gray:#374151;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial, Helvetica, sans-serif;
+      background:linear-gradient(135deg,var(--bg),var(--bg2));
+      color:var(--ink);
+    }
+
+    button,input,textarea,select{font-family:Arial, Helvetica, sans-serif}
+
+    .page{
+      min-height:100vh;
+      padding:24px;
+    }
+
+    .center{
+      display:grid;
+      place-items:center;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:0 18px 45px rgba(17,24,39,.08);
+      padding:24px;
+    }
+
+    .login-card{
+      width:100%;
+      max-width:480px;
+      padding:36px;
+    }
+
+    .small{
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.04em;
+      color:var(--muted);
+      text-transform:uppercase;
+    }
+
+    h1,h2,h3{margin-top:0}
+    h1{font-size:46px;margin-bottom:6px}
+    h2{font-size:26px}
+    h3{font-size:19px;margin-bottom:8px}
+
+    p{line-height:1.45}
+
+    label{
+      display:block;
+      font-size:13px;
+      font-weight:800;
+      color:#374151;
+      margin:14px 0 7px;
+    }
+
+    input,select,textarea{
+      width:100%;
+      border:1px solid #d1d5db;
+      border-radius:14px;
+      padding:12px 14px;
+      font-size:15px;
+      background:#fff;
+      color:var(--ink);
+    }
+
+    textarea{min-height:90px;resize:vertical}
+
+    .btn{
+      border:0;
+      border-radius:14px;
+      padding:12px 18px;
+      background:var(--dark);
+      color:#fff;
+      font-weight:800;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+
+    .btn:hover{opacity:.92}
+
+    .btn-secondary{
+      border:1px solid #d1d5db;
+      border-radius:14px;
+      padding:11px 16px;
+      background:#fff;
+      color:var(--dark);
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .btn-danger{
+      border:1px solid #fecaca;
+      border-radius:14px;
+      padding:10px 14px;
+      background:#fff5f5;
+      color:#991b1b;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns:250px 1fr;
+      gap:18px;
+    }
+
+    .nav button{
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      border-radius:14px;
+      padding:12px;
+      text-align:left;
+      font-weight:800;
+      cursor:pointer;
+      margin-bottom:10px;
+    }
+
+    .nav button.active{
+      background:var(--dark);
+      color:#fff;
+    }
+
+    .grid{display:grid;gap:16px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+    .stat .num{
+      font-size:34px;
+      font-weight:900;
+      margin-top:8px;
+    }
+
+    .list{display:grid;gap:12px}
+
+    .item{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:18px;
+      padding:16px;
+    }
+
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      align-items:flex-start;
+    }
+
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+
+    .green{background:var(--green-bg);color:var(--green)}
+    .yellow{background:var(--yellow-bg);color:var(--yellow)}
+    .red{background:var(--red-bg);color:var(--red)}
+    .gray{background:var(--gray-bg);color:var(--gray)}
+
+    .table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 10px;
+    }
+
+    .table th{
+      text-align:left;
+      color:var(--muted);
+      font-size:12px;
+      padding:0 10px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+
+    .table td{
+      background:#fff;
+      border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      padding:14px 10px;
+      vertical-align:top;
+    }
+
+    .table td:first-child{
+      border-left:1px solid var(--line);
+      border-radius:14px 0 0 14px;
+    }
+
+    .table td:last-child{
+      border-right:1px solid var(--line);
+      border-radius:0 14px 14px 0;
+    }
+
+    .kanban{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(230px,1fr));
+      gap:14px;
+      overflow:auto;
+      padding-bottom:4px;
+    }
+
+    .kanban-col{
+      background:#f9fafb;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:14px;
+      min-height:320px;
+    }
+
+    .kanban-card{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+      margin-bottom:10px;
+      cursor:pointer;
+    }
+
+    .modal-bg{
+      position:fixed;
+      inset:0;
+      background:rgba(17,24,39,.42);
+      display:grid;
+      place-items:center;
+      padding:20px;
+      z-index:50;
+    }
+
+    .modal{
+      width:100%;
+      max-width:760px;
+      max-height:90vh;
+      overflow:auto;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:24px;
+      box-shadow:0 28px 80px rgba(17,24,39,.25);
+      padding:28px;
+    }
+
+    .modal-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .empty{
+      border:1px dashed #d1d5db;
+      border-radius:18px;
+      padding:22px;
+      color:var(--muted);
+      background:#fff;
+    }
+
+    .notice{
+      background:#fff8e1;
+      border:1px solid #fde68a;
+      color:#92400e;
+      padding:12px 14px;
+      border-radius:14px;
+      font-weight:800;
+    }
+
+    .searchbar{
+      display:flex;
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .searchbar input{max-width:420px}
+
+    @media(max-width:1050px){
+      .layout,.grid-2,.grid-3,.grid-4,.kanban{grid-template-columns:1fr}
+      .topbar{align-items:flex-start;flex-direction:column}
+      .actions{width:100%}
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" class="page center">
+    <div class="card login-card">
+      <div class="small">SM SOLUCIONES</div>
+      <h1>SM OS</h1>
+      <p>Cargando sistema...</p>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_KEY = "sm_os_stable_v1";
+  const SESSION_KEY = "sm_os_session_v1";
+
+  const seed = {
+    users: [
+      {id: uid(), name:"Pako Ayala", username:"pako", pin:"1234", role:"Administrador General", active:true, createdAt: now()},
+      {id: uid(), name:"Alan", username:"alan", pin:"2222", role:"Responsable", active:true, createdAt: now()},
+      {id: uid(), name:"Nalleli", username:"nalleli", pin:"3333", role:"Colaborador", active:true, createdAt: now()},
+      {id: uid(), name:"Tere", username:"tere", pin:"4444", role:"Consulta", active:true, createdAt: now()}
+    ],
+    clients: [],
+    projects: [],
+    tasks: [],
+    subtasks: [],
+    comments: [],
+    files: []
+  };
+
+  const clientNames = [
+    ["MENLUN","Plan de marketing anual y estrategia comercial."],
+    ["LEM","La Emoción de la Música."],
+    ["OFUNAM","Proyecto cultural musical."],
+    ["PRO KICKS","Proyecto deportivo y comercial."],
+    ["GPC","Grupo Profesionales en Contabilidad."],
+    ["MAVAS","Proyecto operativo y comercial."],
+    ["DX RX VET","Diagnóstico por Rayos X Veterinarios."]
+  ];
+
+  for(const [name,description] of clientNames){
+    const clientId = uid();
+    seed.clients.push({id:clientId,name,description,active:true,createdAt:now()});
+    const projectId = uid();
+    seed.projects.push({
+      id:projectId,
+      clientId,
+      name:"Proyecto General",
+      description:"Proyecto base operativo.",
+      status:"activo",
+      startDate: today(),
+      dueDate: plusDays(30),
+      createdAt: now()
+    });
+  }
+
+  function addSeedTask(clientName,title,ownerUsername,dueOffset,status,priority){
+    const client = seed.clients.find(c=>c.name===clientName);
+    const project = seed.projects.find(p=>p.clientId===client.id);
+    const owner = seed.users.find(u=>u.username===ownerUsername);
+    seed.tasks.push({
+      id:uid(),
+      clientId:client.id,
+      projectId:project.id,
+      title,
+      description:"Tarea inicial de seguimiento operativo.",
+      ownerId:owner.id,
+      priority,
+      status,
+      startDate:today(),
+      dueDate:plusDays(dueOffset),
+      createdAt:now()
+    });
+  }
+
+  addSeedTask("MENLUN","Diagnóstico digital 2026","alan",7,"en_proceso","alta");
+  addSeedTask("LEM","Calendario editorial de junio","nalleli",2,"pendiente","media");
+  addSeedTask("PRO KICKS","Reporte de leads y pauta","pako",12,"en_revision","alta");
+
+  let state = loadState();
+  let session = loadSession();
+  let view = "dashboard";
+  let selectedClientId = "";
+  let search = "";
+
+  const app = document.getElementById("app");
+
+  function uid(){
+    return "id_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+
+  function now(){
+    return new Date().toISOString();
+  }
+
+  function today(){
+    return new Date().toISOString().slice(0,10);
+  }
+
+  function plusDays(days){
+    const d = new Date();
+    d.setDate(d.getDate()+days);
+    return d.toISOString().slice(0,10);
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+        return JSON.parse(JSON.stringify(seed));
+      }
+      const parsed = JSON.parse(raw);
+      return {
+        users: parsed.users || [],
+        clients: parsed.clients || [],
+        projects: parsed.projects || [],
+        tasks: parsed.tasks || [],
+        subtasks: parsed.subtasks || [],
+        comments: parsed.comments || [],
+        files: parsed.files || []
+      };
+    }catch(e){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+      return JSON.parse(JSON.stringify(seed));
+    }
+  }
+
+  function saveState(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function loadSession(){
+    try{
+      const id = sessionStorage.getItem(SESSION_KEY);
+      return id ? {userId:id} : null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function setSession(userId){
+    sessionStorage.setItem(SESSION_KEY, userId);
+    session = {userId};
+  }
+
+  function clearSession(){
+    sessionStorage.removeItem(SESSION_KEY);
+    session = null;
+  }
+
+  function currentUser(){
+    if(!session) return null;
+    return state.users.find(u=>u.id===session.userId) || null;
+  }
+
+  function escapeHtml(value){
+    return String(value || "").replace(/[&<>"']/g, function(char){
+      return {
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#039;"
+      }[char];
+    });
+  }
+
+  function byId(collection,id){
+    return collection.find(item=>item.id===id) || null;
+  }
+
+  function clientName(id){
+    const item = byId(state.clients,id);
+    return item ? item.name : "Sin cliente";
+  }
+
+  function projectName(id){
+    const item = byId(state.projects,id);
+    return item ? item.name : "Sin proyecto";
+  }
+
+  function userName(id){
+    const item = byId(state.users,id);
+    return item ? item.name : "Sin responsable";
+  }
+
+  function daysUntil(date){
+    if(!date) return 999;
+    const a = new Date();
+    const b = new Date(date + "T00:00:00");
+    a.setHours(0,0,0,0);
+    return Math.ceil((b - a) / 86400000);
+  }
+
+  function traffic(task){
+    if(task.status === "terminada") return "green";
+    const d = daysUntil(task.dueDate);
+    if(d < 0) return "gray";
+    if(d <= 1) return "red";
+    if(d <= 3) return "yellow";
+    return "green";
+  }
+
+  function trafficText(color){
+    if(color==="green") return "En tiempo";
+    if(color==="yellow") return "Próxima";
+    if(color==="red") return "Crítica";
+    return "Vencida";
+  }
+
+  function statusText(status){
+    const map = {
+      pendiente:"Pendiente",
+      en_proceso:"En proceso",
+      en_revision:"En revisión",
+      terminada:"Terminada"
+    };
+    return map[status] || status;
+  }
+
+  function filteredTasks(){
+    let list = state.tasks.slice();
+    if(selectedClientId){
+      list = list.filter(t=>t.clientId===selectedClientId);
+    }
+    if(search.trim()){
+      const q = normalize(search);
+      list = list.filter(t =>
+        normalize(t.title).includes(q) ||
+        normalize(t.description).includes(q) ||
+        normalize(clientName(t.clientId)).includes(q) ||
+        normalize(userName(t.ownerId)).includes(q)
+      );
+    }
+    return list;
+  }
+
+  function normalize(str){
+    return String(str||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  }
+
+  function render(){
+    const user = currentUser();
+    if(!user){
+      renderLogin();
+      return;
+    }
+
+    const activeClient = selectedClientId ? clientName(selectedClientId) : "Panel General";
+
+    app.className = "page";
+    app.innerHTML = `
+      <header class="card topbar">
+        <div>
+          <div class="small">SM OS</div>
+          <h1 style="margin:4px 0 0;">${escapeHtml(activeClient)}</h1>
+          <p style="margin:6px 0 0;color:var(--muted);">${escapeHtml(user.name)} · ${escapeHtml(user.role)}</p>
+        </div>
+        <div class="actions" style="margin-top:0;">
+          ${selectedClientId ? `<button class="btn-secondary" onclick="SM.clearClient()">Vista general</button>` : ""}
+          <button class="btn-secondary" onclick="SM.resetDemo()">Reiniciar demo</button>
+          <button class="btn-secondary" onclick="SM.logout()">Salir</button>
+        </div>
+      </header>
+
+      <section class="layout">
+        <aside class="card">
+          <nav class="nav">
+            ${navButton("dashboard","Dashboard")}
+            ${navButton("clientes","Clientes")}
+            ${navButton("proyectos","Proyectos")}
+            ${navButton("tareas","Tareas")}
+            ${navButton("kanban","Kanban")}
+            ${navButton("calendario","Calendario")}
+            ${navButton("reportes","Reportes")}
+            ${navButton("usuarios","Usuarios")}
+          </nav>
+        </aside>
+
+        <main id="content"></main>
+      </section>
+    `;
+
+    renderView();
+  }
+
+  function renderLogin(message){
+    app.className = "page center";
+    app.innerHTML = `
+      <form class="card login-card" id="loginForm">
+        <div class="small">SM SOLUCIONES</div>
+        <h1 style="font-size:58px;">SM OS</h1>
+        <p style="color:var(--muted);font-size:18px;">Sistema Operativo de Gestión Interna</p>
+
+        <label>Usuario</label>
+        <input id="loginUser" value="pako">
+
+        <label>PIN</label>
+        <input id="loginPin" type="password" value="1234">
+
+        ${message ? `<p class="error" style="color:var(--danger);font-weight:800;">${escapeHtml(message)}</p>` : ""}
+
+        <br><br>
+        <button class="btn" type="submit" style="width:100%;">Entrar</button>
+
+        <p class="small" style="margin-top:18px;">Demo inicial: pako / 1234</p>
+      </form>
+    `;
+
+    document.getElementById("loginForm").addEventListener("submit", function(event){
+      event.preventDefault();
+      const username = document.getElementById("loginUser").value.trim();
+      const pin = document.getElementById("loginPin").value.trim();
+      const user = state.users.find(u=>u.username===username && u.pin===pin && u.active);
+      if(!user){
+        renderLogin("Usuario o PIN incorrecto.");
+        return;
+      }
+      setSession(user.id);
+      render();
+    });
+  }
+
+  function navButton(id,label){
+    return `<button class="${view===id ? "active" : ""}" onclick="SM.setView('${id}')">${label}</button>`;
+  }
+
+  function renderView(){
+    const content = document.getElementById("content");
+    if(!content) return;
+
+    if(view==="dashboard") renderDashboard(content);
+    if(view==="clientes") renderClients(content);
+    if(view==="proyectos") renderProjects(content);
+    if(view==="tareas") renderTasks(content);
+    if(view==="kanban") renderKanban(content);
+    if(view==="calendario") renderCalendar(content);
+    if(view==="reportes") renderReports(content);
+    if(view==="usuarios") renderUsers(content);
+  }
+
+  function stat(label,value){
+    return `
+      <div class="card stat">
+        <div class="small">${escapeHtml(label)}</div>
+        <div class="num">${escapeHtml(value)}</div>
+      </div>
+    `;
+  }
+
+  function panel(title, actionLabel, action, body){
+    return `
+      <div class="card">
+        <div class="row" style="margin-bottom:16px;">
+          <h2 style="margin:0;">${escapeHtml(title)}</h2>
+          ${actionLabel ? `<button class="btn" onclick="${action}">${escapeHtml(actionLabel)}</button>` : ""}
+        </div>
+        ${body}
+      </div>
+    `;
+  }
+
+  function renderDashboard(content){
+    const open = state.tasks.filter(t=>t.status!=="terminada").length;
+    const critical = state.tasks.filter(t=>["red","gray"].includes(traffic(t))).length;
+
+    content.innerHTML = `
+      <div class="grid">
+        <div class="grid grid-4">
+          ${stat("Clientes activos", state.clients.length)}
+          ${stat("Proyectos", state.projects.length)}
+          ${stat("Tareas abiertas", open)}
+          ${stat("Críticas / vencidas", critical)}
+        </div>
+
+        <div class="grid grid-2">
+          ${panel("Clientes", "Nuevo cliente", "SM.openClientModal()", clientCards())}
+          ${panel("Tareas prioritarias", "Nueva tarea", "SM.openTaskModal()", taskCards(filteredTasks().slice(0,6)))}
+        </div>
+      </div>
+    `;
+  }
+
+  function clientCards(){
+    if(!state.clients.length) return `<div class="empty">Sin clientes registrados.</div>`;
+    return `
+      <div class="list">
+        ${state.clients.map(client=>`
+          <div class="item row">
+            <div>
+              <strong>${escapeHtml(client.name)}</strong>
+              <p style="margin:6px 0 0;color:var(--muted);">${escapeHtml(client.description)}</p>
+            </div>
+            <button class="btn-secondary" onclick="SM.selectClient('${client.id}')">Ver</button>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function taskCards(list){
+    if(!list.length) return `<div class="empty">Sin tareas registradas.</div>`;
+    return `
+      <div class="list">
+        ${list.map(task=>taskCard(task)).join("")}
+      </div>
+    `;
+  }
+
+  function taskCard(task){
+    const color = traffic(task);
+    return `
+      <div class="item">
+        <div class="row">
+          <div>
+            <span class="badge ${color}">${trafficText(color)}</span>
+            <div class="small" style="margin-top:8px;">${escapeHtml(clientName(task.clientId))} · ${escapeHtml(projectName(task.projectId))}</div>
+            <h3 style="margin-top:8px;">${escapeHtml(task.title)}</h3>
+            <p style="margin:0;color:var(--muted);">${escapeHtml(userName(task.ownerId))} · ${statusText(task.status)} · vence ${escapeHtml(task.dueDate || "sin fecha")}</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-secondary" onclick="SM.openTaskDetail('${task.id}')">Abrir</button>
+          <button class="btn-secondary" onclick="SM.updateTaskStatus('${task.id}','pendiente')">Pendiente</button>
+          <button class="btn-secondary" onclick="SM.updateTaskStatus('${task.id}','en_proceso')">En proceso</button>
+          <button class="btn-secondary" onclick="SM.updateTaskStatus('${task.id}','en_revision')">Revisión</button>
+          <button class="btn-secondary" onclick="SM.updateTaskStatus('${task.id}','terminada')">Terminar</button>
+          <button class="btn-danger" onclick="SM.deleteRecord('tasks','${task.id}')">Borrar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderClients(content){
+    content.innerHTML = panel("Clientes", "Nuevo cliente", "SM.openClientModal()", `
+      <table class="table">
+        <thead><tr><th>Cliente</th><th>Descripción</th><th>Proyectos</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${state.clients.map(client=>`
+            <tr>
+              <td><strong>${escapeHtml(client.name)}</strong></td>
+              <td>${escapeHtml(client.description)}</td>
+              <td>${state.projects.filter(p=>p.clientId===client.id).length}</td>
+              <td>
+                <button class="btn-secondary" onclick="SM.selectClient('${client.id}')">Abrir</button>
+                <button class="btn-danger" onclick="SM.deleteRecord('clients','${client.id}')">Borrar</button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `);
+  }
+
+  function renderProjects(content){
+    const list = selectedClientId ? state.projects.filter(p=>p.clientId===selectedClientId) : state.projects;
+
+    content.innerHTML = panel("Proyectos", "Nuevo proyecto", "SM.openProjectModal()", `
+      <table class="table">
+        <thead><tr><th>Proyecto</th><th>Cliente</th><th>Estatus</th><th>Fechas</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${list.map(project=>`
+            <tr>
+              <td><strong>${escapeHtml(project.name)}</strong><br><span class="small">${escapeHtml(project.description)}</span></td>
+              <td>${escapeHtml(clientName(project.clientId))}</td>
+              <td>${escapeHtml(project.status)}</td>
+              <td>${escapeHtml(project.startDate || "-")} → ${escapeHtml(project.dueDate || "-")}</td>
+              <td><button class="btn-danger" onclick="SM.deleteRecord('projects','${project.id}')">Borrar</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `);
+  }
+
+  function renderTasks(content){
+    content.innerHTML = panel("Tareas", "Nueva tarea", "SM.openTaskModal()", `
+      <div class="searchbar">
+        <input placeholder="Buscar tarea, cliente o responsable..." value="${escapeHtml(search)}" oninput="SM.setSearch(this.value)">
+        ${selectedClientId ? `<button class="btn-secondary" onclick="SM.clearClient()">Quitar filtro cliente</button>` : ""}
+      </div>
+      ${taskCards(filteredTasks())}
+    `);
+  }
+
+  function renderKanban(content){
+    const columns = [
+      ["pendiente","Pendiente"],
+      ["en_proceso","En proceso"],
+      ["en_revision","En revisión"],
+      ["terminada","Terminada"]
+    ];
+
+    content.innerHTML = panel("Kanban", "Nueva tarea", "SM.openTaskModal()", `
+      <div class="kanban">
+        ${columns.map(([key,label])=>`
+          <div class="kanban-col">
+            <h3>${escapeHtml(label)}</h3>
+            ${filteredTasks().filter(t=>t.status===key).map(task=>`
+              <div class="kanban-card" onclick="SM.openTaskDetail('${task.id}')">
+                <span class="badge ${traffic(task)}">${trafficText(traffic(task))}</span>
+                <h3>${escapeHtml(task.title)}</h3>
+                <p class="small">${escapeHtml(clientName(task.clientId))} · ${escapeHtml(userName(task.ownerId))}</p>
+              </div>
+            `).join("") || `<div class="empty">Sin tareas.</div>`}
+          </div>
+        `).join("")}
+      </div>
+    `);
+  }
+
+  function renderCalendar(content){
+    const list = filteredTasks().slice().sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")));
+
+    content.innerHTML = panel("Calendario de vencimientos", "Nueva tarea", "SM.openTaskModal()", `
+      <table class="table">
+        <thead><tr><th>Fecha</th><th>Tarea</th><th>Cliente</th><th>Responsable</th><th>Semáforo</th></tr></thead>
+        <tbody>
+          ${list.map(task=>`
+            <tr>
+              <td>${escapeHtml(task.dueDate || "Sin fecha")}</td>
+              <td><strong>${escapeHtml(task.title)}</strong></td>
+              <td>${escapeHtml(clientName(task.clientId))}</td>
+              <td>${escapeHtml(userName(task.ownerId))}</td>
+              <td><span class="badge ${traffic(task)}">${trafficText(traffic(task))}</span></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `);
+  }
+
+  function renderReports(content){
+    const open = state.tasks.filter(t=>t.status!=="terminada").length;
+    const done = state.tasks.filter(t=>t.status==="terminada").length;
+    const critical = state.tasks.filter(t=>["red","gray"].includes(traffic(t))).length;
+
+    content.innerHTML = `
+      <div class="grid">
+        <div class="grid grid-4">
+          ${stat("Tareas abiertas",open)}
+          ${stat("Terminadas",done)}
+          ${stat("Críticas/vencidas",critical)}
+          ${stat("Usuarios",state.users.length)}
+        </div>
+
+        ${panel("Reporte por cliente", "", "", `
+          <table class="table">
+            <thead><tr><th>Cliente</th><th>Tareas</th><th>Abiertas</th><th>Terminadas</th></tr></thead>
+            <tbody>
+              ${state.clients.map(client=>{
+                const list = state.tasks.filter(t=>t.clientId===client.id);
+                return `
+                  <tr>
+                    <td><strong>${escapeHtml(client.name)}</strong></td>
+                    <td>${list.length}</td>
+                    <td>${list.filter(t=>t.status!=="terminada").length}</td>
+                    <td>${list.filter(t=>t.status==="terminada").length}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        `)}
+
+        ${panel("Reporte por responsable", "", "", `
+          <table class="table">
+            <thead><tr><th>Responsable</th><th>Tareas</th><th>Críticas/vencidas</th></tr></thead>
+            <tbody>
+              ${state.users.map(user=>{
+                const list = state.tasks.filter(t=>t.ownerId===user.id);
+                return `
+                  <tr>
+                    <td><strong>${escapeHtml(user.name)}</strong></td>
+                    <td>${list.length}</td>
+                    <td>${list.filter(t=>["red","gray"].includes(traffic(t))).length}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        `)}
+      </div>
+    `;
+  }
+
+  function renderUsers(content){
+    content.innerHTML = panel("Usuarios", "Nuevo usuario", "SM.openUserModal()", `
+      <table class="table">
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>PIN</th><th>Rol</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${state.users.map(user=>`
+            <tr>
+              <td><strong>${escapeHtml(user.name)}</strong></td>
+              <td>${escapeHtml(user.username)}</td>
+              <td>${escapeHtml(user.pin)}</td>
+              <td>${escapeHtml(user.role)}</td>
+              <td><button class="btn-danger" onclick="SM.deleteRecord('users','${user.id}')">Borrar</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `);
+  }
+
+  function openModal(title, body){
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal" class="modal-bg">
+        <div class="modal">
+          <div class="modal-head">
+            <h2 style="margin:0;">${escapeHtml(title)}</h2>
+            <button class="btn-secondary" onclick="SM.closeModal()">Cerrar</button>
+          </div>
+          ${body}
+        </div>
+      </div>
+    `);
+  }
+
+  function closeModal(){
+    const modal = document.getElementById("modal");
+    if(modal) modal.remove();
+  }
+
+  function input(name,label,type,value){
+    return `
+      <div>
+        <label>${escapeHtml(label)}</label>
+        <input name="${escapeHtml(name)}" type="${type || "text"}" value="${escapeHtml(value || "")}">
+      </div>
+    `;
+  }
+
+  function textarea(name,label,value){
+    return `
+      <div>
+        <label>${escapeHtml(label)}</label>
+        <textarea name="${escapeHtml(name)}">${escapeHtml(value || "")}</textarea>
+      </div>
+    `;
+  }
+
+  function select(name,label,options,selected){
+    return `
+      <div>
+        <label>${escapeHtml(label)}</label>
+        <select name="${escapeHtml(name)}">
+          ${options.map(([value,label])=>`<option value="${escapeHtml(value)}" ${selected===value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+        </select>
+      </div>
+    `;
+  }
+
+  function getFormData(form){
+    const data = new FormData(form);
+    const obj = {};
+    for(const [key,value] of data.entries()){
+      obj[key] = String(value).trim();
+    }
+    return obj;
+  }
+
+  function attachSubmit(id,handler){
+    document.getElementById(id).addEventListener("submit", function(event){
+      event.preventDefault();
+      handler(getFormData(event.target));
+    });
+  }
+
+  window.SM = {
+    setView(id){
+      view = id;
+      render();
+    },
+
+    setSearch(value){
+      search = value;
+      renderView();
+    },
+
+    selectClient(id){
+      selectedClientId = id;
+      view = "tareas";
+      render();
+    },
+
+    clearClient(){
+      selectedClientId = "";
+      render();
+    },
+
+    logout(){
+      clearSession();
+      render();
+    },
+
+    resetDemo(){
+      if(!confirm("¿Reiniciar demo y borrar datos locales?")) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+      clearSession();
+      state = loadState();
+      view = "dashboard";
+      selectedClientId = "";
+      search = "";
+      render();
+    },
+
+    closeModal,
+
+    openClientModal(){
+      openModal("Nuevo cliente", `
+        <form id="clientForm" class="grid">
+          ${input("name","Nombre del cliente")}
+          ${textarea("description","Descripción")}
+          <button class="btn" type="submit">Guardar cliente</button>
+        </form>
+      `);
+
+      attachSubmit("clientForm", data=>{
+        if(!data.name) return alert("Falta el nombre del cliente.");
+        state.clients.push({id:uid(),name:data.name,description:data.description,active:true,createdAt:now()});
+        saveState();
+        closeModal();
+        render();
+      });
+    },
+
+    openProjectModal(){
+      if(!state.clients.length) return alert("Primero crea un cliente.");
+
+      openModal("Nuevo proyecto", `
+        <form id="projectForm" class="grid">
+          ${select("clientId","Cliente",state.clients.map(c=>[c.id,c.name]),selectedClientId || state.clients[0].id)}
+          ${input("name","Nombre del proyecto")}
+          ${textarea("description","Descripción")}
+          ${input("startDate","Fecha de inicio","date",today())}
+          ${input("dueDate","Fecha término","date",plusDays(30))}
+          <button class="btn" type="submit">Guardar proyecto</button>
+        </form>
+      `);
+
+      attachSubmit("projectForm", data=>{
+        if(!data.clientId || !data.name) return alert("Faltan datos del proyecto.");
+        state.projects.push({
+          id:uid(),
+          clientId:data.clientId,
+          name:data.name,
+          description:data.description,
+          status:"activo",
+          startDate:data.startDate || "",
+          dueDate:data.dueDate || "",
+          createdAt:now()
+        });
+        saveState();
+        closeModal();
+        render();
+      });
+    },
+
+    openUserModal(){
+      openModal("Nuevo usuario", `
+        <form id="userForm" class="grid">
+          ${input("name","Nombre")}
+          ${input("username","Usuario")}
+          ${input("pin","PIN")}
+          ${select("role","Rol",[
+            ["Administrador General","Administrador General"],
+            ["Responsable","Responsable"],
+            ["Colaborador","Colaborador"],
+            ["Consulta","Consulta"]
+          ],"Colaborador")}
+          <button class="btn" type="submit">Guardar usuario</button>
+        </form>
+      `);
+
+      attachSubmit("userForm", data=>{
+        if(!data.name || !data.username || !data.pin) return alert("Faltan datos del usuario.");
+        if(state.users.some(u=>u.username===data.username)) return alert("Ese usuario ya existe.");
+        state.users.push({id:uid(),name:data.name,username:data.username,pin:data.pin,role:data.role,active:true,createdAt:now()});
+        saveState();
+        closeModal();
+        render();
+      });
+    },
+
+    openTaskModal(){
+      if(!state.clients.length) return alert("Primero crea un cliente.");
+      if(!state.users.length) return alert("Primero crea un usuario.");
+
+      const clientId = selectedClientId || state.clients[0].id;
+      let projectOptions = state.projects.filter(p=>p.clientId===clientId);
+      if(!projectOptions.length){
+        const projectId = uid();
+        state.projects.push({
+          id:projectId,
+          clientId,
+          name:"Proyecto General",
+          description:"Proyecto base operativo.",
+          status:"activo",
+          startDate:today(),
+          dueDate:plusDays(30),
+          createdAt:now()
+        });
+        saveState();
+        projectOptions = state.projects.filter(p=>p.clientId===clientId);
+      }
+
+      openModal("Nueva tarea", `
+        <form id="taskForm" class="grid">
+          ${select("clientId","Cliente",state.clients.map(c=>[c.id,c.name]),clientId)}
+          ${select("projectId","Proyecto",state.projects.map(p=>[p.id,`${projectName(p.id)} · ${clientName(p.clientId)}`]),projectOptions[0].id)}
+          ${input("title","Título de la tarea")}
+          ${textarea("description","Descripción")}
+          ${select("ownerId","Responsable",state.users.map(u=>[u.id,u.name]),state.users[0].id)}
+          ${select("priority","Prioridad",[["baja","Baja"],["media","Media"],["alta","Alta"],["critica","Crítica"]],"media")}
+          ${select("status","Estatus",[["pendiente","Pendiente"],["en_proceso","En proceso"],["en_revision","En revisión"],["terminada","Terminada"]],"pendiente")}
+          ${input("startDate","Fecha de inicio","date",today())}
+          ${input("dueDate","Fecha término programada","date",plusDays(7))}
+          <button class="btn" type="submit">Guardar tarea</button>
+        </form>
+      `);
+
+      attachSubmit("taskForm", data=>{
+        if(!data.title) return alert("Falta el título de la tarea.");
+        state.tasks.push({
+          id:uid(),
+          clientId:data.clientId,
+          projectId:data.projectId,
+          title:data.title,
+          description:data.description,
+          ownerId:data.ownerId,
+          priority:data.priority,
+          status:data.status,
+          startDate:data.startDate,
+          dueDate:data.dueDate,
+          createdAt:now()
+        });
+        saveState();
+        closeModal();
+        render();
+      });
+    },
+
+    openTaskDetail(id){
+      const task = byId(state.tasks,id);
+      if(!task) return;
+
+      const subs = state.subtasks.filter(s=>s.taskId===id);
+      const comms = state.comments.filter(c=>c.taskId===id);
+      const taskFiles = state.files.filter(f=>f.taskId===id);
+
+      openModal("Detalle de tarea", `
+        <div class="small">${escapeHtml(clientName(task.clientId))} · ${escapeHtml(projectName(task.projectId))}</div>
+        <h2>${escapeHtml(task.title)}</h2>
+        <p>${escapeHtml(task.description || "Sin descripción.")}</p>
+        <p><strong>Responsable:</strong> ${escapeHtml(userName(task.ownerId))}</p>
+        <p><strong>Estatus:</strong> ${escapeHtml(statusText(task.status))} · <strong>Vence:</strong> ${escapeHtml(task.dueDate || "sin fecha")}</p>
+
+        <div class="actions">
+          <button class="btn" onclick="SM.openSubtaskModal('${id}')">Agregar subtarea</button>
+          <button class="btn-secondary" onclick="SM.openCommentModal('${id}')">Comentar</button>
+          <button class="btn-secondary" onclick="SM.openFileModal('${id}')">Agregar entregable</button>
+        </div>
+
+        <hr style="border:0;border-top:1px solid var(--line);margin:20px 0;">
+
+        <h3>Subtareas</h3>
+        ${subs.length ? subs.map(sub=>`
+          <div class="item">
+            <strong>${escapeHtml(sub.title)}</strong>
+            <p class="small">${escapeHtml(userName(sub.ownerId))} · ${escapeHtml(statusText(sub.status))} · ${escapeHtml(sub.dueDate || "sin fecha")}</p>
+          </div>
+        `).join("") : `<div class="empty">Sin subtareas.</div>`}
+
+        <h3 style="margin-top:20px;">Comentarios</h3>
+        ${comms.length ? comms.map(comment=>`
+          <div class="item">
+            <strong>${escapeHtml(userName(comment.userId))}</strong>
+            <p>${escapeHtml(comment.text)}</p>
+            <p class="small">${new Date(comment.createdAt).toLocaleString()}</p>
+          </div>
+        `).join("") : `<div class="empty">Sin comentarios.</div>`}
+
+        <h3 style="margin-top:20px;">Archivos / entregables</h3>
+        ${taskFiles.length ? taskFiles.map(file=>`
+          <div class="item">
+            <strong>${escapeHtml(file.name)}</strong>
+            <p class="small">${escapeHtml(file.type || "Archivo")} · v${escapeHtml(file.version || 1)}</p>
+            <a href="${escapeHtml(file.url)}" target="_blank" rel="noopener">Abrir enlace</a>
+          </div>
+        `).join("") : `<div class="empty">Sin entregables.</div>`}
+      `);
+    },
+
+    openSubtaskModal(taskId){
+      closeModal();
+
+      openModal("Nueva subtarea", `
+        <form id="subtaskForm" class="grid">
+          ${input("title","Título de la subtarea")}
+          ${select("ownerId","Responsable",state.users.map(u=>[u.id,u.name]),state.users[0].id)}
+          ${select("status","Estatus",[["pendiente","Pendiente"],["en_proceso","En proceso"],["en_revision","En revisión"],["terminada","Terminada"]],"pendiente")}
+          ${input("dueDate","Fecha término","date",plusDays(5))}
+          <button class="btn" type="submit">Guardar subtarea</button>
+        </form>
+      `);
+
+      attachSubmit("subtaskForm", data=>{
+        if(!data.title) return alert("Falta el título.");
+        state.subtasks.push({id:uid(),taskId,title:data.title,ownerId:data.ownerId,status:data.status,dueDate:data.dueDate,createdAt:now()});
+        saveState();
+        closeModal();
+        this.openTaskDetail(taskId);
+      });
+    },
+
+    openCommentModal(taskId){
+      closeModal();
+
+      openModal("Nuevo comentario", `
+        <form id="commentForm" class="grid">
+          ${textarea("text","Comentario")}
+          <button class="btn" type="submit">Guardar comentario</button>
+        </form>
+      `);
+
+      attachSubmit("commentForm", data=>{
+        if(!data.text) return alert("Falta el comentario.");
+        state.comments.push({id:uid(),taskId,userId:currentUser().id,text:data.text,createdAt:now()});
+        saveState();
+        closeModal();
+        this.openTaskDetail(taskId);
+      });
+    },
+
+    openFileModal(taskId){
+      closeModal();
+
+      openModal("Nuevo entregable", `
+        <form id="fileForm" class="grid">
+          ${input("name","Nombre del archivo")}
+          ${input("url","URL del archivo")}
+          ${input("type","Tipo de archivo")}
+          ${input("version","Versión","number","1")}
+          <button class="btn" type="submit">Guardar entregable</button>
+        </form>
+      `);
+
+      attachSubmit("fileForm", data=>{
+        if(!data.name || !data.url) return alert("Faltan datos del archivo.");
+        state.files.push({id:uid(),taskId,userId:currentUser().id,name:data.name,url:data.url,type:data.type,version:data.version || 1,createdAt:now()});
+        saveState();
+        closeModal();
+        this.openTaskDetail(taskId);
+      });
+    },
+
+    updateTaskStatus(id,status){
+      const task = byId(state.tasks,id);
+      if(!task) return;
+      task.status = status;
+      saveState();
+      render();
+    },
+
+    deleteRecord(collection,id){
+      if(!confirm("¿Borrar este registro?")) return;
+
+      if(collection==="clients"){
+        state.tasks = state.tasks.filter(t=>t.clientId!==id);
+        state.projects = state.projects.filter(p=>p.clientId!==id);
+        state.clients = state.clients.filter(c=>c.id!==id);
+        if(selectedClientId===id) selectedClientId = "";
+      }
+
+      if(collection==="projects"){
+        state.tasks = state.tasks.filter(t=>t.projectId!==id);
+        state.projects = state.projects.filter(p=>p.id!==id);
+      }
+
+      if(collection==="tasks"){
+        state.subtasks = state.subtasks.filter(s=>s.taskId!==id);
+        state.comments = state.comments.filter(c=>c.taskId!==id);
+        state.files = state.files.filter(f=>f.taskId!==id);
+        state.tasks = state.tasks.filter(t=>t.id!==id);
+      }
+
+      if(collection==="users"){
+        const logged = currentUser();
+        if(logged && logged.id===id) return alert("No puedes borrar el usuario activo.");
+        state.users = state.users.filter(u=>u.id!==id);
+      }
+
+      saveState();
+      render();
+    }
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
