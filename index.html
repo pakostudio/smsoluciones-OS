@@ -426,12 +426,10 @@ document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',
 let selectedUserId=null;
 
 function buildUserSelector(){
-  // SIEMPRE leer localStorage fresco para tener usuarios actualizados
-  let freshUsers;
-  try{ freshUsers=JSON.parse(localStorage.getItem('smos_v2'))?.users||state.users; }
-  catch(e){ freshUsers=state.users; }
-  const active=freshUsers.filter(u=>u.active);
-  document.getElementById('user-selector').innerHTML=active.map(u=>
+  const active=state.users.filter(u=>u.active);
+  const container=document.getElementById('user-selector');
+  if(!container) return;
+  container.innerHTML=active.map(u=>
     `<button type="button" class="user-sel-btn" data-uid="${u.id}" onclick="selectUser('${u.id}')">
       <div class="user-sel-avatar">${initials(u.name)}</div>
       <span style="font-size:15px">${esc(u.name)}</span>
@@ -507,22 +505,29 @@ document.getElementById('btn-logout').addEventListener('click',()=>{
   document.querySelectorAll('.user-sel-btn').forEach(b=>b.classList.remove('selected'));
 });
 
-// Limpiar localStorage corrupto y reconstruir desde defaultState si no tiene admin con pin 0000
-(function fixStorage(){
+// Inicializar estado y construir selector
+(function init(){
   try{
-    const s=JSON.parse(localStorage.getItem('smos_v2'));
-    if(!s||!s.users){ localStorage.setItem('smos_v2',JSON.stringify(defaultState())); return; }
-    const adm=s.users.find(u=>u.username==='admin');
-    if(!adm){ 
-      // No hay admin: agregarlo
-      s.users.unshift({id:'u1',name:'Administrador',username:'admin',pin:'0000',role:'admin',active:true});
+    let s=JSON.parse(localStorage.getItem('smos_v2'));
+    if(!s||!s.users||!Array.isArray(s.users)||s.users.length===0){
+      s=defaultState();
       localStorage.setItem('smos_v2',JSON.stringify(s));
+    } else {
+      // Asegurar que admin siempre existe con pin correcto
+      const adm=s.users.find(u=>u.username==='admin');
+      if(!adm){
+        s.users.unshift({id:'u1',name:'Administrador',username:'admin',pin:'0000',role:'admin',active:true});
+        localStorage.setItem('smos_v2',JSON.stringify(s));
+      }
     }
-    state=JSON.parse(localStorage.getItem('smos_v2'));
-  }catch(e){ localStorage.setItem('smos_v2',JSON.stringify(defaultState())); state=defaultState(); }
+    state=s;
+  }catch(e){
+    state=defaultState();
+    localStorage.setItem('smos_v2',JSON.stringify(state));
+  }
+  // Ahora sí construir el selector con state ya listo
+  buildUserSelector();
 })();
-
-buildUserSelector();
 </script>
 </body>
 </html>
