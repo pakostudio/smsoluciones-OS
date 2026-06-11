@@ -805,7 +805,44 @@ function vUS(){
 
 /* REPORTES */
 function vRE(){
-  if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
+  // Usuario normal: solo ve su propio rendimiento
+  if(!adm()){
+    var u = me();
+    var ut = DB.tareas.filter(function(t){return t.owner_id===u.id;});
+    var done = ut.filter(function(t){return t.estado==='terminada';}).length;
+    var inP = ut.filter(function(t){return t.estado==='en_proceso';}).length;
+    var inR = ut.filter(function(t){return t.estado==='en_revision';}).length;
+    var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&new Date(t.fecha_vencimiento)<new Date();}).length;
+    var eff = ut.length ? Math.round(done/ut.length*100) : 0;
+    var heTotal = ut.reduce(function(s,t){return s+(Number(t.horas_estimadas)||0);},0);
+    var hrTotal = ut.reduce(function(s,t){return s+(Number(t.horas_reales)||0);},0);
+    return '<div class="sh"><h2>Mi rendimiento</h2></div>'
+      +'<div class="sg">'
+      +'<div class="sc"><div class="sl">Tareas asignadas</div><div class="sn">'+ut.length+'</div></div>'
+      +'<div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div><div class="ss">'+eff+'% eficiencia</div></div>'
+      +'<div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div>'
+      +'<div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+ov+'</div></div>'
+      +'</div>'
+      +'<div class="card"><div class="ch"><h3>Mis tareas</h3></div>'
+      +'<div class="dg3" style="margin-bottom:16px">'
+      +'<div class="di"><div class="dl">Horas estimadas</div><div class="dv">'+heTotal+'h</div></div>'
+      +'<div class="di"><div class="dl">Horas reales</div><div class="dv">'+hrTotal+'h</div></div>'
+      +'<div class="di"><div class="dl">Eficiencia horas</div><div class="dv">'+(heTotal?Math.round(hrTotal/heTotal*100):0)+'%</div></div>'
+      +'</div>'
+      +'<div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Estado</th><th>Semáforo</th><th>Vence</th><th>H Est/Real</th></tr></thead><tbody>'
+      +ut.map(function(t){
+        var tid = t.id;
+        return '<tr>'
+          +'<td><span style="font-weight:700;cursor:pointer;color:var(--navy)" onclick="A.td(\''+tid+'\')">'+esc(t.titulo)+'</span></td>'
+          +'<td style="font-size:12px;color:var(--muted)">'+esc(pNm(t.proyecto_id))+'</td>'
+          +'<td>'+bSt(t.estado)+'</td>'
+          +'<td>'+sem(t)+'</td>'
+          +'<td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td>'
+          +'<td style="font-size:12px;color:var(--muted)">'+t.horas_reales+'/'+t.horas_estimadas+'h</td>'
+          +'</tr>';
+      }).join('')||'<tr><td colspan="6"><div class="empty"><p>Sin tareas asignadas</p></div></td></tr>'
+      +'</tbody></table></div></div>';
+  }
   var tB = DB.proyectos.reduce(function(s,p){return s+(Number(p.presupuesto)||0);},0);
   var tP = DB.pagos.filter(function(p){return p.estado==='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
   var tPe = DB.pagos.filter(function(p){return p.estado!=='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
