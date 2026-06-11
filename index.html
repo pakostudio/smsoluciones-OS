@@ -4,2043 +4,1196 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SM OS · SM Soluciones</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
-/* ─── TOKENS ─────────────────────────────────────────────── */
-:root{
-  --cyan:#00AADD;
-  --blue:#0B2547;
-  --dark:#F2F0EC;
-  --surface:#FFFFFF;
-  --surface2:#F7F5F1;
-  --surface3:#EDEAE4;
-  --line:rgba(11,37,71,0.10);
-  --line2:rgba(11,37,71,0.16);
-  --text:#2E3D52;
-  --muted:#6B7A8D;
-  --green:#2A7D4F;
-  --yellow:#A0660A;
-  --red:#B83232;
-  --cyan-glow:rgba(0,170,221,0.10);
+:root {
+  --bg:#F2F0EC; --bg2:#EAE8E3; --surface:#FFFFFF;
+  --surface2:#F7F5F1; --surface3:#EDEAE4;
+  --navy:#0B2547; --cyan:#00AADD;
+  --cyan-soft:rgba(0,170,221,0.10);
+  --ink:#1A2535; --text:#2E3D52; --muted:#6B7A8D;
+  --green:#2A7D4F; --gbg:rgba(42,125,79,0.10);
+  --yellow:#A0660A; --ybg:rgba(160,102,10,0.10);
+  --red:#B83232; --rbg:rgba(184,50,50,0.10);
+  --line:rgba(11,37,71,0.10); --line2:rgba(11,37,71,0.16);
   --shadow:0 4px 20px rgba(11,37,71,0.08);
-  --r:14px;
-  --r-sm:10px;
-  --sidebar:260px;
-  --green-bg:rgba(42,125,79,0.10);
-  --yellow-bg:rgba(160,102,10,0.10);
-  --red-bg:rgba(184,50,50,0.10);
+  --r:12px; --rs:8px; --sidebar:256px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;background:var(--dark);color:var(--text)}
+html,body{height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
 button,input,select,textarea{font:inherit}
 a{color:var(--cyan);text-decoration:none}
-h1{font-size:40px;font-weight:900;letter-spacing:-1px}
-h2{font-size:24px;font-weight:800}
-h3{font-size:17px;font-weight:700}
-p{line-height:1.55}
-
-/* ─── SCROLLBAR ───────────────────────────────────────────── */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
+h2{font-size:22px;font-weight:800;color:var(--ink)}
+h3{font-size:16px;font-weight:700;color:var(--ink)}
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:99px}
 
-/* ─── LAYOUT ──────────────────────────────────────────────── */
-#app-login{
-  min-height:100vh;
-  display:grid;
-  place-items:center;
-  background:linear-gradient(145deg,#F7F5F0 0%,#EDEAE3 100%);
-}
-#app-main{
-  display:none;
-  min-height:100vh;
-  grid-template-columns:var(--sidebar) 1fr;
-}
-body.is-app #app-login{display:none}
-body.is-app #app-main{display:grid}
+/* LOGIN */
+#login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(145deg,#F7F5F0,#EDEAE3);padding:20px}
+#app{display:none;min-height:100vh;grid-template-columns:var(--sidebar) 1fr}
+body.logged #login{display:none}
+body.logged #app{display:grid}
+.lcard{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line2);border-radius:20px;padding:40px 36px;box-shadow:var(--shadow)}
+.llogo{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:28px}
+.lbrand{text-align:center}
+.lbrand .sm{font-size:22px;font-weight:900;letter-spacing:2px;color:var(--navy)}
+.lbrand .sol{font-size:22px;font-weight:300;letter-spacing:5px;color:var(--muted)}
+.ltag{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.lfield{margin-bottom:13px}
+.lfield label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.lfield input{width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--rs);padding:12px 14px;color:var(--ink);font-size:15px;outline:none;transition:border-color .2s}
+.lfield input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,170,221,.12)}
+.lerr{min-height:18px;font-size:13px;color:var(--red);font-weight:600;margin-bottom:9px;text-align:center}
+.lbtn{width:100%;height:50px;background:var(--navy);border:0;border-radius:var(--r);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+.lbtn:hover{background:#163460}
+.usbtn{width:100%;display:flex;align-items:center;gap:12px;border:1px solid var(--line2);border-radius:var(--rs);padding:11px 14px;background:var(--surface2);cursor:pointer;font-size:14px;font-weight:600;color:var(--text);text-align:left;transition:all .15s;margin-bottom:7px}
+.usbtn:hover{border-color:var(--cyan);background:var(--cyan-soft);color:var(--navy)}
+.usbtn.sel{border-color:var(--cyan);border-width:2px;background:var(--cyan-soft);color:var(--navy);font-weight:800}
+.usav{width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+.usbtn.sel .usav{background:var(--cyan)}
 
-/* ─── LOGIN ───────────────────────────────────────────────── */
-.login-wrap{width:100%;max-width:440px;padding:16px}
-.login-card{
-  background:var(--surface);
-  border:1px solid var(--line2);
-  border-radius:24px;
-  padding:40px;
-  box-shadow:var(--shadow),0 0 0 1px rgba(0,191,255,0.06);
-}
-.login-logo{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:36px}
-.logo-icon{
-  width:72px;height:72px;
-  background:linear-gradient(135deg,var(--cyan),var(--blue));
-  border-radius:20px;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 0 32px rgba(0,191,255,0.35);
-}
-.logo-icon svg{width:40px;height:40px}
-.login-brand{text-align:center}
-.login-brand .sm{color:var(--cyan);font-weight:900;font-size:26px;letter-spacing:2px}
-.login-brand .sol{color:var(--text);font-weight:300;font-size:26px;letter-spacing:6px;opacity:.7}
-.login-tagline{color:var(--muted);font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:4px}
-.login-field{margin-bottom:14px}
-.login-field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.login-field input{
-  width:100%;background:var(--surface2);
-  border:1px solid var(--line2);border-radius:var(--r-sm);
-  padding:13px 16px;color:var(--text);font-size:15px;outline:none;
-  transition:border-color .2s;
-}
-.login-field input:focus{border-color:rgba(0,191,255,0.5);box-shadow:0 0 0 3px rgba(0,191,255,0.08)}
-.login-err{min-height:18px;font-size:13px;color:var(--red);font-weight:600;margin-bottom:12px}
-.btn-login{
-  width:100%;height:52px;
-  background:linear-gradient(135deg,var(--blue),#0D2870);
-  border:0;border-radius:var(--r);
-  color:#fff;font-size:15px;font-weight:800;cursor:pointer;
-  letter-spacing:.04em;
-  box-shadow:0 8px 24px rgba(26,58,143,0.5);
-  transition:all .2s;
-  position:relative;overflow:hidden;
-}
-.btn-login::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(0,191,255,0.15),transparent);
-  opacity:0;transition:opacity .2s;
-}
-.btn-login:hover::after{opacity:1}
-.btn-login:hover{transform:translateY(-1px);box-shadow:0 12px 30px rgba(26,58,143,0.6)}
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--line2);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow-y:auto}
+.sb-top{padding:18px 16px 14px;border-bottom:1px solid var(--line)}
+.sb-logo{display:flex;align-items:center;gap:10px}
+.sb-logo img{width:38px;height:auto}
+.sbt .sm2{font-size:14px;font-weight:900;letter-spacing:1.5px;color:var(--navy);display:block}
+.sbt .os{font-size:11px;font-weight:400;letter-spacing:3px;color:var(--muted);display:block}
+.nav-sec{padding:13px 8px 5px}
+.nav-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:0 8px;margin-bottom:4px}
+.nbtn{width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--muted);border-radius:var(--rs);padding:9px 10px;cursor:pointer;font-size:13px;font-weight:600;text-align:left;transition:all .15s;margin-bottom:1px}
+.nbtn:hover{background:var(--surface);color:var(--ink)}
+.nbtn.active{background:var(--surface);color:var(--navy);font-weight:700;box-shadow:inset 3px 0 0 var(--cyan)}
+.ni{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.sb-foot{margin-top:auto;padding:13px 16px;border-top:1px solid var(--line)}
+.upill{display:flex;align-items:center;gap:9px;background:var(--surface);border-radius:var(--rs);padding:9px 12px;border:1px solid var(--line)}
+.av{width:30px;height:30px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.uinf .un{font-size:13px;font-weight:700;color:var(--ink)}
+.uinf .ur{font-size:11px;color:var(--muted)}
+.logoutbtn{margin-left:auto;background:transparent;border:0;cursor:pointer;color:var(--muted);font-size:17px}
+.logoutbtn:hover{color:var(--red)}
 
-/* ─── SIDEBAR ─────────────────────────────────────────────── */
-.sidebar{
-  width:var(--sidebar);
-  background:#EAE8E3;
-  border-right:1px solid var(--line2);
-  display:flex;flex-direction:column;
-  height:100vh;position:sticky;top:0;
-  overflow-y:auto;
-}
-.sidebar-top{
-  padding:20px 18px 16px;
-  border-bottom:1px solid var(--line);
-}
-.sidebar-logo{display:flex;align-items:center;gap:10px}
-.sidebar-logo .logo-mini{
-  width:36px;height:36px;
-  background:linear-gradient(135deg,var(--cyan),var(--blue));
-  border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 0 16px rgba(0,191,255,0.3);flex-shrink:0;
-}
-.sidebar-logo .logo-mini svg{width:20px;height:20px}
-.sidebar-logo .logo-text .sm2{color:var(--cyan);font-weight:900;font-size:15px;letter-spacing:1px}
-.sidebar-logo .logo-text .os{color:var(--muted);font-weight:400;font-size:12px;letter-spacing:3px}
-.nav-section{padding:16px 10px 8px}
-.nav-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:0 8px;margin-bottom:6px}
-.nav-btn{
-  width:100%;display:flex;align-items:center;gap:10px;
-  border:0;background:transparent;
-  color:var(--muted);border-radius:var(--r-sm);
-  padding:10px 10px;cursor:pointer;
-  font-size:13px;font-weight:600;text-align:left;
-  transition:all .15s;margin-bottom:2px;
-}
-.nav-btn .nav-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
-.nav-btn:hover{background:var(--surface2);color:var(--text)}
-.nav-btn.active{background:var(--cyan-glow);color:var(--cyan);border-left:2px solid var(--cyan)}
-.sidebar-foot{
-  margin-top:auto;
-  padding:16px 18px;
-  border-top:1px solid var(--line);
-}
-.user-pill{
-  display:flex;align-items:center;gap:10px;
-  background:var(--surface2);border-radius:var(--r-sm);padding:10px 12px;
-}
-.avatar{
-  width:32px;height:32px;border-radius:50%;
-  background:linear-gradient(135deg,var(--cyan),var(--blue));
-  display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:800;color:#fff;flex-shrink:0;
-}
-.user-info .uname{font-size:13px;font-weight:700}
-.user-info .urole{font-size:11px;color:var(--muted)}
-.btn-logout{
-  margin-left:auto;background:transparent;border:0;cursor:pointer;
-  color:var(--muted);font-size:18px;transition:color .2s;
-}
-.btn-logout:hover{color:var(--red)}
+/* MAIN */
+.main{display:flex;flex-direction:column;min-height:100vh;min-width:0;background:var(--bg)}
+.topbar{height:64px;border-bottom:1px solid var(--line2);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:var(--surface);position:sticky;top:0;z-index:10;box-shadow:0 1px 8px rgba(11,37,71,.05);border-top:3px solid var(--navy)}
+.tb-l{display:flex;flex-direction:column;gap:1px}
+.tb-ey{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.tb-ti{font-size:19px;font-weight:800;color:var(--ink)}
+.tb-r{display:flex;align-items:center;gap:8px}
+.chip{border:1px solid var(--line2);border-radius:var(--rs);padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);background:var(--surface2);white-space:nowrap}
+.content{flex:1;padding:24px 28px 40px;display:grid;gap:16px;align-content:start}
 
-/* ─── MAIN PANEL ──────────────────────────────────────────── */
-.main-panel{
-  display:flex;flex-direction:column;
-  min-height:100vh;min-width:0;
-  background:var(--dark);
-}
-.topbar{
-  height:68px;
-  border-bottom:1px solid var(--line);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 28px;
-  background:rgba(10,15,30,0.85);
-  backdrop-filter:blur(12px);
-  position:sticky;top:0;z-index:10;
-}
-.topbar-left{display:flex;flex-direction:column}
-.topbar-eyebrow{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-.topbar-title{font-size:20px;font-weight:800;color:var(--text)}
-.topbar-right{display:flex;align-items:center;gap:10px}
-.chip{
-  border:1px solid var(--line2);border-radius:var(--r-sm);
-  padding:7px 14px;font-size:12px;font-weight:700;
-  color:var(--muted);background:var(--surface);
-}
-.content{
-  flex:1;padding:28px 32px 40px;
-  display:grid;gap:20px;align-content:start;
-}
+/* BUTTONS */
+.btn{border:0;border-radius:var(--rs);padding:9px 15px;background:var(--navy);color:#fff;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#163460;transform:translateY(-1px)}
+.btns{padding:6px 11px;font-size:12px}
+.btnc{background:var(--cyan);color:#fff}
+.btnc:hover{background:#0093C0}
+.btng{background:transparent;border:1px solid var(--line2);color:var(--text)}
+.btng:hover{background:var(--surface2);transform:none}
+.btnd{background:var(--rbg);color:var(--red);border:1px solid rgba(184,50,50,.2)}
+.btnd:hover{background:rgba(184,50,50,.18);transform:none}
 
-/* ─── BUTTONS ─────────────────────────────────────────────── */
-.btn{
-  border:0;border-radius:var(--r-sm);padding:10px 16px;
-  background:var(--blue);color:#fff;
-  font-weight:700;font-size:13px;cursor:pointer;
-  display:inline-flex;align-items:center;gap:8px;
-  transition:all .15s;white-space:nowrap;
-}
-.btn:hover{background:#224ab5;transform:translateY(-1px)}
-.btn-sm{padding:7px 12px;font-size:12px;border-radius:var(--r-sm)}
-.btn-cyan{background:linear-gradient(135deg,#0099cc,var(--blue))}
-.btn-cyan:hover{background:linear-gradient(135deg,#00BFFF,#1A3A8F)}
-.btn-ghost{
-  background:transparent;border:1px solid var(--line2);color:var(--muted);
-}
-.btn-ghost:hover{border-color:var(--line);color:var(--text);transform:none}
-.btn-danger{background:#7f1d1d;color:#fca5a5}
-.btn-danger:hover{background:#991b1b}
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:12px}
 
-/* ─── CARDS / PANELS ──────────────────────────────────────── */
-.card{
-  background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r);padding:20px;
-}
-.card-header{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:18px;gap:12px;
-}
-.card-header h3{font-size:16px;color:var(--text)}
-.card-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* STATS */
+.sg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.sc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;border-top:3px solid var(--navy);box-shadow:var(--shadow)}
+.sc.g{border-top-color:var(--green)}.sc.y{border-top-color:var(--yellow)}.sc.r{border-top-color:var(--red)}
+.sl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+.sn{font-size:32px;font-weight:900;color:var(--ink);line-height:1}
+.ss{font-size:12px;color:var(--muted);margin-top:4px}
 
-/* ─── STATS GRID ──────────────────────────────────────────── */
-.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.stat-card{
-  background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r);padding:18px;
-  border-top:3px solid var(--cyan);
-  transition:transform .15s;
-}
-.stat-card:hover{transform:translateY(-2px)}
-.stat-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
-.stat-num{font-size:34px;font-weight:900;color:var(--text);line-height:1}
-.stat-sub{font-size:12px;color:var(--muted);margin-top:4px}
-.stat-card.green-top{border-top-color:var(--green)}
-.stat-card.yellow-top{border-top-color:var(--yellow)}
-.stat-card.red-top{border-top-color:var(--red)}
+/* BADGE */
+.badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+.bg_{background:var(--gbg);color:var(--green)}
+.by_{background:var(--ybg);color:var(--yellow)}
+.br_{background:var(--rbg);color:var(--red)}
+.bb_{background:rgba(11,37,71,.1);color:var(--navy)}
+.bc_{background:var(--cyan-soft);color:var(--cyan)}
+.bx_{background:var(--surface3);color:var(--muted)}
 
-/* ─── BADGE ───────────────────────────────────────────────── */
-.badge{
-  display:inline-flex;align-items:center;
-  border-radius:999px;padding:4px 10px;
-  font-size:11px;font-weight:800;white-space:nowrap;
-}
-.badge-green{background:rgba(34,197,94,.15);color:var(--green)}
-.badge-yellow{background:rgba(245,158,11,.15);color:var(--yellow)}
-.badge-red{background:rgba(239,68,68,.15);color:var(--red)}
-.badge-blue{background:rgba(26,58,143,.35);color:#93C5FD}
-.badge-gray{background:var(--surface3);color:var(--muted)}
-.badge-cyan{background:var(--cyan-glow);color:var(--cyan)}
+/* SEMAFORO */
+.sem{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dg{background:var(--green)}.dy{background:var(--yellow)}.dr{background:var(--red)}
 
-/* ─── SEMÁFORO ────────────────────────────────────────────── */
-.semaforo{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
-.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.dot-green{background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.6)}
-.dot-yellow{background:var(--yellow);box-shadow:0 0 6px rgba(245,158,11,.6)}
-.dot-red{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.6)}
-
-/* ─── TABLE ───────────────────────────────────────────────── */
-.table-wrap{width:100%;overflow-x:auto}
+/* TABLE */
+.tw{width:100%;overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{
-  padding:10px 14px;
-  font-size:11px;font-weight:700;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.07em;
-  border-bottom:1px solid var(--line);text-align:left;
-}
-td{
-  padding:13px 14px;
-  border-bottom:1px solid var(--line);
-  font-size:13px;color:var(--text);vertical-align:middle;
-}
-tr:hover td{background:rgba(255,255,255,0.02)}
+th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line2);text-align:left}
+td{padding:12px 13px;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);vertical-align:middle}
+tr:hover td{background:var(--surface2)}
 
-/* ─── FORM ────────────────────────────────────────────────── */
-.form-grid{display:grid;gap:14px}
-.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.form-row-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
-.field input,.field select,.field textarea{
-  width:100%;background:var(--surface2);
-  border:1px solid var(--line2);border-radius:var(--r-sm);
-  padding:11px 14px;color:var(--text);font-size:14px;outline:none;
-  transition:border-color .2s;
-}
-.field input:focus,.field select,.field textarea:focus{border-color:rgba(0,191,255,0.4)}
-.field select option{background:var(--surface2)}
-.field textarea{min-height:90px;resize:vertical}
-.field-span2{grid-column:span 2}
-.field-span3{grid-column:span 3}
-.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)}
+/* FORM */
+.fg{display:grid;gap:13px}
+.fr2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.fr3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.fld label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--rs);padding:10px 13px;color:var(--ink);font-size:14px;outline:none;transition:border-color .2s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,170,221,.10)}
+.fld select option{background:var(--surface)}
+.fld textarea{min-height:84px;resize:vertical}
+.fa{display:flex;gap:9px;justify-content:flex-end;margin-top:6px;padding-top:13px;border-top:1px solid var(--line)}
 
-/* ─── MODAL ───────────────────────────────────────────────── */
-.modal-bg{
-  position:fixed;inset:0;z-index:50;
-  background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);
-  display:flex;align-items:center;justify-content:center;
-  padding:20px;opacity:0;pointer-events:none;transition:opacity .2s;
-}
-.modal-bg.open{opacity:1;pointer-events:all}
-.modal{
-  width:100%;max-width:600px;max-height:90vh;overflow-y:auto;
-  background:var(--surface);border:1px solid var(--line2);
-  border-radius:20px;box-shadow:var(--shadow);
-  transform:translateY(16px);transition:transform .2s;
-}
-.modal-bg.open .modal{transform:translateY(0)}
-.modal.modal-wide{max-width:900px}
-.modal-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:20px 24px;border-bottom:1px solid var(--line);
-}
-.modal-head h3{font-size:17px}
-.modal-close{
-  background:transparent;border:0;cursor:pointer;
-  color:var(--muted);font-size:20px;transition:color .2s;line-height:1;
-}
-.modal-close:hover{color:var(--red)}
-.modal-body{padding:24px}
+/* MODAL */
+.mbg{position:fixed;inset:0;z-index:50;background:rgba(11,37,71,.30);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.mbg.open{opacity:1;pointer-events:all}
+.mbox{width:100%;max-width:580px;max-height:90vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line2);border-radius:18px;box-shadow:0 8px 32px rgba(11,37,71,.10);transform:translateY(12px);transition:transform .2s}
+.mbg.open .mbox{transform:translateY(0)}
+.mbox.wide{max-width:860px}
+.mhead{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;border-bottom:1px solid var(--line)}
+.mcls{background:transparent;border:0;cursor:pointer;color:var(--muted);font-size:19px;line-height:1}
+.mcls:hover{color:var(--red)}
+.mbody{padding:22px}
 
-/* ─── KANBAN ──────────────────────────────────────────────── */
-.kanban{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(220px,1fr));
-  gap:14px;overflow-x:auto;padding-bottom:6px;
-}
-.k-col{
-  background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r);padding:14px;min-height:360px;
-}
-.k-col-head{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line);
-}
-.k-col-title{font-size:13px;font-weight:700;color:var(--text)}
-.k-count{
-  background:var(--surface3);border-radius:999px;
-  padding:2px 8px;font-size:11px;font-weight:800;color:var(--muted);
-}
-.k-card{
-  background:var(--surface2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:12px;margin-bottom:10px;cursor:pointer;
-  transition:all .15s;
-}
-.k-card:hover{border-color:rgba(0,191,255,0.3);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.3)}
-.k-card-title{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)}
-.k-card-meta{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.k-card-due{font-size:11px;color:var(--muted)}
-.k-card-owner{
-  font-size:11px;font-weight:700;
-  background:var(--surface3);border-radius:999px;padding:3px 8px;color:var(--muted);
-}
+/* KANBAN */
+.kanban{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
+.kcol{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);padding:12px;min-height:340px}
+.kch{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;padding-bottom:9px;border-bottom:1px solid var(--line2)}
+.kct{font-size:13px;font-weight:700;color:var(--ink)}
+.kcc{background:var(--surface3);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--muted)}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:11px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.kcard:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.kct2{font-size:13px;font-weight:700;margin-bottom:6px;color:var(--ink)}
+.kmeta{display:flex;align-items:center;justify-content:space-between;gap:5px}
+.kdue{font-size:11px;color:var(--muted)}
+.kown{font-size:11px;font-weight:700;background:var(--navy);color:#fff;border-radius:999px;padding:2px 8px}
 
-/* ─── GANTT ───────────────────────────────────────────────── */
-.gantt-wrap{overflow-x:auto}
-.gantt-table{min-width:900px;font-size:13px}
-.gantt-table th{font-size:10px;width:80px;text-align:center;padding:6px 4px}
-.gantt-bar-cell{position:relative;height:36px}
-.gantt-bar{
-  position:absolute;top:6px;
-  height:24px;border-radius:6px;
-  background:linear-gradient(90deg,var(--blue),var(--cyan));
-  display:flex;align-items:center;padding:0 8px;
-  font-size:11px;font-weight:700;color:#fff;
-  white-space:nowrap;overflow:hidden;
-  min-width:30px;
-}
+/* GANTT */
+.gwrap{overflow-x:auto}
+.gtable{min-width:900px;font-size:13px}
+.gtable th{font-size:10px;width:80px;text-align:center;padding:6px 3px}
+.gbc{position:relative;height:34px}
+.gbar{position:absolute;top:5px;height:24px;border-radius:5px;background:linear-gradient(90deg,var(--navy),var(--cyan));display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;min-width:24px}
+.gtoday{position:absolute;top:0;bottom:0;width:2px;background:var(--red);opacity:.6;pointer-events:none}
 
-/* ─── PIPELINE ────────────────────────────────────────────── */
-.pipeline{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
-.pipe-stage{
-  min-width:200px;flex:1;
-  background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r);padding:14px;
-}
-.pipe-stage-head{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line);
-}
-.pipe-stage-name{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.pipe-card{
-  background:var(--surface2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:12px;margin-bottom:8px;
-  cursor:pointer;transition:all .15s;
-}
-.pipe-card:hover{border-color:rgba(0,191,255,0.3)}
-.pipe-card-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px}
-.pipe-card-value{font-size:16px;font-weight:900;color:var(--cyan)}
-.pipe-card-client{font-size:11px;color:var(--muted);margin-top:4px}
+/* PIPELINE */
+.pipeline{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.pstage{min-width:180px;flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.psh{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.psn{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:11px;margin-bottom:7px;cursor:pointer;transition:all .15s}
+.pcard:hover{border-color:var(--cyan);transform:translateY(-1px)}
+.pcn{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:5px}
+.pcv{font-size:15px;font-weight:900;color:var(--navy)}
+.pcc{font-size:11px;color:var(--muted);margin-top:3px}
 
-/* ─── CALENDAR ────────────────────────────────────────────── */
-.cal-grid{
-  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
-  gap:8px;
-}
-.cal-header{
-  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
-  gap:8px;margin-bottom:8px;
-}
-.cal-header span{
-  text-align:center;font-size:11px;font-weight:700;
-  color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:6px 0;
-}
-.cal-day{
-  background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:8px;min-height:90px;
-}
-.cal-day-num{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
-.cal-day.today .cal-day-num{color:var(--cyan)}
-.cal-day.today{border-color:rgba(0,191,255,0.3)}
-.cal-event{
-  font-size:11px;font-weight:700;
-  background:var(--cyan-glow);color:var(--cyan);
-  border-radius:6px;padding:3px 6px;margin-bottom:3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.cal-event.ev-red{background:rgba(239,68,68,.15);color:var(--red)}
-.cal-event.ev-yellow{background:rgba(245,158,11,.15);color:var(--yellow)}
+/* CALENDAR */
+.calh{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:5px}
+.calh span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:4px 0}
+.calg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.calday{background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:7px;min-height:84px}
+.caldn{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.calday.today{border-color:var(--cyan)}
+.calday.today .caldn{color:var(--cyan);font-weight:900}
+.cev{font-size:11px;font-weight:700;border-radius:4px;padding:2px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--cyan-soft);color:var(--cyan);border-left:2px solid var(--cyan)}
+.cev.er{background:var(--rbg);color:var(--red);border-left-color:var(--red)}
+.cev.ey{background:var(--ybg);color:var(--yellow);border-left-color:var(--yellow)}
 
-/* ─── ALERTS ──────────────────────────────────────────────── */
-.alert-item{
-  display:flex;align-items:flex-start;gap:12px;
-  background:var(--surface2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:14px;
-  border-left:3px solid var(--yellow);
-}
-.alert-item.alert-red{border-left-color:var(--red)}
-.alert-item.alert-green{border-left-color:var(--green)}
-.alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
-.alert-body .alert-title{font-size:13px;font-weight:700;margin-bottom:3px}
-.alert-body .alert-sub{font-size:12px;color:var(--muted)}
+/* ALERTS */
+.alitem{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:12px;border-left:3px solid var(--yellow);box-shadow:var(--shadow);margin-bottom:8px}
+.alitem.ar{border-left-color:var(--red)}
+.alicon{font-size:16px;flex-shrink:0;margin-top:1px}
+.altit{font-size:13px;font-weight:700;margin-bottom:2px;color:var(--ink)}
+.alsub{font-size:12px;color:var(--muted)}
 
-/* ─── TABS ────────────────────────────────────────────────── */
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
-.tab{
-  border:0;background:transparent;
-  color:var(--muted);font-size:13px;font-weight:700;
-  padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;
-  transition:all .15s;
-}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+/* PROGRESS */
+.pb{height:5px;background:var(--surface3);border-radius:999px;overflow:hidden}
+.pf{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--navy),var(--cyan))}
 
-/* ─── PROGRESS ────────────────────────────────────────────── */
-.progress-bar{
-  height:6px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:6px;
-}
-.progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+/* SECTION HEAD */
+.sh{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
-/* ─── TOAST ───────────────────────────────────────────────── */
-.toast{
-  position:fixed;right:24px;bottom:24px;z-index:100;
-  background:var(--surface);border:1px solid var(--line2);
-  border-left:3px solid var(--cyan);border-radius:var(--r-sm);
-  padding:14px 18px;min-width:260px;
-  box-shadow:var(--shadow);
-  font-size:14px;font-weight:700;color:var(--text);
-  opacity:0;pointer-events:none;
-  transform:translateY(10px);transition:all .2s;
-}
+/* DETAIL */
+.dg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.di .dl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.di .dv{font-size:14px;font-weight:600;color:var(--ink)}
+
+/* TOAST */
+.toast{position:fixed;right:22px;bottom:22px;z-index:100;background:var(--surface);border:1px solid var(--line2);border-left:3px solid var(--navy);border-radius:var(--rs);padding:12px 17px;min-width:240px;box-shadow:0 8px 32px rgba(11,37,71,.10);font-size:14px;font-weight:700;color:var(--ink);opacity:0;pointer-events:none;transform:translateY(8px);transition:all .2s}
 .toast.show{opacity:1;transform:translateY(0);pointer-events:all}
 
-/* ─── EMPTY STATE ─────────────────────────────────────────── */
-.empty{
-  text-align:center;padding:48px 24px;color:var(--muted);
-}
-.empty-icon{font-size:36px;margin-bottom:12px}
-.empty p{font-size:14px}
+/* LOADING */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:16px;color:var(--muted)}
+.spin{width:36px;height:36px;border:3px solid var(--line2);border-top-color:var(--cyan);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 
-/* ─── SECTION HEADING ─────────────────────────────────────── */
-.section-head{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-}
-.section-head h2{font-size:20px}
+/* HEALTH */
+.hbar{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:600}
 
-/* ─── DETAIL GRID ─────────────────────────────────────────── */
-.detail-grid{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
-}
-.detail-item .d-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
-.detail-item .d-value{font-size:14px;font-weight:600;color:var(--text)}
+/* TABS */
+.tabs{display:flex;gap:3px;border-bottom:1px solid var(--line2);margin-bottom:18px}
+.tab{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:700;padding:9px 15px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--navy);border-bottom-color:var(--cyan)}
 
-/* ─── TIMELINE ────────────────────────────────────────────── */
-.timeline{display:grid;gap:0}
-.tl-item{display:flex;gap:14px;padding-bottom:18px;position:relative}
-.tl-item::before{
-  content:'';position:absolute;left:14px;top:30px;bottom:0;
-  width:1px;background:var(--line);
-}
-.tl-item:last-child::before{display:none}
-.tl-dot{
-  width:30px;height:30px;border-radius:50%;flex-shrink:0;
-  background:var(--surface3);border:2px solid var(--line2);
-  display:flex;align-items:center;justify-content:center;
-  font-size:13px;margin-top:2px;
-}
-.tl-body .tl-title{font-size:13px;font-weight:700;margin-bottom:3px}
-.tl-body .tl-sub{font-size:12px;color:var(--muted)}
+/* EMPTY */
+.empty{text-align:center;padding:42px 24px;color:var(--muted)}
+.ei{font-size:30px;margin-bottom:10px}
 
-/* ─── RESPONSIVE ──────────────────────────────────────────── */
-@media(max-width:900px){
-  #app-main{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .stats-grid{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:600px){
-  .stats-grid{grid-template-columns:1fr}
-  .content{padding:18px 16px}
-  .form-row,.form-row-3{grid-template-columns:1fr}
-  .detail-grid{grid-template-columns:1fr}
-}
-
-/* USER SELECTOR */
-.user-sel-btn{width:100%;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:12px 16px;background:rgba(255,255,255,0.06);cursor:pointer;transition:all .15s;font-size:15px;font-weight:600;color:var(--text);text-align:left}
-.user-sel-btn:hover{border-color:var(--cyan);background:var(--cyan-glow);color:var(--cyan)}
-.user-sel-btn.selected{border-color:var(--cyan);background:var(--cyan-glow);color:var(--cyan);border-width:2px}
-.usel-av{width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
-.user-sel-btn.selected .usel-av{background:var(--cyan);color:#fff}
+@media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:none}.sg{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<!-- ══ LOGIN ══════════════════════════════════════════════ -->
-<div id="app-login">
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-logo">
-        <img src="assets/sm-logo.png" alt="SM Soluciones" style="width:140px;height:auto;display:block;margin:0 auto">
-        <div class="login-brand" style="text-align:center">
-          <div><span class="sm">SM</span><span class="sol">.SOLUCIONES</span></div>
-          <div class="login-tagline">Different results require different measures</div>
-        </div>
+<!-- LOGIN -->
+<div id="login">
+  <div class="lcard">
+    <div class="llogo">
+      <img src="assets/sm-logo.png" alt="SM Soluciones" style="width:130px;height:auto">
+      <div class="lbrand">
+        <div><span class="sm">SM</span><span class="sol">.SOLUCIONES</span></div>
+        <div class="ltag">Different results require different measures</div>
       </div>
-
-      <div class="login-field">
-        <label>Selecciona tu nombre</label>
-        <div id="user-selector" style="display:grid;gap:8px;margin-top:4px"></div>
-      </div>
-
-      <div class="login-field" id="pin-section" style="display:none">
-        <label id="pin-label">PIN</label>
-        <input id="f-pin" type="password" placeholder="••••" maxlength="8" autocomplete="current-password" style="letter-spacing:4px;font-size:20px;text-align:center">
-      </div>
-
-      <div class="login-err" id="login-err"></div>
-      <button class="btn-login" id="btn-login" style="display:none">Entrar al sistema</button>
     </div>
+    <div class="lfield">
+      <label>Selecciona tu nombre</label>
+      <div id="user-sel"></div>
+    </div>
+    <div class="lfield" id="pin-wrap" style="display:none">
+      <label id="pin-lbl">PIN</label>
+      <input id="f-pin" type="password" placeholder="••••" maxlength="8" style="letter-spacing:4px;font-size:20px;text-align:center">
+    </div>
+    <div class="lerr" id="lerr"></div>
+    <button class="lbtn" id="btn-login" style="display:none">Entrar al sistema</button>
   </div>
 </div>
 
-<!-- ══ APP ═════════════════════════════════════════════════ -->
-<div id="app-main">
-  <!-- Sidebar -->
+<!-- APP -->
+<div id="app">
   <aside class="sidebar">
-    <div class="sidebar-top">
-      <div class="sidebar-logo">
-        <div class="logo-mini" style="background:transparent;box-shadow:none">
-          <img src="assets/sm-logo.png" alt="SM" style="width:32px;height:auto;display:block;filter:brightness(0) invert(1)">
-        </div>
-        <div class="logo-text">
-          <div class="sm2">SM OS</div>
-          <div class="os">Soluciones</div>
-        </div>
+    <div class="sb-top">
+      <div class="sb-logo">
+        <img src="assets/sm-logo.png" alt="SM">
+        <div class="sbt"><span class="sm2">SM OS</span><span class="os">Soluciones</span></div>
       </div>
     </div>
-
-    <div class="nav-section">
-      <div class="nav-label">General</div>
-      <button class="nav-btn active" data-view="dashboard">
-        <span class="nav-icon">⬡</span>Dashboard
-      </button>
-      <button class="nav-btn" data-view="alertas">
-        <span class="nav-icon">🔔</span>Alertas
-        <span id="alert-badge" style="margin-left:auto;background:var(--red);border-radius:999px;padding:2px 7px;font-size:11px;font-weight:800;color:#fff;display:none">0</span>
-      </button>
+    <div class="nav-sec">
+      <div class="nav-lbl">General</div>
+      <button class="nbtn active" data-v="dashboard"><span class="ni">◈</span>Dashboard</button>
+      <button class="nbtn" data-v="alertas"><span class="ni">🔔</span>Alertas<span id="abadge" style="margin-left:auto;background:var(--red);border-radius:999px;padding:1px 7px;font-size:11px;font-weight:800;color:#fff;display:none">0</span></button>
     </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Proyectos</div>
-      <button class="nav-btn" data-view="proyectos">
-        <span class="nav-icon">📁</span>Proyectos
-      </button>
-      <button class="nav-btn" data-view="tareas">
-        <span class="nav-icon">✓</span>Mis tareas
-      </button>
-      <button class="nav-btn" data-view="kanban">
-        <span class="nav-icon">▦</span>Kanban
-      </button>
-      <button class="nav-btn" data-view="gantt">
-        <span class="nav-icon">▬</span>Gantt
-      </button>
-      <button class="nav-btn" data-view="calendario">
-        <span class="nav-icon">📅</span>Calendario
-      </button>
-      <button class="nav-btn" data-view="pipeline">
-        <span class="nav-icon">◈</span>Pipeline
-      </button>
+    <div class="nav-sec">
+      <div class="nav-lbl">Proyectos</div>
+      <button class="nbtn" data-v="proyectos"><span class="ni">📁</span>Proyectos</button>
+      <button class="nbtn" data-v="tareas"><span class="ni">✓</span>Mis tareas</button>
+      <button class="nbtn" data-v="kanban"><span class="ni">▦</span>Kanban</button>
+      <button class="nbtn" data-v="gantt"><span class="ni">▬</span>Gantt</button>
+      <button class="nbtn" data-v="calendario"><span class="ni">📅</span>Calendario</button>
+      <button class="nbtn" data-v="pipeline"><span class="ni">◑</span>Pipeline</button>
     </div>
-
-    <div class="nav-section" id="nav-admin" style="display:none">
-      <div class="nav-label">Administración</div>
-      <button class="nav-btn" data-view="clientes">
-        <span class="nav-icon">🏢</span>Clientes
-      </button>
-      <button class="nav-btn" data-view="usuarios">
-        <span class="nav-icon">👤</span>Usuarios
-      </button>
-      <button class="nav-btn" data-view="reportes">
-        <span class="nav-icon">📊</span>Reportes
-      </button>
+    <div class="nav-sec" id="nav-admin" style="display:none">
+      <div class="nav-lbl">Administración</div>
+      <button class="nbtn" data-v="clientes"><span class="ni">🏢</span>Clientes</button>
+      <button class="nbtn" data-v="usuarios"><span class="ni">👤</span>Usuarios</button>
+      <button class="nbtn" data-v="reportes"><span class="ni">📊</span>Reportes</button>
     </div>
-
-    <div class="sidebar-foot">
-      <div class="user-pill">
-        <div class="avatar" id="sidebar-avatar">?</div>
-        <div class="user-info">
-          <div class="uname" id="sidebar-name">—</div>
-          <div class="urole" id="sidebar-role">—</div>
-        </div>
-        <button class="btn-logout" title="Cerrar sesión" id="btn-logout">⏻</button>
+    <div class="sb-foot">
+      <div class="upill">
+        <div class="av" id="sb-av">?</div>
+        <div class="uinf"><div class="un" id="sb-n">—</div><div class="ur" id="sb-r">—</div></div>
+        <button class="logoutbtn" id="btn-out" title="Cerrar sesión">⏻</button>
       </div>
     </div>
   </aside>
-
-  <!-- Main panel -->
-  <div class="main-panel">
+  <div class="main">
     <header class="topbar">
-      <div class="topbar-left">
-        <div class="topbar-eyebrow" id="tb-eyebrow">SM OS</div>
-        <div class="topbar-title" id="tb-title">Dashboard</div>
+      <div class="tb-l">
+        <div class="tb-ey" id="tb-ey">SM OS</div>
+        <div class="tb-ti" id="tb-ti">Dashboard</div>
       </div>
-      <div class="topbar-right">
+      <div class="tb-r">
         <span class="chip" id="tb-date">—</span>
-        <span class="chip" id="tb-user-chip">—</span>
+        <span class="chip" id="tb-user">—</span>
+        <span class="chip" id="tb-live" style="color:var(--green);display:none">● En vivo</span>
       </div>
     </header>
-
-    <main class="content" id="view-content" aria-live="polite"></main>
+    <main class="content" id="vc"></main>
   </div>
 </div>
 
-<!-- ══ MODAL ═══════════════════════════════════════════════ -->
-<div class="modal-bg" id="modal-bg">
-  <div class="modal" id="modal-box">
-    <div class="modal-head">
-      <h3 id="modal-title">Modal</h3>
-      <button class="modal-close" id="modal-close">✕</button>
-    </div>
-    <div class="modal-body" id="modal-body"></div>
+<div class="mbg" id="mbg">
+  <div class="mbox" id="mbox">
+    <div class="mhead"><h3 id="mtit">—</h3><button class="mcls" id="mcls">✕</button></div>
+    <div class="mbody" id="mbody"></div>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
-<!-- ══ SCRIPT ══════════════════════════════════════════════ -->
 <script>
-'use strict';
+/* ── SUPABASE ── */
+const SB_URL = 'https://bljqlibgwvpflrtwgsef.supabase.co';
+const SB_KEY = 'sb_publishable_09cUDYT1aBp4lJF1l1duUA_WLhJXCfb';
+const sb = supabase.createClient(SB_URL, SB_KEY);
 
 /* ── STATE ── */
-const STORE_KEY = 'smos_v2';
-
-function defaultState(){
-  return {
-    users:[
-      {id:'u1',name:'Administrador',username:'admin',pin:'0000',role:'admin',active:true},
-      {id:'u2',name:'Alberto',username:'alberto',pin:'1111',role:'user',active:true},
-      {id:'u3',name:'Alan',username:'alan',pin:'2222',role:'user',active:true},
-      {id:'u4',name:'Pako',username:'pako',pin:'1234',role:'user',active:true},
-      {id:'u5',name:'Juan',username:'juan',pin:'4444',role:'user',active:true},
-    ],
-    clients:[
-      {id:'c1',name:'Constructora Nexus',contact:'Luis Torres',email:'ltorres@nexus.com',phone:'55-1234-5678',driveUrl:'https://drive.google.com',payDay:15,invoiceDay:10,status:'activo',notes:'Cliente premium',createdAt:now()},
-      {id:'c2',name:'Grupo Hidráulico TEC',contact:'Ana Pérez',email:'aperez@tec.mx',phone:'55-8765-4321',driveUrl:'',payDay:30,invoiceDay:25,status:'activo',notes:'',createdAt:now()},
-    ],
-    projects:[
-      {id:'p1',clientId:'c1',name:'Planta Procesadora Norte',description:'Diseño e implementación de sistema de bombeo.',status:'activo',startDate:'2025-01-15',dueDate:'2025-08-30',budget:450000,pipeline:'ejecucion',ownerId:'u4',createdAt:now()},
-      {id:'p2',clientId:'c2',name:'Modernización Red Hidráulica',description:'Sustitución y optimización de tuberías industriales.',status:'activo',startDate:'2025-03-01',dueDate:'2025-10-15',budget:280000,pipeline:'propuesta',ownerId:'u2',createdAt:now()},
-    ],
-    tasks:[
-      {id:'t1',projectId:'p1',title:'Levantamiento topográfico',description:'Relevamiento del terreno norte.',ownerId:'u4',priority:'alta',status:'terminada',startDate:'2025-01-20',dueDate:'2025-02-10',hoursEst:40,hoursReal:38,createdAt:now()},
-      {id:'t2',projectId:'p1',title:'Ingeniería básica',description:'Diseño conceptual del sistema.',ownerId:'u2',priority:'alta',status:'en_proceso',startDate:'2025-02-11',dueDate:'2025-04-15',hoursEst:120,hoursReal:60,createdAt:now()},
-      {id:'t3',projectId:'p1',title:'Gestión de permisos',description:'Trámite ante CONAGUA.',ownerId:'u3',priority:'media',status:'pendiente',startDate:'2025-03-01',dueDate:'2025-05-01',hoursEst:30,hoursReal:0,createdAt:now()},
-      {id:'t4',projectId:'p2',title:'Diagnóstico de red existente',description:'Revisión y mapeo de la red actual.',ownerId:'u5',priority:'critica',status:'en_revision',startDate:'2025-03-05',dueDate:'2025-04-05',hoursEst:60,hoursReal:55,createdAt:now()},
-    ],
-    subtasks:[
-      {id:'st1',taskId:'t2',title:'Selección de equipos',ownerId:'u2',status:'en_proceso',dueDate:'2025-03-20',createdAt:now()},
-      {id:'st2',taskId:'t2',title:'Memoria de cálculo hidráulico',ownerId:'u4',status:'pendiente',dueDate:'2025-04-01',createdAt:now()},
-    ],
-    comments:[
-      {id:'cm1',taskId:'t2',userId:'u2',text:'Se requiere confirmación del cliente para avanzar con selección de bombas.',createdAt:now()},
-    ],
-    files:[
-      {id:'f1',taskId:'t1',userId:'u4',name:'Levantamiento_Plano_Rev1.pdf',url:'https://drive.google.com',type:'Plano',version:'1',createdAt:now()},
-    ],
-    meetings:[
-      {id:'m1',projectId:'p1',title:'Kick-off Planta Norte',date:'2025-01-18',attendees:['u2','u4'],notes:'Reunión de arranque con cliente. Se definieron alcances y cronograma.',createdAt:now()},
-    ],
-    payments:[
-      {id:'pay1',clientId:'c1',projectId:'p1',concept:'Anticipo 30%',amount:135000,status:'pagado',dueDate:'2025-01-30',invoiceDate:'2025-01-25',paidDate:'2025-01-28',createdAt:now()},
-      {id:'pay2',clientId:'c1',projectId:'p1',concept:'Avance 30%',amount:135000,status:'pendiente',dueDate:'2025-04-30',invoiceDate:'2025-04-25',paidDate:'',createdAt:now()},
-    ],
-    logs:[]
-  };
-}
-
-function loadState(){
-  try{
-    const s = localStorage.getItem(STORE_KEY);
-    if(s) return JSON.parse(s);
-  }catch(e){}
-  return defaultState();
-}
-
-function saveState(){
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
-}
-
-let state = loadState();
-let session = null; // {userId}
-let currentView = 'dashboard';
-let selectedProjectId = null;
-let modalWide = false;
+var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[]};
+var SES = null;  // {userId}
+var VIEW = 'dashboard';
+var FPID = '';   // filter project id
+var SELUID = ''; // selected user on login
 
 /* ── UTILS ── */
-function uid(){ return 'id_'+Math.random().toString(36).slice(2,10) }
-function now(){ return new Date().toISOString() }
-function today(){ return new Date().toISOString().slice(0,10) }
-function plusDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10) }
-function fmt(iso){ return iso ? new Date(iso).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—' }
-function fmtDT(iso){ return iso ? new Date(iso).toLocaleString('es-MX') : '—' }
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
-function byId(arr,id){ return arr.find(x=>x.id===id) }
-function userName(id){ const u=byId(state.users,id); return u?u.name:'?' }
-function clientName(id){ const c=byId(state.clients,id); return c?c.name:'?' }
-function projectName(id){ const p=byId(state.projects,id); return p?p.name:'?' }
-function initials(name){ return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) }
+function today(){ return new Date().toISOString().slice(0,10); }
+function pd(n){ var d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function fmt(s){ return s ? new Date(s).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+function fmtdt(s){ return s ? new Date(s).toLocaleString('es-MX') : '—'; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function xid(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return arr[i]; return null; }
+function uNm(id){ var u=xid(DB.usuarios,id); return u?u.nombre:'?'; }
+function cNm(id){ var c=xid(DB.clientes,id); return c?c.nombre:'?'; }
+function pNm(id){ var p=xid(DB.proyectos,id); return p?p.nombre:'?'; }
+function ini(s){ return (s||'?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2); }
+function me(){ return SES ? xid(DB.usuarios,SES.userId) : null; }
+function adm(){ var u=me(); return u && u.rol==='admin'; }
 
-function semaforo(task){
-  if(!task.dueDate) return '<span class="semaforo"><span class="dot dot-green"></span>OK</span>';
-  const days = Math.ceil((new Date(task.dueDate)-new Date())/(1000*60*60*24));
-  if(task.status==='terminada') return '<span class="semaforo"><span class="dot dot-green"></span>Completa</span>';
-  if(days<0) return '<span class="semaforo"><span class="dot dot-red"></span>Vencida</span>';
-  if(days<=3) return '<span class="semaforo"><span class="dot dot-yellow"></span>'+days+'d</span>';
-  return '<span class="semaforo"><span class="dot dot-green"></span>'+days+'d</span>';
+function toast(msg, col){
+  var el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.borderLeftColor = col==='r'?'var(--red)':col==='g'?'var(--green)':'var(--navy)';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.classList.remove('show'); }, 2800);
 }
 
-function statusBadge(s){
-  const m={
-    pendiente:'<span class="badge badge-gray">Pendiente</span>',
-    en_proceso:'<span class="badge badge-blue">En proceso</span>',
-    en_revision:'<span class="badge badge-yellow">En revisión</span>',
-    terminada:'<span class="badge badge-green">Terminada</span>',
-    activo:'<span class="badge badge-green">Activo</span>',
-    pausado:'<span class="badge badge-yellow">Pausado</span>',
-    cerrado:'<span class="badge badge-gray">Cerrado</span>',
-    pagado:'<span class="badge badge-green">Pagado</span>',
-    vencido:'<span class="badge badge-red">Vencido</span>',
+/* ── SEMAFORO ── */
+function sem(t){
+  if(t.estado==='terminada') return '<span class="sem"><span class="dot dg"></span>Completa</span>';
+  if(!t.fecha_vencimiento) return '<span class="sem"><span class="dot dg"></span>—</span>';
+  var d = Math.ceil((new Date(t.fecha_vencimiento)-new Date())/864e5);
+  if(d<0) return '<span class="sem"><span class="dot dr"></span>Vencida</span>';
+  if(d<=1) return '<span class="sem"><span class="dot dr"></span>'+d+'d</span>';
+  if(d<=3) return '<span class="sem"><span class="dot dy"></span>'+d+'d</span>';
+  return '<span class="sem"><span class="dot dg"></span>'+d+'d</span>';
+}
+
+/* ── BADGES ── */
+function bSt(s){
+  var m = {
+    pendiente:'<span class="badge bx_">Pendiente</span>',
+    en_proceso:'<span class="badge bb_">En proceso</span>',
+    en_revision:'<span class="badge by_">En revisión</span>',
+    aprobada:'<span class="badge bc_">Aprobada</span>',
+    terminada:'<span class="badge bg_">Terminada</span>',
+    activo:'<span class="badge bg_">Activo</span>',
+    pausado:'<span class="badge by_">Pausado</span>',
+    cerrado:'<span class="badge bx_">Cerrado</span>',
+    pagado:'<span class="badge bg_">Pagado</span>',
+    inactivo:'<span class="badge bx_">Inactivo</span>'
   };
-  return m[s]||`<span class="badge badge-gray">${esc(s)}</span>`;
+  return m[s] || '<span class="badge bx_">'+esc(s)+'</span>';
 }
-
-function priorityBadge(p){
-  const m={
-    baja:'<span class="badge badge-gray">Baja</span>',
-    media:'<span class="badge badge-blue">Media</span>',
-    alta:'<span class="badge badge-yellow">Alta</span>',
-    critica:'<span class="badge badge-red">Crítica</span>',
-  };
-  return m[p]||`<span class="badge badge-gray">${esc(p)}</span>`;
+function bPr(p){
+  var m = {baja:'<span class="badge bx_">Baja</span>',media:'<span class="badge bb_">Media</span>',alta:'<span class="badge by_">Alta</span>',critica:'<span class="badge br_">Crítica</span>'};
+  return m[p] || '<span class="badge bx_">'+esc(p)+'</span>';
 }
-
-function pipelineBadge(p){
-  const m={
-    prospecto:'<span class="badge badge-gray">Prospecto</span>',
-    propuesta:'<span class="badge badge-yellow">Propuesta</span>',
-    negociacion:'<span class="badge badge-blue">Negociación</span>',
-    ejecucion:'<span class="badge badge-cyan">Ejecución</span>',
-    cerrado_ganado:'<span class="badge badge-green">Ganado</span>',
-    cerrado_perdido:'<span class="badge badge-red">Perdido</span>',
-  };
-  return m[p]||`<span class="badge badge-gray">${esc(p)}</span>`;
-}
-
-function currentUser(){ return session ? byId(state.users,session.userId) : null }
-function isAdmin(){ const u=currentUser(); return u && u.role==='admin' }
-
-function toast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.classList.add('show');
-  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2800);
+function bPi(p){
+  var m = {prospecto:'<span class="badge bx_">Prospecto</span>',propuesta:'<span class="badge by_">Propuesta</span>',negociacion:'<span class="badge bb_">Negociación</span>',ejecucion:'<span class="badge bc_">Ejecución</span>',cerrado_ganado:'<span class="badge bg_">Ganado</span>',cerrado_perdido:'<span class="badge br_">Perdido</span>'};
+  return m[p] || '<span class="badge bx_">'+esc(p)+'</span>';
 }
 
 /* ── ALERTS ── */
 function getAlerts(){
-  const alerts=[];
-  state.tasks.forEach(t=>{
-    if(t.status==='terminada') return;
-    if(!t.dueDate) return;
-    const days=Math.ceil((new Date(t.dueDate)-new Date())/(1000*60*60*24));
-    if(days<0) alerts.push({type:'red',icon:'🚨',title:`Tarea vencida: ${t.title}`,sub:`Proyecto: ${projectName(t.projectId)} · Resp: ${userName(t.ownerId)}`});
-    else if(days<=3) alerts.push({type:'yellow',icon:'⚠️',title:`Tarea vence en ${days}d: ${t.title}`,sub:`Proyecto: ${projectName(t.projectId)} · Resp: ${userName(t.ownerId)}`});
+  var a = [];
+  var uid = SES ? SES.userId : '';
+  DB.tareas.forEach(function(t){
+    if(!adm() && t.owner_id!==uid) return;
+    if(t.estado==='terminada' || !t.fecha_vencimiento) return;
+    var d = Math.ceil((new Date(t.fecha_vencimiento)-new Date())/864e5);
+    if(d<0) a.push({cl:'ar',ic:'🚨',ti:'Tarea vencida: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
+    else if(d<=1) a.push({cl:'ar',ic:'⚠️',ti:'Vence hoy/mañana: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
+    else if(d<=3) a.push({cl:'',ic:'⚠️',ti:'Vence en '+d+'d: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
   });
-  state.payments.forEach(pay=>{
-    if(pay.status==='pagado') return;
-    const days=Math.ceil((new Date(pay.dueDate)-new Date())/(1000*60*60*24));
-    if(days<0) alerts.push({type:'red',icon:'💸',title:`Pago vencido: ${pay.concept}`,sub:`Cliente: ${clientName(pay.clientId)} · $${Number(pay.amount).toLocaleString()}`});
-    else if(days<=5) alerts.push({type:'yellow',icon:'💰',title:`Pago próximo (${days}d): ${pay.concept}`,sub:`Cliente: ${clientName(pay.clientId)} · $${Number(pay.amount).toLocaleString()}`});
-  });
-  return alerts;
+  if(adm()){
+    DB.pagos.forEach(function(pay){
+      if(pay.estado==='pagado' || !pay.fecha_vencimiento) return;
+      var d = Math.ceil((new Date(pay.fecha_vencimiento)-new Date())/864e5);
+      if(d<0) a.push({cl:'ar',ic:'💸',ti:'Pago vencido: '+pay.concepto,su:cNm(pay.cliente_id)+' · $'+Number(pay.monto).toLocaleString()});
+      else if(d<=5) a.push({cl:'',ic:'💰',ti:'Pago próximo ('+d+'d): '+pay.concepto,su:cNm(pay.cliente_id)+' · $'+Number(pay.monto).toLocaleString()});
+    });
+  }
+  return a;
+}
+
+/* ── DB CRUD ── */
+async function loadAll(){
+  try {
+    var [u,c,p,t,st,cm,en,pa,re] = await Promise.all([
+      sb.from('usuarios').select('*').order('nombre'),
+      sb.from('clientes').select('*').order('nombre'),
+      sb.from('proyectos').select('*').order('created_at',{ascending:false}),
+      sb.from('tareas').select('*').order('created_at',{ascending:false}),
+      sb.from('subtareas').select('*').order('created_at'),
+      sb.from('comentarios').select('*').order('created_at'),
+      sb.from('entregables').select('*').order('created_at'),
+      sb.from('pagos').select('*').order('created_at',{ascending:false}),
+      sb.from('reuniones').select('*').order('fecha',{ascending:false})
+    ]);
+    DB.usuarios=u.data||[]; DB.clientes=c.data||[]; DB.proyectos=p.data||[];
+    DB.tareas=t.data||[]; DB.subtareas=st.data||[]; DB.comentarios=cm.data||[];
+    DB.entregables=en.data||[]; DB.pagos=pa.data||[]; DB.reuniones=re.data||[];
+    return true;
+  } catch(e){ console.error(e); return false; }
+}
+async function ins(tbl,data){
+  var r = await sb.from(tbl).insert(data).select().single();
+  if(r.error){ toast('Error: '+r.error.message,'r'); return null; }
+  return r.data;
+}
+async function upd(tbl,id,data){
+  var r = await sb.from(tbl).update(data).eq('id',id).select().single();
+  if(r.error){ toast('Error al actualizar','r'); return null; }
+  return r.data;
+}
+async function del(tbl,id){
+  var r = await sb.from(tbl).delete().eq('id',id);
+  if(r.error){ toast('Error al eliminar','r'); return false; }
+  return true;
+}
+async function refresh(){
+  await loadAll();
+  render();
+  updBadge();
 }
 
 /* ── MODAL ── */
-function openModal(title, bodyHtml, wide=false){
-  const bg=document.getElementById('modal-bg');
-  const box=document.getElementById('modal-box');
-  document.getElementById('modal-title').textContent=title;
-  document.getElementById('modal-body').innerHTML=bodyHtml;
-  box.className='modal'+(wide?' modal-wide':'');
-  bg.classList.add('open');
+function mOpen(tit,html,wide){
+  document.getElementById('mtit').textContent = tit;
+  document.getElementById('mbody').innerHTML = html;
+  document.getElementById('mbox').className = 'mbox'+(wide?' wide':'');
+  document.getElementById('mbg').classList.add('open');
 }
-function closeModal(){ document.getElementById('modal-bg').classList.remove('open') }
-document.getElementById('modal-close').onclick=closeModal;
-document.getElementById('modal-bg').addEventListener('click',e=>{ if(e.target.id==='modal-bg') closeModal() });
+function mClose(){ document.getElementById('mbg').classList.remove('open'); }
+document.getElementById('mcls').onclick = mClose;
+document.getElementById('mbg').addEventListener('click',function(e){ if(e.target.id==='mbg') mClose(); });
 
-function formData(formId){
-  const f=document.getElementById(formId);
-  const d={};
-  new FormData(f).forEach((v,k)=>d[k]=v);
-  // also non-name inputs
-  f.querySelectorAll('[id]').forEach(el=>{
-    if(el.tagName!=='BUTTON') d[el.id.replace(formId+'_','')]=el.value;
+/* ── FORM HELPERS ── */
+function fv(id){ var el=document.getElementById('f_'+id); return el?el.value:''; }
+function FLD(id,lbl,typ,val){
+  return '<div class="fld"><label>'+esc(lbl)+'</label><input type="'+(typ||'text')+'" id="f_'+id+'" value="'+esc(val||'')+'"></div>';
+}
+function FTA(id,lbl,val){
+  return '<div class="fld"><label>'+esc(lbl)+'</label><textarea id="f_'+id+'">'+esc(val||'')+'</textarea></div>';
+}
+function FSL(id,lbl,opts,sel){
+  var ops = opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(sel)?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('');
+  return '<div class="fld"><label>'+esc(lbl)+'</label><select id="f_'+id+'">'+ops+'</select></div>';
+}
+
+/* ── MY PROJECTS / TASKS ── */
+function myProjs(){
+  if(adm()) return DB.proyectos;
+  var uid = SES.userId;
+  return DB.proyectos.filter(function(p){
+    return p.owner_id===uid || DB.tareas.some(function(t){ return t.proyecto_id===p.id && t.owner_id===uid; });
   });
-  return d;
+}
+function myTasks(){
+  if(adm()) return DB.tareas;
+  var uid = SES.userId;
+  return DB.tareas.filter(function(t){ return t.owner_id===uid; });
 }
 
-function fld(id,label,type='text',val='',extra=''){
-  return `<div class="field"><label>${esc(label)}</label><input type="${type}" id="f_${id}" value="${esc(val)}" ${extra}></div>`;
-}
-function fldTA(id,label,val=''){
-  return `<div class="field"><label>${esc(label)}</label><textarea id="f_${id}">${esc(val)}</textarea></div>`;
-}
-function fldSel(id,label,opts,sel=''){
-  const ops=opts.map(([v,t])=>`<option value="${esc(v)}" ${v==sel?'selected':''}>${esc(t)}</option>`).join('');
-  return `<div class="field"><label>${esc(label)}</label><select id="f_${id}">${ops}</select></div>`;
-}
-function fGet(id){ const el=document.getElementById('f_'+id); return el?el.value:'' }
-
-/* ── RENDER ── */
+/* ── RENDER ENGINE ── */
 function render(){
-  const vp=document.getElementById('view-content');
-  const views={
-    dashboard:renderDashboard,
-    alertas:renderAlertas,
-    proyectos:renderProyectos,
-    tareas:renderTareas,
-    kanban:renderKanban,
-    gantt:renderGantt,
-    calendario:renderCalendario,
-    pipeline:renderPipeline,
-    clientes:renderClientes,
-    usuarios:renderUsuarios,
-    reportes:renderReportes,
-  };
-  const fn=views[currentView]||renderDashboard;
-  vp.innerHTML=fn();
-  updateTopbar();
-  updateAlertBadge();
+  var vc = document.getElementById('vc');
+  var map = {dashboard:vDB,alertas:vAL,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,clientes:vCL,usuarios:vUS,reportes:vRE};
+  vc.innerHTML = (map[VIEW]||vDB)();
+  updTopbar();
 }
-
-function updateTopbar(){
-  const names={
-    dashboard:'Dashboard',alertas:'Alertas',
-    proyectos:'Proyectos',tareas:'Mis Tareas',
-    kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',
-    clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes',
-  };
-  const areas={
-    dashboard:'Vista Ejecutiva',alertas:'Notificaciones',
-    proyectos:'Gestión de Proyectos',tareas:'Seguimiento',
-    kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM',
-    clientes:'Administración',usuarios:'Administración',reportes:'Análisis',
-  };
-  document.getElementById('tb-eyebrow').textContent=areas[currentView]||'SM OS';
-  document.getElementById('tb-title').textContent=names[currentView]||'—';
-  document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
-  const u=currentUser();
-  document.getElementById('tb-user-chip').textContent=u?u.name:'—';
+function updTopbar(){
+  var nm = {dashboard:'Dashboard',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
+  var ar = {dashboard:'Vista Ejecutiva',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Análisis'};
+  document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
+  document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
+  document.getElementById('tb-date').textContent = new Date().toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('tb-user').textContent = me()?me().nombre:'—';
 }
-
-function updateAlertBadge(){
-  const count=getAlerts().length;
-  const badge=document.getElementById('alert-badge');
-  if(count>0){badge.textContent=count;badge.style.display='block';}
-  else{badge.style.display='none';}
+function updBadge(){
+  var n = getAlerts().length;
+  var el = document.getElementById('abadge');
+  if(n>0){el.textContent=n;el.style.display='block';}
+  else el.style.display='none';
 }
-
-/* ── DASHBOARD ── */
-function renderDashboard(){
-  const tasks=state.tasks;
-  const totalProj=state.projects.filter(p=>p.status!=='cerrado').length;
-  const totalTasks=tasks.length;
-  const done=tasks.filter(t=>t.status==='terminada').length;
-  const overdue=tasks.filter(t=>t.status!=='terminada'&&t.dueDate&&new Date(t.dueDate)<new Date()).length;
-  const pct=totalTasks?Math.round(done/totalTasks*100):0;
-
-  const recentTasks=tasks.slice(-5).reverse();
-  const alerts=getAlerts().slice(0,3);
-
-  return `
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Proyectos activos</div>
-      <div class="stat-num">${totalProj}</div>
-      <div class="stat-sub">${state.clients.length} clientes</div>
-    </div>
-    <div class="stat-card green-top">
-      <div class="stat-label">Tareas completadas</div>
-      <div class="stat-num">${done}</div>
-      <div class="stat-sub">${pct}% del total</div>
-    </div>
-    <div class="stat-card yellow-top">
-      <div class="stat-label">En proceso</div>
-      <div class="stat-num">${tasks.filter(t=>t.status==='en_proceso').length}</div>
-      <div class="stat-sub">activas ahora</div>
-    </div>
-    <div class="stat-card red-top">
-      <div class="stat-label">Vencidas</div>
-      <div class="stat-num">${overdue}</div>
-      <div class="stat-sub">requieren atención</div>
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-    <div class="card">
-      <div class="card-header"><h3>Avance por proyecto</h3></div>
-      ${state.projects.map(p=>{
-        const pt=state.tasks.filter(t=>t.projectId===p.id);
-        const pd=pt.filter(t=>t.status==='terminada').length;
-        const pct2=pt.length?Math.round(pd/pt.length*100):0;
-        return `<div style="margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:13px;font-weight:700">${esc(p.name)}</span>
-            <span style="font-size:12px;color:var(--muted)">${pct2}%</span>
-          </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct2}%"></div></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(clientName(p.clientId))} · ${pd}/${pt.length} tareas</div>
-        </div>`;
-      }).join('')||'<div class="empty"><div class="empty-icon">📁</div><p>Sin proyectos</p></div>'}
-    </div>
-
-    <div class="card">
-      <div class="card-header"><h3>🔔 Alertas recientes</h3></div>
-      ${alerts.length?alerts.map(a=>`
-        <div class="alert-item alert-${a.type}" style="margin-bottom:10px">
-          <div class="alert-icon">${a.icon}</div>
-          <div class="alert-body">
-            <div class="alert-title">${esc(a.title)}</div>
-            <div class="alert-sub">${esc(a.sub)}</div>
-          </div>
-        </div>`).join(''):`<div style="color:var(--muted);font-size:13px">✅ Sin alertas pendientes</div>`}
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <h3>Actividad reciente</h3>
-      <button class="btn btn-sm btn-ghost" onclick="navigate('tareas')">Ver todas</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Tarea</th><th>Proyecto</th><th>Responsable</th>
-          <th>Prioridad</th><th>Estado</th><th>Semáforo</th><th>Vence</th>
-        </tr></thead>
-        <tbody>
-          ${recentTasks.map(t=>`<tr>
-            <td><span style="font-weight:700;cursor:pointer;color:var(--cyan)" onclick="SM.openTaskDetail('${t.id}')">${esc(t.title)}</span></td>
-            <td style="font-size:12px;color:var(--muted)">${esc(projectName(t.projectId))}</td>
-            <td>${esc(userName(t.ownerId))}</td>
-            <td>${priorityBadge(t.priority)}</td>
-            <td>${statusBadge(t.status)}</td>
-            <td>${semaforo(t)}</td>
-            <td style="font-size:12px;color:var(--muted)">${fmt(t.dueDate)}</td>
-          </tr>`).join('')||'<tr><td colspan="7"><div class="empty"><p>Sin tareas</p></div></td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ── ALERTAS ── */
-function renderAlertas(){
-  const alerts=getAlerts();
-  return `
-  <div class="section-head"><h2>Centro de alertas</h2></div>
-  ${alerts.length?`<div style="display:grid;gap:10px">`+alerts.map(a=>`
-    <div class="alert-item alert-${a.type}">
-      <div class="alert-icon">${a.icon}</div>
-      <div class="alert-body">
-        <div class="alert-title">${esc(a.title)}</div>
-        <div class="alert-sub">${esc(a.sub)}</div>
-      </div>
-    </div>`).join('')+'</div>'
-  :`<div class="card"><div class="empty"><div class="empty-icon">✅</div><p>Sin alertas pendientes. Todo en orden.</p></div></div>`}`;
-}
-
-/* ── PROYECTOS ── */
-function renderProyectos(){
-  const projects = isAdmin() ? state.projects : state.projects.filter(p=>
-    state.tasks.some(t=>t.projectId===p.id && t.ownerId===session.userId) ||
-    p.ownerId===session.userId
-  );
-  return `
-  <div class="section-head">
-    <h2>Proyectos</h2>
-    <div style="display:flex;gap:8px">
-      ${isAdmin()?`<button class="btn btn-cyan" onclick="SM.openProjectModal()">+ Nuevo proyecto</button>`:''}
-    </div>
-  </div>
-  <div style="display:grid;gap:12px">
-    ${projects.map(p=>{
-      const tasks=state.tasks.filter(t=>t.projectId===p.id);
-      const done=tasks.filter(t=>t.status==='terminada').length;
-      const pct=tasks.length?Math.round(done/tasks.length*100):0;
-      const client=byId(state.clients,p.clientId);
-      return `<div class="card" style="border-left:3px solid var(--cyan)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
-          <div>
-            <div style="font-size:17px;font-weight:800;cursor:pointer;color:var(--text)" onclick="SM.openProjectDetail('${p.id}')">${esc(p.name)}</div>
-            <div style="font-size:13px;color:var(--muted);margin-top:3px">${esc(p.description||'')}</div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
-            ${pipelineBadge(p.pipeline||'ejecucion')}
-            ${statusBadge(p.status)}
-            ${isAdmin()?`<button class="btn btn-sm" onclick="SM.openTaskModal('${p.id}')">+ Tarea</button>`:''}
-            <button class="btn btn-sm btn-cyan" onclick="SM.openProjectDetail('${p.id}')">Ver →</button>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px;margin-bottom:12px">
-          <div><span style="color:var(--muted)">Cliente</span><br><strong>${esc(clientName(p.clientId))}</strong></div>
-          <div><span style="color:var(--muted)">Responsable</span><br><strong>${esc(userName(p.ownerId))}</strong></div>
-          <div><span style="color:var(--muted)">Vence</span><br><strong>${fmt(p.dueDate)}</strong></div>
-          <div><span style="color:var(--muted)">Presupuesto</span><br><strong>$${Number(p.budget||0).toLocaleString()}</strong></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <span style="font-size:12px;color:var(--muted);white-space:nowrap">${pct}% · ${done}/${tasks.length} tareas</span>
-        </div>
-      </div>`;
-    }).join('')||'<div class="card"><div class="empty"><div class="empty-icon">📁</div><p>Sin proyectos asignados</p></div></div>'}
-  </div>`;
-}
-
-/* ── TAREAS ── */
-function renderTareas(){
-  const user = currentUser();
-  const tasks = isAdmin() ? state.tasks : state.tasks.filter(t=>t.ownerId===user.id);
-  const filterProj = selectedProjectId;
-  const shown = filterProj ? tasks.filter(t=>t.projectId===filterProj) : tasks;
-
-  return `
-  <div class="section-head">
-    <h2>Tareas</h2>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="filter-proj" onchange="selectedProjectId=this.value;render()" style="background:var(--surface2);border:1px solid var(--line2);border-radius:var(--r-sm);padding:8px 12px;color:var(--text);font-size:13px">
-        <option value="">Todos los proyectos</option>
-        ${state.projects.map(p=>`<option value="${p.id}" ${filterProj===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
-      </select>
-      <button class="btn btn-cyan" onclick="SM.openTaskModal(selectedProjectId||'')">+ Nueva tarea</button>
-    </div>
-  </div>
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Tarea</th><th>Proyecto</th><th>Responsable</th>
-          <th>Prioridad</th><th>Estado</th><th>Semáforo</th>
-          <th>Horas Est/Real</th><th>Vence</th><th>Acciones</th>
-        </tr></thead>
-        <tbody>
-          ${shown.map(t=>`<tr>
-            <td><span style="font-weight:700;cursor:pointer;color:var(--cyan)" onclick="SM.openTaskDetail('${t.id}')">${esc(t.title)}</span></td>
-            <td style="font-size:12px;color:var(--muted)">${esc(projectName(t.projectId))}</td>
-            <td>${esc(userName(t.ownerId))}</td>
-            <td>${priorityBadge(t.priority)}</td>
-            <td>${statusBadge(t.status)}</td>
-            <td>${semaforo(t)}</td>
-            <td style="font-size:12px;color:var(--muted)">${t.hoursReal||0}/${t.hoursEst||0}h</td>
-            <td style="font-size:12px;color:var(--muted)">${fmt(t.dueDate)}</td>
-            <td>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-sm btn-ghost" onclick="SM.openTaskDetail('${t.id}')">Ver</button>
-                ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="SM.deleteTask('${t.id}')">✕</button>`:''}
-              </div>
-            </td>
-          </tr>`).join('')||'<tr><td colspan="9"><div class="empty"><p>Sin tareas</p></div></td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ── KANBAN ── */
-function renderKanban(){
-  const user=currentUser();
-  const tasks=isAdmin()?state.tasks:state.tasks.filter(t=>t.ownerId===user.id);
-  const filterProj=selectedProjectId;
-  const shown=filterProj?tasks.filter(t=>t.projectId===filterProj):tasks;
-  const cols=[
-    {key:'pendiente',label:'📋 Pendiente'},
-    {key:'en_proceso',label:'⚙️ En proceso'},
-    {key:'en_revision',label:'🔍 En revisión'},
-    {key:'terminada',label:'✅ Terminada'},
-  ];
-  return `
-  <div class="section-head" style="margin-bottom:18px">
-    <h2>Kanban</h2>
-    <div style="display:flex;gap:8px">
-      <select onchange="selectedProjectId=this.value;render()" style="background:var(--surface2);border:1px solid var(--line2);border-radius:var(--r-sm);padding:8px 12px;color:var(--text);font-size:13px">
-        <option value="">Todos los proyectos</option>
-        ${state.projects.map(p=>`<option value="${p.id}" ${filterProj===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
-      </select>
-      <button class="btn btn-cyan" onclick="SM.openTaskModal(selectedProjectId||'')">+ Tarea</button>
-    </div>
-  </div>
-  <div class="kanban">
-    ${cols.map(col=>{
-      const ct=shown.filter(t=>t.status===col.key);
-      return `<div class="k-col">
-        <div class="k-col-head">
-          <span class="k-col-title">${col.label}</span>
-          <span class="k-count">${ct.length}</span>
-        </div>
-        ${ct.map(t=>`<div class="k-card" onclick="SM.openTaskDetail('${t.id}')">
-          <div class="k-card-title">${esc(t.title)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:7px">${esc(projectName(t.projectId))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px">
-            ${priorityBadge(t.priority)} ${semaforo(t)}
-          </div>
-          <div class="k-card-meta">
-            <span class="k-card-due">${fmt(t.dueDate)}</span>
-            <span class="k-card-owner">${esc(initials(userName(t.ownerId)))}</span>
-          </div>
-        </div>`).join('')||`<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin tareas</div>`}
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-/* ── GANTT ── */
-function renderGantt(){
-  const projects = isAdmin() ? state.projects : state.projects.filter(p=>
-    state.tasks.some(t=>t.projectId===p.id && t.ownerId===session.userId)
-  );
-  const start=new Date('2025-01-01');
-  const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const msPerDay=1000*60*60*24;
-  const totalDays=365;
-
-  return `
-  <div class="section-head" style="margin-bottom:18px"><h2>Gantt — 2025</h2></div>
-  <div class="card">
-    <div class="gantt-wrap">
-      <table class="gantt-table" style="width:100%">
-        <thead>
-          <tr>
-            <th style="text-align:left;min-width:220px;padding:8px 14px">Tarea</th>
-            <th style="min-width:100px;text-align:left;padding:8px 14px;color:var(--muted);font-size:11px">Proyecto</th>
-            ${months.map(m=>`<th>${m}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${projects.flatMap(p=>{
-            const ptasks=state.tasks.filter(t=>t.projectId===p.id);
-            return ptasks.map((t,i)=>{
-              const s=t.startDate?new Date(t.startDate):new Date();
-              const e=t.dueDate?new Date(t.dueDate):new Date();
-              const startOff=Math.max(0,Math.round((s-start)/msPerDay));
-              const dur=Math.max(1,Math.round((e-s)/msPerDay));
-              const pctW=(dur/totalDays*100).toFixed(1);
-              const pctL=(startOff/totalDays*100).toFixed(1);
-              return `<tr>
-                <td style="font-size:13px;font-weight:700;white-space:nowrap">${esc(t.title)}</td>
-                <td style="font-size:11px;color:var(--muted)">${esc(p.name)}</td>
-                <td colspan="12" class="gantt-bar-cell">
-                  <div class="gantt-bar" style="left:${pctL}%;width:${pctW}%;min-width:24px">
-                    ${dur>14?esc(t.title):''}
-                  </div>
-                </td>
-              </tr>`;
-            });
-          }).join('')||'<tr><td colspan="14"><div class="empty"><p>Sin tareas con fechas</p></div></td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ── CALENDARIO ── */
-function renderCalendario(){
-  const now2=new Date();
-  const year=now2.getFullYear();const month=now2.getMonth();
-  const firstDay=new Date(year,month,1).getDay();
-  const daysInMonth=new Date(year,month+1,0).getDate();
-  const dayNames=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-  const tasksByDay={};
-  state.tasks.forEach(t=>{
-    if(!t.dueDate) return;
-    const d=new Date(t.dueDate);
-    if(d.getMonth()===month && d.getFullYear()===year){
-      const k=d.getDate();
-      if(!tasksByDay[k]) tasksByDay[k]=[];
-      tasksByDay[k].push(t);
-    }
-  });
-  state.payments.forEach(pay=>{
-    if(!pay.dueDate) return;
-    const d=new Date(pay.dueDate);
-    if(d.getMonth()===month && d.getFullYear()===year){
-      const k=d.getDate();
-      if(!tasksByDay[k]) tasksByDay[k]=[];
-      tasksByDay[k].push({...pay,_type:'pago',title:pay.concept});
-    }
-  });
-
-  let cells=[];
-  for(let i=0;i<firstDay;i++) cells.push(null);
-  for(let i=1;i<=daysInMonth;i++) cells.push(i);
-
-  return `
-  <div class="section-head" style="margin-bottom:18px">
-    <h2>Calendario — ${monthNames[month]} ${year}</h2>
-  </div>
-  <div class="card">
-    <div class="cal-header">${dayNames.map(d=>`<span>${d}</span>`).join('')}</div>
-    <div class="cal-grid">
-      ${cells.map(day=>day===null
-        ?`<div style="min-height:90px"></div>`
-        :`<div class="cal-day ${day===now2.getDate()?'today':''}">
-          <div class="cal-day-num">${day}</div>
-          ${(tasksByDay[day]||[]).slice(0,3).map(t=>`
-            <div class="cal-event ${t._type==='pago'?'ev-yellow':t.status==='terminada'?'':'ev-red'}" title="${esc(t.title||t.concept||'')}">
-              ${t._type==='pago'?'💰':''} ${esc((t.title||t.concept||'').slice(0,18))}
-            </div>`).join('')}
-        </div>`
-      ).join('')}
-    </div>
-  </div>`;
-}
-
-/* ── PIPELINE ── */
-function renderPipeline(){
-  if(!isAdmin()) return `<div class="card"><div class="empty"><div class="empty-icon">🔒</div><p>Solo para administradores</p></div></div>`;
-  const stages=[
-    {key:'prospecto',label:'Prospecto'},
-    {key:'propuesta',label:'Propuesta'},
-    {key:'negociacion',label:'Negociación'},
-    {key:'ejecucion',label:'Ejecución'},
-    {key:'cerrado_ganado',label:'✅ Ganado'},
-    {key:'cerrado_perdido',label:'✗ Perdido'},
-  ];
-  return `
-  <div class="section-head" style="margin-bottom:18px">
-    <h2>Pipeline comercial</h2>
-    <button class="btn btn-cyan" onclick="SM.openProjectModal()">+ Nuevo proyecto</button>
-  </div>
-  <div class="pipeline">
-    ${stages.map(stage=>{
-      const items=state.projects.filter(p=>p.pipeline===stage.key);
-      const total=items.reduce((s,p)=>s+(Number(p.budget)||0),0);
-      return `<div class="pipe-stage">
-        <div class="pipe-stage-head">
-          <span class="pipe-stage-name">${esc(stage.label)}</span>
-          <span class="badge badge-gray">${items.length}</span>
-        </div>
-        <div style="font-size:12px;color:var(--cyan);font-weight:800;margin-bottom:12px">$${total.toLocaleString()}</div>
-        ${items.map(p=>`<div class="pipe-card" onclick="SM.openProjectDetail('${p.id}')">
-          <div class="pipe-card-name">${esc(p.name)}</div>
-          <div class="pipe-card-value">$${Number(p.budget||0).toLocaleString()}</div>
-          <div class="pipe-card-client">${esc(clientName(p.clientId))}</div>
-          <div style="margin-top:8px;font-size:11px;color:var(--muted)">${fmt(p.dueDate)}</div>
-        </div>`).join('')||`<div style="font-size:12px;color:var(--muted);text-align:center;padding:16px 0">Sin proyectos</div>`}
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-/* ── CLIENTES ── */
-function renderClientes(){
-  if(!isAdmin()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
-  return `
-  <div class="section-head">
-    <h2>Clientes</h2>
-    <button class="btn btn-cyan" onclick="SM.openClientModal()">+ Nuevo cliente</button>
-  </div>
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Cliente</th><th>Contacto</th><th>Tel/Email</th><th>Día pago</th><th>Día factura</th><th>Proyectos</th><th>Drive</th><th>Estado</th><th></th></tr></thead>
-        <tbody>
-          ${state.clients.map(c=>{
-            const nProj=state.projects.filter(p=>p.clientId===c.id).length;
-            return `<tr>
-              <td><span style="font-weight:700">${esc(c.name)}</span></td>
-              <td style="font-size:13px">${esc(c.contact||'—')}</td>
-              <td style="font-size:12px;color:var(--muted)">${esc(c.phone||'')} ${c.email?`<br>${esc(c.email)}`:''}  </td>
-              <td style="text-align:center">${c.payDay||'—'}</td>
-              <td style="text-align:center">${c.invoiceDay||'—'}</td>
-              <td style="text-align:center">${nProj}</td>
-              <td>${c.driveUrl?`<a href="${esc(c.driveUrl)}" target="_blank" rel="noopener" class="btn btn-sm btn-ghost">📁 Drive</a>`:'—'}</td>
-              <td>${statusBadge(c.status)}</td>
-              <td>
-                <div style="display:flex;gap:6px">
-                  <button class="btn btn-sm btn-ghost" onclick="SM.openClientModal('${c.id}')">Editar</button>
-                  <button class="btn btn-sm" onclick="SM.openClientPayments('${c.id}')">Pagos</button>
-                </div>
-              </td>
-            </tr>`;
-          }).join('')||'<tr><td colspan="9"><div class="empty"><p>Sin clientes</p></div></td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ── USUARIOS ── */
-function renderUsuarios(){
-  if(!isAdmin()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
-  const roleLabel={admin:'Administrador',user:'Usuario'};
-  return `
-  <div class="section-head">
-    <h2>Usuarios</h2>
-    <button class="btn btn-cyan" onclick="SM.openUserModal()">+ Nuevo usuario</button>
-  </div>
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>PIN</th><th>Estado</th><th></th></tr></thead>
-        <tbody>
-          ${state.users.map(u=>`<tr>
-            <td>
-              <div style="display:flex;align-items:center;gap:10px">
-                <div class="avatar" style="width:32px;height:32px;font-size:12px">${esc(initials(u.name))}</div>
-                <span style="font-weight:700">${esc(u.name)}</span>
-              </div>
-            </td>
-            <td style="color:var(--muted)">${esc(u.username)}</td>
-            <td><span class="badge ${u.role==='admin'?'badge-cyan':'badge-blue'}">${esc(roleLabel[u.role]||u.role)}</span></td>
-            <td style="font-size:13px;color:var(--muted);letter-spacing:3px">••••</td>
-            <td>${u.active?'<span class="badge badge-green">Activo</span>':'<span class="badge badge-gray">Inactivo</span>'}</td>
-            <td>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-sm btn-ghost" onclick="SM.openUserModal('${u.id}')">Editar</button>
-                ${u.id!==session.userId?`<button class="btn btn-sm btn-danger" onclick="SM.toggleUser('${u.id}')">${u.active?'Desactivar':'Activar'}</button>`:''}
-              </div>
-            </td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ── REPORTES ── */
-function renderReportes(){
-  if(!isAdmin()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
-  const totalBudget=state.projects.reduce((s,p)=>s+(Number(p.budget)||0),0);
-  const totalPaid=state.payments.filter(p=>p.status==='pagado').reduce((s,p)=>s+(Number(p.amount)||0),0);
-  const totalPending=state.payments.filter(p=>p.status!=='pagado').reduce((s,p)=>s+(Number(p.amount)||0),0);
-
-  return `
-  <div class="section-head"><h2>Reportes ejecutivos</h2></div>
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Valor total proyectos</div>
-      <div class="stat-num" style="font-size:26px">$${totalBudget.toLocaleString()}</div>
-    </div>
-    <div class="stat-card green-top">
-      <div class="stat-label">Cobrado</div>
-      <div class="stat-num" style="font-size:26px">$${totalPaid.toLocaleString()}</div>
-    </div>
-    <div class="stat-card yellow-top">
-      <div class="stat-label">Por cobrar</div>
-      <div class="stat-num" style="font-size:26px">$${totalPending.toLocaleString()}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Eficiencia global</div>
-      <div class="stat-num">${state.tasks.length?Math.round(state.tasks.filter(t=>t.status==='terminada').length/state.tasks.length*100):0}%</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><h3>Rendimiento por usuario</h3></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Usuario</th><th>Tareas asignadas</th><th>Terminadas</th><th>En proceso</th><th>Vencidas</th><th>Eficiencia</th></tr></thead>
-        <tbody>
-          ${state.users.filter(u=>u.role!=='admin').map(u=>{
-            const ut=state.tasks.filter(t=>t.ownerId===u.id);
-            const done=ut.filter(t=>t.status==='terminada').length;
-            const inProg=ut.filter(t=>t.status==='en_proceso').length;
-            const over=ut.filter(t=>t.status!=='terminada'&&t.dueDate&&new Date(t.dueDate)<new Date()).length;
-            const eff=ut.length?Math.round(done/ut.length*100):0;
-            return `<tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:11px">${esc(initials(u.name))}</div><strong>${esc(u.name)}</strong></div></td>
-              <td>${ut.length}</td>
-              <td><span class="badge badge-green">${done}</span></td>
-              <td><span class="badge badge-blue">${inProg}</span></td>
-              <td><span class="badge ${over>0?'badge-red':'badge-gray'}">${over}</span></td>
-              <td>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div class="progress-bar" style="width:80px"><div class="progress-fill" style="width:${eff}%"></div></div>
-                  <span style="font-size:12px;color:var(--muted)">${eff}%</span>
-                </div>
-              </td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><h3>Control de pagos</h3></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Concepto</th><th>Cliente</th><th>Proyecto</th><th>Monto</th><th>Fecha factura</th><th>Fecha pago</th><th>Estado</th><th></th></tr></thead>
-        <tbody>
-          ${state.payments.map(pay=>`<tr>
-            <td style="font-weight:700">${esc(pay.concept)}</td>
-            <td style="font-size:12px;color:var(--muted)">${esc(clientName(pay.clientId))}</td>
-            <td style="font-size:12px;color:var(--muted)">${esc(projectName(pay.projectId))}</td>
-            <td style="font-weight:800;color:var(--cyan)">$${Number(pay.amount).toLocaleString()}</td>
-            <td style="font-size:12px;color:var(--muted)">${fmt(pay.invoiceDate)}</td>
-            <td style="font-size:12px;color:var(--muted)">${pay.paidDate?fmt(pay.paidDate):'—'}</td>
-            <td>${statusBadge(pay.status)}</td>
-            <td>
-              ${pay.status!=='pagado'?`<button class="btn btn-sm badge-green" style="background:rgba(34,197,94,.15);color:var(--green);border:0" onclick="SM.markPaid('${pay.id}')">✓ Pagar</button>`:''}
-            </td>
-          </tr>`).join('')||'<tr><td colspan="8"><div class="empty"><p>Sin registros de pago</p></div></td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-/* ═══ SM ACTIONS ═══════════════════════════════════════════ */
-const SM = {
-
-  openProjectModal(id){
-    const p = id ? byId(state.projects,id) : null;
-    const title = p ? 'Editar proyecto' : 'Nuevo proyecto';
-    openModal(title, `
-      <div class="form-grid">
-        <div class="form-row">
-          ${fldSel('clientId','Cliente',state.clients.map(c=>[c.id,c.name]),p?.clientId)}
-          ${fldSel('ownerId','Responsable',state.users.map(u=>[u.id,u.name]),p?.ownerId)}
-        </div>
-        ${fld('name','Nombre del proyecto','text',p?.name||'')}
-        ${fldTA('description','Descripción',p?.description||'')}
-        <div class="form-row-3">
-          ${fld('startDate','Inicio','date',p?.startDate||today())}
-          ${fld('dueDate','Vencimiento','date',p?.dueDate||plusDays(90))}
-          ${fld('budget','Presupuesto','number',p?.budget||'')}
-        </div>
-        <div class="form-row">
-          ${fldSel('pipeline','Etapa pipeline',[
-            ['prospecto','Prospecto'],['propuesta','Propuesta'],
-            ['negociacion','Negociación'],['ejecucion','Ejecución'],
-            ['cerrado_ganado','Cerrado - Ganado'],['cerrado_perdido','Cerrado - Perdido']
-          ],p?.pipeline||'propuesta')}
-          ${fldSel('status','Estado',[['activo','Activo'],['pausado','Pausado'],['cerrado','Cerrado']],p?.status||'activo')}
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveProject('${id||''}')">Guardar proyecto</button>
-        </div>
-      </div>`);
-  },
-
-  _saveProject(id){
-    const name=fGet('name');if(!name){toast('Nombre requerido');return;}
-    const data={
-      clientId:fGet('clientId'),ownerId:fGet('ownerId'),name,
-      description:fGet('description'),startDate:fGet('startDate'),
-      dueDate:fGet('dueDate'),budget:Number(fGet('budget'))||0,
-      pipeline:fGet('pipeline'),status:fGet('status')
-    };
-    if(id){Object.assign(byId(state.projects,id),data);}
-    else{state.projects.push({id:uid(),...data,createdAt:now()});}
-    saveState();closeModal();render();toast(id?'Proyecto actualizado':'Proyecto creado ✓');
-  },
-
-  openProjectDetail(id){
-    const p=byId(state.projects,id);if(!p)return;
-    const tasks=state.tasks.filter(t=>t.projectId===id);
-    const done=tasks.filter(t=>t.status==='terminada').length;
-    const pct=tasks.length?Math.round(done/tasks.length*100):0;
-    const pays=state.payments.filter(pay=>pay.projectId===id);
-    const meets=state.meetings.filter(m=>m.projectId===id);
-    openModal(`📁 ${p.name}`,`
-      <div style="display:grid;gap:18px">
-        <div class="detail-grid">
-          <div class="detail-item"><div class="d-label">Cliente</div><div class="d-value">${esc(clientName(p.clientId))}</div></div>
-          <div class="detail-item"><div class="d-label">Responsable</div><div class="d-value">${esc(userName(p.ownerId))}</div></div>
-          <div class="detail-item"><div class="d-label">Estado</div><div class="d-value">${statusBadge(p.status)}</div></div>
-          <div class="detail-item"><div class="d-label">Inicio</div><div class="d-value">${fmt(p.startDate)}</div></div>
-          <div class="detail-item"><div class="d-label">Vencimiento</div><div class="d-value">${fmt(p.dueDate)}</div></div>
-          <div class="detail-item"><div class="d-label">Presupuesto</div><div class="d-value" style="color:var(--cyan);font-size:18px;font-weight:900">$${Number(p.budget||0).toLocaleString()}</div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:700">Avance ${pct}%</span><span style="font-size:12px;color:var(--muted)">${done}/${tasks.length}</span></div>
-          <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:${pct}%"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-            <strong>Tareas (${tasks.length})</strong>
-            <button class="btn btn-sm btn-cyan" onclick="closeModal();SM.openTaskModal('${id}')">+ Tarea</button>
-          </div>
-          ${tasks.map(t=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)">
-            <span style="font-size:13px;font-weight:700;cursor:pointer;color:var(--cyan)" onclick="closeModal();SM.openTaskDetail('${t.id}')">${esc(t.title)}</span>
-            <div style="display:flex;gap:8px;align-items:center">${semaforo(t)} ${statusBadge(t.status)}</div>
-          </div>`).join('')||`<div style="color:var(--muted);font-size:13px">Sin tareas</div>`}
-        </div>
-        ${pays.length?`<div>
-          <strong>Pagos</strong>
-          ${pays.map(pay=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px">
-            <span>${esc(pay.concept)}</span>
-            <span style="font-weight:800;color:var(--cyan)">$${Number(pay.amount).toLocaleString()}</span>
-            <span>${statusBadge(pay.status)}</span>
-          </div>`).join('')}
-        </div>`:''}
-        <div class="form-actions">
-          ${isAdmin()?`<button class="btn btn-ghost" onclick="closeModal();SM.openProjectModal('${id}')">✏️ Editar proyecto</button>`:''}
-        </div>
-      </div>`, true);
-  },
-
-  openTaskModal(projectId){
-    if(!state.projects.length){toast('Primero crea un proyecto');return;}
-    const pid = projectId || (state.projects[0]?.id||'');
-    openModal('Nueva tarea',`
-      <div class="form-grid">
-        <div class="form-row">
-          ${fldSel('projectId','Proyecto',state.projects.map(p=>[p.id,p.name]),pid)}
-          ${fldSel('ownerId','Responsable',state.users.map(u=>[u.id,u.name]),session?.userId)}
-        </div>
-        ${fld('title','Título de la tarea')}
-        ${fldTA('description','Descripción')}
-        <div class="form-row">
-          ${fldSel('priority','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],'media')}
-          ${fldSel('status','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['terminada','Terminada']],'pendiente')}
-        </div>
-        <div class="form-row-3">
-          ${fld('startDate','Inicio','date',today())}
-          ${fld('dueDate','Vencimiento','date',plusDays(7))}
-          ${fld('hoursEst','Horas estimadas','number','8')}
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveTask()">Guardar tarea</button>
-        </div>
-      </div>`);
-  },
-
-  _saveTask(){
-    const title=fGet('title');if(!title){toast('Título requerido');return;}
-    state.tasks.push({
-      id:uid(),projectId:fGet('projectId'),
-      title,description:fGet('description'),
-      ownerId:fGet('ownerId'),priority:fGet('priority'),status:fGet('status'),
-      startDate:fGet('startDate'),dueDate:fGet('dueDate'),
-      hoursEst:Number(fGet('hoursEst'))||0,hoursReal:0,
-      createdAt:now()
-    });
-    saveState();closeModal();render();toast('Tarea creada ✓');
-  },
-
-  openTaskDetail(id){
-    const t=byId(state.tasks,id);if(!t)return;
-    const subs=state.subtasks.filter(s=>s.taskId===id);
-    const comms=state.comments.filter(c=>c.taskId===id);
-    const files=state.files.filter(f=>f.taskId===id);
-    openModal(`✓ ${t.title}`,`
-      <div style="display:grid;gap:18px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${priorityBadge(t.priority)} ${statusBadge(t.status)} ${semaforo(t)}
-        </div>
-        <div class="detail-grid">
-          <div class="detail-item"><div class="d-label">Proyecto</div><div class="d-value">${esc(projectName(t.projectId))}</div></div>
-          <div class="detail-item"><div class="d-label">Responsable</div><div class="d-value">${esc(userName(t.ownerId))}</div></div>
-          <div class="detail-item"><div class="d-label">Vence</div><div class="d-value">${fmt(t.dueDate)}</div></div>
-          <div class="detail-item"><div class="d-label">Horas Est.</div><div class="d-value">${t.hoursEst||0}h</div></div>
-          <div class="detail-item"><div class="d-label">Horas Reales</div><div class="d-value">${t.hoursReal||0}h</div></div>
-          <div class="detail-item"><div class="d-label">Eficiencia</div><div class="d-value">${t.hoursEst?Math.round(t.hoursReal/t.hoursEst*100):0}%</div></div>
-        </div>
-        <p style="color:var(--muted);font-size:14px">${esc(t.description||'Sin descripción.')}</p>
-
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${['pendiente','en_proceso','en_revision','terminada'].map(s=>
-            `<button class="btn btn-sm ${t.status===s?'btn-cyan':'btn-ghost'}" onclick="SM.setTaskStatus('${id}','${s}');closeModal()">
-              ${s==='pendiente'?'📋':s==='en_proceso'?'⚙️':s==='en_revision'?'🔍':'✅'} ${s.replace('_',' ')}
-            </button>`
-          ).join('')}
-        </div>
-
-        <div style="border-top:1px solid var(--line);padding-top:14px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-            <strong>Subtareas (${subs.length})</strong>
-            <button class="btn btn-sm" onclick="SM.openSubtaskModal('${id}')">+ Subtarea</button>
-          </div>
-          ${subs.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px">
-            <span>${esc(s.title)}</span>
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="color:var(--muted)">${esc(userName(s.ownerId))}</span>
-              ${statusBadge(s.status)}
-              ${semaforo(s)}
-            </div>
-          </div>`).join('')||`<div style="color:var(--muted);font-size:13px">Sin subtareas</div>`}
-        </div>
-
-        <div style="border-top:1px solid var(--line);padding-top:14px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-            <strong>Comentarios (${comms.length})</strong>
-            <button class="btn btn-sm btn-ghost" onclick="SM.openCommentModal('${id}')">💬 Comentar</button>
-          </div>
-          ${comms.map(c=>`<div style="padding:10px;background:var(--surface2);border-radius:var(--r-sm);margin-bottom:8px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-              <strong style="font-size:13px">${esc(userName(c.userId))}</strong>
-              <span style="font-size:11px;color:var(--muted)">${fmtDT(c.createdAt)}</span>
-            </div>
-            <p style="font-size:13px;color:var(--text);margin:0">${esc(c.text)}</p>
-          </div>`).join('')||`<div style="color:var(--muted);font-size:13px">Sin comentarios</div>`}
-        </div>
-
-        <div style="border-top:1px solid var(--line);padding-top:14px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-            <strong>Entregables (${files.length})</strong>
-            <button class="btn btn-sm btn-ghost" onclick="SM.openFileModal('${id}')">📎 Agregar</button>
-          </div>
-          ${files.map(f=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center">
-            <div><strong>${esc(f.name)}</strong><span style="color:var(--muted);margin-left:8px">v${esc(f.version)}</span></div>
-            <a href="${esc(f.url)}" target="_blank" class="btn btn-sm btn-ghost">🔗 Abrir</a>
-          </div>`).join('')||`<div style="color:var(--muted);font-size:13px">Sin entregables</div>`}
-        </div>
-
-        ${isAdmin()?`<div class="form-actions">
-          <button class="btn btn-sm btn-ghost" onclick="SM.openTaskEditModal('${id}')">✏️ Editar</button>
-          <button class="btn btn-sm btn-danger" onclick="SM.deleteTask('${id}')">🗑 Eliminar</button>
-        </div>`:''}
-      </div>`,true);
-  },
-
-  setTaskStatus(id,status){
-    const t=byId(state.tasks,id);if(!t)return;
-    t.status=status;saveState();render();toast('Estado actualizado ✓');
-  },
-
-  deleteTask(id){
-    if(!confirm('¿Eliminar esta tarea y sus subtareas?')) return;
-    state.tasks=state.tasks.filter(t=>t.id!==id);
-    state.subtasks=state.subtasks.filter(s=>s.taskId!==id);
-    state.comments=state.comments.filter(c=>c.taskId!==id);
-    state.files=state.files.filter(f=>f.taskId!==id);
-    saveState();closeModal();render();toast('Tarea eliminada');
-  },
-
-  openSubtaskModal(taskId){
-    closeModal();
-    openModal('Nueva subtarea',`
-      <div class="form-grid">
-        ${fld('title','Título')}
-        <div class="form-row">
-          ${fldSel('ownerId','Responsable',state.users.map(u=>[u.id,u.name]),session?.userId)}
-          ${fldSel('status','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['terminada','Terminada']],'pendiente')}
-        </div>
-        ${fld('dueDate','Fecha término','date',plusDays(5))}
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal();SM.openTaskDetail('${taskId}')">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveSubtask('${taskId}')">Guardar</button>
-        </div>
-      </div>`);
-  },
-
-  _saveSubtask(taskId){
-    const title=fGet('title');if(!title){toast('Título requerido');return;}
-    state.subtasks.push({id:uid(),taskId,title,ownerId:fGet('ownerId'),status:fGet('status'),dueDate:fGet('dueDate'),createdAt:now()});
-    saveState();closeModal();SM.openTaskDetail(taskId);toast('Subtarea creada ✓');
-  },
-
-  openCommentModal(taskId){
-    closeModal();
-    openModal('Nuevo comentario',`
-      <div class="form-grid">
-        ${fldTA('text','Escribe tu comentario...')}
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal();SM.openTaskDetail('${taskId}')">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveComment('${taskId}')">Guardar</button>
-        </div>
-      </div>`);
-  },
-
-  _saveComment(taskId){
-    const text=fGet('text');if(!text){toast('Escribe algo');return;}
-    state.comments.push({id:uid(),taskId,userId:session.userId,text,createdAt:now()});
-    saveState();closeModal();SM.openTaskDetail(taskId);toast('Comentario agregado ✓');
-  },
-
-  openFileModal(taskId){
-    closeModal();
-    openModal('Agregar entregable',`
-      <div class="form-grid">
-        <div class="form-row">
-          ${fld('name','Nombre del archivo')}
-          ${fld('type','Tipo (Plano, PDF, etc.)')}
-        </div>
-        ${fld('url','URL o enlace (Drive, etc.)')}
-        ${fld('version','Versión','text','1.0')}
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal();SM.openTaskDetail('${taskId}')">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveFile('${taskId}')">Guardar</button>
-        </div>
-      </div>`);
-  },
-
-  _saveFile(taskId){
-    const name=fGet('name'),url=fGet('url');
-    if(!name||!url){toast('Nombre y URL requeridos');return;}
-    state.files.push({id:uid(),taskId,userId:session.userId,name,url,type:fGet('type'),version:fGet('version')||'1',createdAt:now()});
-    saveState();closeModal();SM.openTaskDetail(taskId);toast('Entregable guardado ✓');
-  },
-
-  openClientModal(id){
-    const c=id?byId(state.clients,id):null;
-    openModal(c?'Editar cliente':'Nuevo cliente',`
-      <div class="form-grid">
-        <div class="form-row">
-          ${fld('name','Nombre de la empresa','text',c?.name||'')}
-          ${fld('contact','Persona de contacto','text',c?.contact||'')}
-        </div>
-        <div class="form-row">
-          ${fld('email','Email','email',c?.email||'')}
-          ${fld('phone','Teléfono','text',c?.phone||'')}
-        </div>
-        ${fld('driveUrl','Link Google Drive (contratos/cotizaciones)','url',c?.driveUrl||'')}
-        <div class="form-row-3">
-          ${fld('payDay','Día de pago (del mes)','number',c?.payDay||'15')}
-          ${fld('invoiceDay','Día de facturación','number',c?.invoiceDay||'10')}
-          ${fldSel('status','Estado',[['activo','Activo'],['inactivo','Inactivo']],c?.status||'activo')}
-        </div>
-        ${fldTA('notes','Notas',c?.notes||'')}
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveClient('${id||''}')">Guardar cliente</button>
-        </div>
-      </div>`);
-  },
-
-  _saveClient(id){
-    const name=fGet('name');if(!name){toast('Nombre requerido');return;}
-    const data={
-      name,contact:fGet('contact'),email:fGet('email'),phone:fGet('phone'),
-      driveUrl:fGet('driveUrl'),payDay:Number(fGet('payDay'))||0,
-      invoiceDay:Number(fGet('invoiceDay'))||0,
-      status:fGet('status'),notes:fGet('notes')
-    };
-    if(id){Object.assign(byId(state.clients,id),data);}
-    else{state.clients.push({id:uid(),...data,createdAt:now()});}
-    saveState();closeModal();render();toast(id?'Cliente actualizado':'Cliente registrado ✓');
-  },
-
-  openClientPayments(clientId){
-    const pays=state.payments.filter(p=>p.clientId===clientId);
-    const c=byId(state.clients,clientId);
-    openModal(`💰 Pagos · ${c?.name}`,`
-      <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
-        <button class="btn btn-cyan" onclick="SM.openPaymentModal('${clientId}')">+ Registrar pago</button>
-      </div>
-      ${pays.map(pay=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
-        <div>
-          <div style="font-weight:700;font-size:14px">${esc(pay.concept)}</div>
-          <div style="font-size:12px;color:var(--muted)">Factura: ${fmt(pay.invoiceDate)} · Vence: ${fmt(pay.dueDate)}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:18px;font-weight:900;color:var(--cyan)">$${Number(pay.amount).toLocaleString()}</div>
-          ${statusBadge(pay.status)}
-          ${pay.status!=='pagado'?`<br><button class="btn btn-sm" style="margin-top:6px;background:rgba(34,197,94,.15);color:var(--green);border:0" onclick="SM.markPaid('${pay.id}')">✓ Marcar pagado</button>`:''}
-        </div>
-      </div>`).join('')||`<div class="empty"><p>Sin pagos registrados</p></div>`}`,true);
-  },
-
-  openPaymentModal(clientId){
-    closeModal();
-    openModal('Nuevo pago',`
-      <div class="form-grid">
-        ${fldSel('projectId','Proyecto',state.projects.filter(p=>p.clientId===clientId).map(p=>[p.id,p.name]),'')}
-        ${fld('concept','Concepto (ej. Anticipo 30%)')}
-        ${fld('amount','Monto','number')}
-        <div class="form-row">
-          ${fld('invoiceDate','Fecha emisión factura','date',today())}
-          ${fld('dueDate','Fecha límite de pago','date',plusDays(15))}
-        </div>
-        ${fldSel('status','Estado',[['pendiente','Pendiente'],['pagado','Pagado']],'pendiente')}
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._savePayment('${clientId}')">Guardar</button>
-        </div>
-      </div>`);
-  },
-
-  _savePayment(clientId){
-    const concept=fGet('concept'),amount=fGet('amount');
-    if(!concept||!amount){toast('Concepto y monto requeridos');return;}
-    state.payments.push({
-      id:uid(),clientId,projectId:fGet('projectId'),concept,
-      amount:Number(amount),status:fGet('status'),
-      invoiceDate:fGet('invoiceDate'),dueDate:fGet('dueDate'),
-      paidDate:'',createdAt:now()
-    });
-    saveState();closeModal();render();toast('Pago registrado ✓');
-  },
-
-  markPaid(id){
-    const pay=byId(state.payments,id);if(!pay)return;
-    pay.status='pagado';pay.paidDate=today();
-    saveState();closeModal();render();toast('Pago marcado como recibido ✓');
-  },
-
-  openUserModal(id){
-    const u=id?byId(state.users,id):null;
-    openModal(u?'Editar usuario':'Nuevo usuario',`
-      <div class="form-grid">
-        <div class="form-row">
-          ${fld('name','Nombre completo','text',u?.name||'')}
-          ${fld('username','Usuario (para login)','text',u?.username||'')}
-        </div>
-        <div class="form-row">
-          ${fld('pin','PIN (numérico)','text',u?.pin||'')}
-          ${fldSel('role','Rol',[['admin','Administrador'],['user','Usuario']],u?.role||'user')}
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._saveUser('${id||''}')">Guardar usuario</button>
-        </div>
-      </div>`);
-  },
-
-  _saveUser(id){
-    const name=fGet('name'),username=fGet('username'),pin=fGet('pin');
-    if(!name||!username||!pin){toast('Todos los campos son requeridos');return;}
-    if(!id && state.users.some(u=>u.username===username)){toast('Usuario ya existe');return;}
-    const data={name,username,pin,role:fGet('role')};
-    if(id){Object.assign(byId(state.users,id),data);}
-    else{state.users.push({id:uid(),...data,active:true,createdAt:now()});}
-    saveState();closeModal();render();toast(id?'Usuario actualizado':'Usuario creado ✓');
-  },
-
-  toggleUser(id){
-    const u=byId(state.users,id);if(!u)return;
-    u.active=!u.active;saveState();render();
-    toast(u.active?'Usuario activado':'Usuario desactivado');
-  },
-
-  openTaskEditModal(id){
-    const t=byId(state.tasks,id);if(!t)return;
-    closeModal();
-    openModal('Editar tarea',`
-      <div class="form-grid">
-        <div class="form-row">
-          ${fldSel('projectId','Proyecto',state.projects.map(p=>[p.id,p.name]),t.projectId)}
-          ${fldSel('ownerId','Responsable',state.users.map(u=>[u.id,u.name]),t.ownerId)}
-        </div>
-        ${fld('title','Título','text',t.title)}
-        ${fldTA('description','Descripción',t.description||'')}
-        <div class="form-row">
-          ${fldSel('priority','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t.priority)}
-          ${fldSel('status','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['terminada','Terminada']],t.status)}
-        </div>
-        <div class="form-row-3">
-          ${fld('startDate','Inicio','date',t.startDate||today())}
-          ${fld('dueDate','Vencimiento','date',t.dueDate||plusDays(7))}
-          ${fld('hoursEst','Horas Est.','number',t.hoursEst||0)}
-        </div>
-        ${fld('hoursReal','Horas reales registradas','number',t.hoursReal||0)}
-        <div class="form-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-cyan" onclick="SM._updateTask('${id}')">Actualizar</button>
-        </div>
-      </div>`);
-  },
-
-  _updateTask(id){
-    const t=byId(state.tasks,id);if(!t)return;
-    const title=fGet('title');if(!title){toast('Título requerido');return;}
-    Object.assign(t,{
-      projectId:fGet('projectId'),ownerId:fGet('ownerId'),title,
-      description:fGet('description'),priority:fGet('priority'),status:fGet('status'),
-      startDate:fGet('startDate'),dueDate:fGet('dueDate'),
-      hoursEst:Number(fGet('hoursEst'))||0,hoursReal:Number(fGet('hoursReal'))||0
-    });
-    saveState();closeModal();render();toast('Tarea actualizada ✓');
-  }
-};
-
-/* ── NAVIGATION ── */
-function navigate(view){
-  currentView=view;
-  document.querySelectorAll('.nav-btn').forEach(b=>{
-    b.classList.toggle('active', b.dataset.view===view);
-  });
+function nav(v){
+  VIEW = v;
+  document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===v); });
   render();
   window.scrollTo(0,0);
 }
+document.querySelectorAll('.nbtn').forEach(function(b){ b.addEventListener('click',function(){ nav(b.dataset.v); }); });
 
-document.querySelectorAll('.nav-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>navigate(btn.dataset.view));
-});
+/* ══ VIEWS ══════════════════════════════════════════════════ */
 
-/* ── AUTH ── */
-// ── SELECTOR DE USUARIOS ──────────────────────────────────
-var selectedUid = null;
+/* DASHBOARD */
+function vDB(){
+  var tasks = myTasks(), projs = myProjs();
+  var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
+  var over = tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&new Date(t.fecha_vencimiento)<new Date();}).length;
+  var pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
+  var alerts = getAlerts().slice(0,3);
 
+  var projH = projs.map(function(p){
+    var pt = DB.tareas.filter(function(t){return t.proyecto_id===p.id;});
+    var pd2 = pt.filter(function(t){return t.estado==='terminada';}).length;
+    var pp = pt.length ? Math.round(pd2/pt.length*100) : 0;
+    return '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700">'+esc(p.nombre)+'</span><span style="font-size:12px;color:var(--muted)">'+pp+'%</span></div><div class="pb"><div class="pf" style="width:'+pp+'%"></div></div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(cNm(p.cliente_id))+' · '+pd2+'/'+pt.length+'</div></div>';
+  }).join('') || '<div style="color:var(--muted);font-size:13px">Sin proyectos</div>';
+
+  var alH = alerts.length ? alerts.map(function(a){
+    return '<div class="alitem '+a.cl+'"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';
+  }).join('') : '<div style="color:var(--muted);font-size:13px">✓ Sin alertas</div>';
+
+  var rows = tasks.slice(0,6).map(function(t){
+    return '<tr><td><span style="font-weight:700;cursor:pointer;color:var(--navy)" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</span></td><td style="font-size:12px;color:var(--muted)">'+esc(pNm(t.proyecto_id))+'</td><td>'+esc(uNm(t.owner_id))+'</td><td>'+bPr(t.prioridad)+'</td><td>'+bSt(t.estado)+'</td><td>'+sem(t)+'</td><td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td></tr>';
+  }).join('') || '<tr><td colspan="7"><div class="empty"><p>Sin tareas</p></div></td></tr>';
+
+  return '<div class="sg">'
+    +'<div class="sc"><div class="sl">Proyectos activos</div><div class="sn">'+projs.filter(function(p){return p.estado!=='cerrado';}).length+'</div><div class="ss">'+DB.clientes.length+' clientes</div></div>'
+    +'<div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div><div class="ss">'+pct+'% del total</div></div>'
+    +'<div class="sc y"><div class="sl">En proceso</div><div class="sn">'+tasks.filter(function(t){return t.estado==='en_proceso';}).length+'</div><div class="ss">activas</div></div>'
+    +'<div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+over+'</div><div class="ss">urgentes</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    +'<div class="card"><div class="ch"><h3>Avance por proyecto</h3></div>'+projH+'</div>'
+    +'<div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div>'
+    +'</div>'
+    +'<div class="card"><div class="ch"><h3>Actividad reciente</h3><button class="btn btns btng" onclick="nav(\'tareas\')">Ver todas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Semáforo</th><th>Vence</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* ALERTAS */
+function vAL(){
+  var al = getAlerts();
+  return '<div class="sh"><h2>Centro de alertas</h2></div>'
+    +(al.length ? al.map(function(a){return '<div class="alitem '+a.cl+'"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';}).join('')
+    : '<div class="card"><div class="empty"><div class="ei">✓</div><p>Sin alertas. Todo en orden.</p></div></div>');
+}
+
+/* PROYECTOS */
+function vPR(){
+  var projs = myProjs();
+  var html = projs.map(function(p){
+    var pt = DB.tareas.filter(function(t){return t.proyecto_id===p.id;});
+    var pd2 = pt.filter(function(t){return t.estado==='terminada';}).length;
+    var pp = pt.length ? Math.round(pd2/pt.length*100) : 0;
+    var fi = p.fecha_inicio ? new Date(p.fecha_inicio) : null;
+    var fv2 = p.fecha_vencimiento ? new Date(p.fecha_vencimiento) : null;
+    var tu = fi ? Math.ceil((new Date()-fi)/864e5) : 0;
+    var td2 = fi&&fv2 ? Math.ceil((fv2-fi)/864e5) : 100;
+    var tp = td2>0 ? Math.round(tu/td2*100) : 0;
+    var hcl = pp>=tp-10?'dg':pp>=tp-25?'dy':'dr';
+    var drBtn = p.drive_url ? '<a href="'+esc(p.drive_url)+'" target="_blank" class="btn btns btng">📁 Drive</a>' : '';
+    var editBtn = adm() ? '<button class="btn btns btng" onclick="A.ep(\''+p.id+'\')">✏️ Editar</button>' : '';
+    var bajaBtn = adm() ? '<button class="btn btns btnd" onclick="A.baja(\''+p.id+'\')">Dar de baja</button>' : '';
+    var budg = adm() ? '$'+Number(p.presupuesto||0).toLocaleString() : '—';
+    return '<div class="card" style="border-left:3px solid var(--cyan)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">'
+      +'<div><div style="font-size:16px;font-weight:800;color:var(--ink);cursor:pointer" onclick="A.pd(\''+p.id+'\')">'+esc(p.nombre)+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+esc(p.descripcion||'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+bPi(p.pipeline)+' '+bSt(p.estado)+'<button class="btn btns" onclick="A.nt(\''+p.id+'\')">+ Tarea</button><button class="btn btns btnc" onclick="A.pd(\''+p.id+'\')">Ver →</button>'+editBtn+drBtn+bajaBtn+'</div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px;margin-bottom:10px">'
+      +'<div><span style="color:var(--muted)">Cliente</span><br><strong>'+esc(cNm(p.cliente_id))+'</strong></div>'
+      +'<div><span style="color:var(--muted)">Responsable</span><br><strong>'+esc(uNm(p.owner_id))+'</strong></div>'
+      +'<div><span style="color:var(--muted)">Vence</span><br><strong>'+fmt(p.fecha_vencimiento)+'</strong></div>'
+      +'<div><span style="color:var(--muted)">Presupuesto</span><br><strong>'+budg+'</strong></div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px"><div class="pb" style="flex:1"><div class="pf" style="width:'+pp+'%"></div></div><span class="dot '+hcl+'" style="width:10px;height:10px;flex-shrink:0" title="Salud"></span><span style="font-size:12px;color:var(--muted);white-space:nowrap">'+pp+'% · '+pd2+'/'+pt.length+'</span></div>'
+      +'</div>';
+  }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
+  return '<div class="sh"><h2>Proyectos</h2>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'+html;
+}
+
+/* TAREAS */
+function vTA(){
+  var tasks = myTasks();
+  var shown = FPID ? tasks.filter(function(t){return t.proyecto_id===FPID;}) : tasks;
+  var sel = DB.proyectos.map(function(p){return '<option value="'+esc(p.id)+'"'+(FPID===p.id?' selected':'')+'>'+esc(p.nombre)+'</option>';}).join('');
+  var rows = shown.map(function(t){
+    return '<tr>'
+      +'<td><span style="font-weight:700;cursor:pointer;color:var(--navy)" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</span></td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+esc(pNm(t.proyecto_id))+'</td>'
+      +'<td>'+esc(uNm(t.owner_id))+'</td>'
+      +'<td>'+bPr(t.prioridad)+'</td>'
+      +'<td>'+bSt(t.estado)+'</td>'
+      +'<td>'+sem(t)+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+t.horas_reales+'/'+t.horas_estimadas+'h</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td>'
+      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ver</button>'
+      +(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+t.id+'\')">✕</button>':'')
+      +'</div></td></tr>';
+  }).join('') || '<tr><td colspan="9"><div class="empty"><p>Sin tareas</p></div></td></tr>';
+  return '<div class="sh"><h2>Tareas</h2>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<select onchange="FPID=this.value;render()" style="background:var(--surface);border:1px solid var(--line2);border-radius:var(--rs);padding:7px 12px;color:var(--ink);font-size:13px;outline:none"><option value="">Todos los proyectos</option>'+sel+'</select>'
+    +'<button class="btn btnc" onclick="A.nt(FPID)">+ Nueva tarea</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Semáforo</th><th>H Est/Real</th><th>Vence</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* KANBAN */
+function vKA(){
+  var tasks = myTasks();
+  var shown = FPID ? tasks.filter(function(t){return t.proyecto_id===FPID;}) : tasks;
+  var cols = [
+    {k:'pendiente',l:'📋 Pendiente'},
+    {k:'en_proceso',l:'⚙️ En proceso'},
+    {k:'en_revision',l:'🔍 En revisión'},
+    {k:'aprobada',l:'✅ Aprobada'},
+    {k:'terminada',l:'🏁 Terminada'}
+  ];
+  var sel = DB.proyectos.map(function(p){return '<option value="'+esc(p.id)+'"'+(FPID===p.id?' selected':'')+'>'+esc(p.nombre)+'</option>';}).join('');
+  var colH = cols.map(function(col){
+    var ct = shown.filter(function(t){return t.estado===col.k;});
+    var cards = ct.map(function(t){
+      return '<div class="kcard" onclick="A.td(\''+t.id+'\')">'
+        +'<div class="kct2">'+esc(t.titulo)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+esc(pNm(t.proyecto_id))+'</div>'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">'+bPr(t.prioridad)+' '+sem(t)+'</div>'
+        +'<div class="kmeta"><span class="kdue">'+fmt(t.fecha_vencimiento)+'</span><span class="kown">'+ini(uNm(t.owner_id))+'</span></div>'
+        +'</div>';
+    }).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">Sin tareas</div>';
+    return '<div class="kcol"><div class="kch"><span class="kct">'+col.l+'</span><span class="kcc">'+ct.length+'</span></div>'+cards+'</div>';
+  }).join('');
+  return '<div class="sh" style="margin-bottom:14px"><h2>Kanban</h2>'
+    +'<div style="display:flex;gap:8px"><select onchange="FPID=this.value;render()" style="background:var(--surface);border:1px solid var(--line2);border-radius:var(--rs);padding:7px 12px;color:var(--ink);font-size:13px;outline:none"><option value="">Todos los proyectos</option>'+sel+'</select>'
+    +'<button class="btn btnc" onclick="A.nt(FPID)">+ Tarea</button></div></div>'
+    +'<div class="kanban">'+colH+'</div>';
+}
+
+/* GANTT */
+function vGA(){
+  var projs = myProjs();
+  var start = new Date('2025-01-01');
+  var months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var total = 365;
+  var todayOff = Math.round((new Date()-start)/864e5);
+  var todayPct = (todayOff/total*100).toFixed(1);
+  var rows = [];
+  projs.forEach(function(p){
+    DB.tareas.filter(function(t){return t.proyecto_id===p.id;}).forEach(function(t){
+      if(!t.fecha_inicio||!t.fecha_vencimiento) return;
+      var s = new Date(t.fecha_inicio), e = new Date(t.fecha_vencimiento);
+      var off = Math.max(0,Math.round((s-start)/864e5));
+      var dur = Math.max(1,Math.round((e-s)/864e5));
+      var l = (off/total*100).toFixed(1);
+      var w = (dur/total*100).toFixed(1);
+      var col = t.prioridad==='critica'?'background:linear-gradient(90deg,var(--red),var(--yellow))':t.prioridad==='alta'?'background:linear-gradient(90deg,var(--yellow),var(--cyan))':'';
+      rows.push('<tr>'
+        +'<td style="font-size:13px;font-weight:700;white-space:nowrap;color:var(--ink)">'+esc(t.titulo)+'</td>'
+        +'<td style="font-size:11px;color:var(--muted)">'+esc(p.nombre)+'</td>'
+        +'<td colspan="12" class="gbc"><div class="gbar" style="left:'+l+'%;width:'+w+'%;'+col+'">'+(dur>20?esc(t.titulo):'')+'</div><div class="gtoday" style="left:'+todayPct+'%"></div></td>'
+        +'</tr>');
+    });
+  });
+  return '<div class="sh" style="margin-bottom:14px"><h2>Gantt — 2025</h2><span style="font-size:12px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:4px;opacity:.6"></span>Hoy</span></div>'
+    +'<div class="card"><div class="gwrap"><table class="gtable" style="width:100%"><thead><tr>'
+    +'<th style="text-align:left;min-width:200px;padding:8px 13px">Tarea</th>'
+    +'<th style="min-width:90px;text-align:left;padding:8px 13px;color:var(--muted);font-size:11px">Proyecto</th>'
+    +months.map(function(m){return '<th>'+m+'</th>';}).join('')
+    +'</tr></thead><tbody>'
+    +(rows.length?rows.join(''):'<tr><td colspan="14"><div class="empty"><p>Sin tareas con fechas</p></div></td></tr>')
+    +'</tbody></table></div></div>';
+}
+
+/* CALENDARIO */
+function vCA(){
+  var now2 = new Date();
+  var yr = now2.getFullYear(), mo = now2.getMonth();
+  var fd = new Date(yr,mo,1).getDay();
+  var dim = new Date(yr,mo+1,0).getDate();
+  var dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  var mn = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var byD = {};
+  myTasks().forEach(function(t){
+    if(!t.fecha_vencimiento) return;
+    var d = new Date(t.fecha_vencimiento);
+    if(d.getMonth()===mo&&d.getFullYear()===yr){
+      var k = d.getDate(); if(!byD[k]) byD[k]=[];
+      byD[k].push({l:t.titulo,c:t.estado==='terminada'?'':'er'});
+    }
+  });
+  if(adm()) DB.pagos.forEach(function(pay){
+    if(!pay.fecha_vencimiento||pay.estado==='pagado') return;
+    var d = new Date(pay.fecha_vencimiento);
+    if(d.getMonth()===mo&&d.getFullYear()===yr){
+      var k = d.getDate(); if(!byD[k]) byD[k]=[];
+      byD[k].push({l:'💰 '+pay.concepto,c:'ey'});
+    }
+  });
+  DB.reuniones.forEach(function(r){
+    if(!r.fecha) return;
+    var d = new Date(r.fecha);
+    if(d.getMonth()===mo&&d.getFullYear()===yr){
+      var k = d.getDate(); if(!byD[k]) byD[k]=[];
+      byD[k].push({l:'📋 '+r.titulo,c:''});
+    }
+  });
+  var cells = [];
+  for(var i=0;i<fd;i++) cells.push(null);
+  for(var i=1;i<=dim;i++) cells.push(i);
+  var cH = cells.map(function(day){
+    if(!day) return '<div style="min-height:84px"></div>';
+    var evs = (byD[day]||[]).slice(0,3).map(function(ev){return '<div class="cev '+ev.c+'" title="'+esc(ev.l)+'">'+esc(ev.l.slice(0,16))+'</div>';}).join('');
+    return '<div class="calday'+(day===now2.getDate()?' today':'')+'"><div class="caldn">'+day+'</div>'+evs+'</div>';
+  }).join('');
+  return '<div class="sh" style="margin-bottom:14px"><h2>Calendario — '+mn[mo]+' '+yr+'</h2></div>'
+    +'<div class="card"><div class="calh">'+dn.map(function(d){return '<span>'+d+'</span>';}).join('')+'</div><div class="calg">'+cH+'</div></div>';
+}
+
+/* PIPELINE */
+function vPI(){
+  var projs = myProjs();
+  var stages = [{k:'prospecto',l:'Prospecto'},{k:'propuesta',l:'Propuesta'},{k:'negociacion',l:'Negociación'},{k:'ejecucion',l:'Ejecución'},{k:'cerrado_ganado',l:'✓ Ganado'},{k:'cerrado_perdido',l:'✗ Perdido'}];
+  var cols = stages.map(function(st){
+    var items = projs.filter(function(p){return p.pipeline===st.k;});
+    var tot = items.reduce(function(s,p){return s+(Number(p.presupuesto)||0);},0);
+    var cards = items.map(function(p){
+      return '<div class="pcard" onclick="A.pd(\''+p.id+'\')"><div class="pcn">'+esc(p.nombre)+'</div>'
+        +(adm()?'<div class="pcv">$'+Number(p.presupuesto||0).toLocaleString()+'</div>':'')
+        +'<div class="pcc">'+esc(cNm(p.cliente_id))+'</div>'
+        +'<div style="margin-top:5px;font-size:11px;color:var(--muted)">'+fmt(p.fecha_vencimiento)+'</div></div>';
+    }).join('') || '<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px 0">Sin proyectos</div>';
+    return '<div class="pstage"><div class="psh"><span class="psn">'+st.l+'</span><span class="badge bx_">'+items.length+'</span></div>'
+      +(adm()?'<div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:9px">$'+tot.toLocaleString()+'</div>':'')
+      +cards+'</div>';
+  }).join('');
+  return '<div class="sh" style="margin-bottom:14px"><h2>Pipeline comercial</h2>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
+    +'<div class="pipeline">'+cols+'</div>';
+}
+
+/* CLIENTES */
+function vCL(){
+  if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
+  var rows = DB.clientes.map(function(c){
+    var np = DB.proyectos.filter(function(p){return p.cliente_id===c.id;}).length;
+    return '<tr>'
+      +'<td><span style="font-weight:700">'+esc(c.nombre)+'</span></td>'
+      +'<td>'+esc(c.contacto||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+esc(c.telefono||'')+(c.email?'<br>'+esc(c.email):'')+'</td>'
+      +'<td style="text-align:center">'+(c.dia_pago||'—')+'</td>'
+      +'<td style="text-align:center">'+(c.dia_factura||'—')+'</td>'
+      +'<td style="text-align:center">'+np+'</td>'
+      +'<td>'+(c.drive_url?'<a href="'+esc(c.drive_url)+'" target="_blank" class="btn btns btng">📁 Drive</a>':'—')+'</td>'
+      +'<td>'+bSt(c.estado)+'</td>'
+      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.ec(\''+c.id+'\')">Editar</button><button class="btn btns" onclick="A.pagos(\''+c.id+'\')">Pagos</button></div></td>'
+      +'</tr>';
+  }).join('') || '<tr><td colspan="9"><div class="empty"><p>Sin clientes</p></div></td></tr>';
+  return '<div class="sh"><h2>Clientes</h2><button class="btn btnc" onclick="A.nc()">+ Nuevo cliente</button></div>'
+    +'<div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Contacto</th><th>Tel/Email</th><th>Día pago</th><th>Día factura</th><th>Proyectos</th><th>Drive</th><th>Estado</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* USUARIOS */
+function vUS(){
+  if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
+  var rows = DB.usuarios.map(function(u){
+    return '<tr>'
+      +'<td><div style="display:flex;align-items:center;gap:9px"><div class="av">'+ini(u.nombre)+'</div><span style="font-weight:700">'+esc(u.nombre)+'</span></div></td>'
+      +'<td style="color:var(--muted)">'+esc(u.username)+'</td>'
+      +'<td><span class="badge '+(u.rol==='admin'?'bc_':'bb_')+'">'+( u.rol==='admin'?'Administrador':'Usuario')+'</span></td>'
+      +'<td>'+(u.activo?'<span class="badge bg_">Activo</span>':'<span class="badge bx_">Inactivo</span>')+'</td>'
+      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.eu(\''+u.id+'\')">Editar</button>'
+      +(u.id!==SES.userId?'<button class="btn btns btnd" onclick="A.tu(\''+u.id+'\')">'+( u.activo?'Desactivar':'Activar')+'</button>':'')
+      +'</div></td></tr>';
+  }).join('');
+  return '<div class="sh"><h2>Usuarios</h2><button class="btn btnc" onclick="A.nu()">+ Nuevo usuario</button></div>'
+    +'<div class="card"><div class="tw"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+/* REPORTES */
+function vRE(){
+  if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
+  var tB = DB.proyectos.reduce(function(s,p){return s+(Number(p.presupuesto)||0);},0);
+  var tP = DB.pagos.filter(function(p){return p.estado==='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
+  var tPe = DB.pagos.filter(function(p){return p.estado!=='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
+  var eff = DB.tareas.length ? Math.round(DB.tareas.filter(function(t){return t.estado==='terminada';}).length/DB.tareas.length*100) : 0;
+  var urows = DB.usuarios.filter(function(u){return u.rol!=='admin';}).map(function(u){
+    var ut = DB.tareas.filter(function(t){return t.owner_id===u.id;});
+    var d2 = ut.filter(function(t){return t.estado==='terminada';}).length;
+    var ip = ut.filter(function(t){return t.estado==='en_proceso';}).length;
+    var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&new Date(t.fecha_vencimiento)<new Date();}).length;
+    var ef = ut.length ? Math.round(d2/ut.length*100) : 0;
+    return '<tr>'
+      +'<td><div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:28px;height:28px;font-size:11px">'+ini(u.nombre)+'</div><strong>'+esc(u.nombre)+'</strong></div></td>'
+      +'<td>'+ut.length+'</td><td><span class="badge bg_">'+d2+'</span></td><td><span class="badge bb_">'+ip+'</span></td><td><span class="badge '+(ov>0?'br_':'bx_')+'">'+ov+'</span></td>'
+      +'<td><div style="display:flex;align-items:center;gap:7px"><div class="pb" style="width:80px"><div class="pf" style="width:'+ef+'%"></div></div><span style="font-size:12px;color:var(--muted)">'+ef+'%</span></div></td>'
+      +'</tr>';
+  }).join('');
+  var prows = DB.pagos.map(function(pay){
+    return '<tr>'
+      +'<td style="font-weight:700">'+esc(pay.concepto)+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+esc(cNm(pay.cliente_id))+'</td>'
+      +'<td style="font-weight:800;color:var(--navy)">$'+Number(pay.monto).toLocaleString()+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+fmt(pay.fecha_factura)+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+fmt(pay.fecha_vencimiento)+'</td>'
+      +'<td>'+bSt(pay.estado)+'</td>'
+      +'<td>'+(pay.estado!=='pagado'?'<button class="btn btns btng" onclick="A.mp(\''+pay.id+'\')">✓ Cobrado</button>':'—')+'</td>'
+      +'</tr>';
+  }).join('') || '<tr><td colspan="7"><div class="empty"><p>Sin pagos</p></div></td></tr>';
+  return '<div class="sh"><h2>Reportes ejecutivos</h2></div>'
+    +'<div class="sg"><div class="sc"><div class="sl">Valor total proyectos</div><div class="sn" style="font-size:24px">$'+tB.toLocaleString()+'</div></div><div class="sc g"><div class="sl">Cobrado</div><div class="sn" style="font-size:24px">$'+tP.toLocaleString()+'</div></div><div class="sc y"><div class="sl">Por cobrar</div><div class="sn" style="font-size:24px">$'+tPe.toLocaleString()+'</div></div><div class="sc"><div class="sl">Eficiencia global</div><div class="sn">'+eff+'%</div></div></div>'
+    +'<div class="card"><div class="ch"><h3>Rendimiento por usuario</h3></div><div class="tw"><table><thead><tr><th>Usuario</th><th>Asignadas</th><th>Terminadas</th><th>En proceso</th><th>Vencidas</th><th>Eficiencia</th></tr></thead><tbody>'+urows+'</tbody></table></div></div>'
+    +'<div class="card"><div class="ch"><h3>Control de pagos</h3><button class="btn btns btng" onclick="A.np2()">+ Registrar pago</button></div><div class="tw"><table><thead><tr><th>Concepto</th><th>Cliente</th><th>Monto</th><th>Factura</th><th>Vence</th><th>Estado</th><th></th></tr></thead><tbody>'+prows+'</tbody></table></div></div>';
+}
+
+/* ══ ACTIONS ════════════════════════════════════════════════ */
+var A = {
+
+  /* PROYECTO */
+  np: function(){ A._pm(null); },
+  ep: function(id){ A._pm(id); },
+  _pm: function(id){
+    var p = id ? xid(DB.proyectos,id) : null;
+    var cO = DB.clientes.map(function(c){return [c.id,c.nombre];});
+    var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    mOpen(p?'Editar proyecto':'Nuevo proyecto',
+      '<div class="fg">'
+      +'<div class="fr2">'+FSL('ci','Cliente',cO,p&&p.cliente_id)+FSL('oi','Responsable',uO,p&&p.owner_id||SES.userId)+'</div>'
+      +FLD('nm','Nombre del proyecto','text',p&&p.nombre)
+      +FTA('dc','Descripción',p&&p.descripcion)
+      +'<div class="fr3">'+FLD('fi','Inicio','date',p&&p.fecha_inicio||today())+FLD('fv','Vencimiento','date',p&&p.fecha_vencimiento||pd(90))+FLD('bud','Presupuesto','number',p&&p.presupuesto||'')+'</div>'
+      +'<div class="fr2">'+FSL('pi','Etapa',[['prospecto','Prospecto'],['propuesta','Propuesta'],['negociacion','Negociación'],['ejecucion','Ejecución'],['cerrado_ganado','Ganado'],['cerrado_perdido','Perdido']],p&&p.pipeline||'propuesta')+FSL('es','Estado',[['activo','Activo'],['pausado','Pausado'],['cerrado','Cerrado']],p&&p.estado||'activo')+'</div>'
+      +FLD('dr','Link Google Drive (carpeta del proyecto)','url',p&&p.drive_url)
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sp(\''+( id||'')+'\')">Guardar proyecto</button></div>'
+      +'</div>');
+  },
+  _sp: async function(id){
+    var nm = fv('nm'); if(!nm){toast('Nombre requerido','r');return;}
+    var data = {cliente_id:fv('ci'),owner_id:fv('oi'),nombre:nm,descripcion:fv('dc'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,presupuesto:Number(fv('bud'))||0,pipeline:fv('pi'),estado:fv('es'),drive_url:fv('dr')||null};
+    var r = id ? await upd('proyectos',id,data) : await ins('proyectos',data);
+    if(r){mClose();await refresh();toast(id?'Proyecto actualizado':'Proyecto creado ✓','g');}
+  },
+  baja: async function(id){
+    if(!confirm('¿Dar de baja este proyecto?')) return;
+    await upd('proyectos',id,{estado:'cerrado'});
+    await refresh(); toast('Proyecto cerrado','g');
+  },
+  pd: function(id){
+    var p = xid(DB.proyectos,id); if(!p) return;
+    var tasks = DB.tareas.filter(function(t){return t.proyecto_id===id;});
+    var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
+    var pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
+    var fi = p.fecha_inicio?new Date(p.fecha_inicio):null;
+    var fv2 = p.fecha_vencimiento?new Date(p.fecha_vencimiento):null;
+    var tu = fi?Math.ceil((new Date()-fi)/864e5):0;
+    var td2 = fi&&fv2?Math.ceil((fv2-fi)/864e5):100;
+    var tp = td2>0?Math.round(tu/td2*100):0;
+    var hcl = pct>=tp-10?'dg':pct>=tp-25?'dy':'dr';
+    var hTxt = hcl==='dg'?'Saludable':hcl==='dy'?'En riesgo':'Atrasado';
+    var tH = tasks.map(function(t){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">'
+        +'<span style="font-size:13px;font-weight:700;cursor:pointer;color:var(--navy)" onclick="mClose();A.td(\''+t.id+'\')">'+esc(t.titulo)+'</span>'
+        +'<div style="display:flex;gap:7px;align-items:center">'+sem(t)+' '+bSt(t.estado)+'</div></div>';
+    }).join('') || '<div style="color:var(--muted);font-size:13px">Sin tareas</div>';
+    var drBtn = p.drive_url ? '<a href="'+esc(p.drive_url)+'" target="_blank" class="btn btnc">📁 Abrir carpeta Drive</a>' : '<span style="color:var(--muted);font-size:13px">Sin carpeta Drive configurada</span>';
+    mOpen('📁 '+p.nombre,
+      '<div style="display:grid;gap:16px">'
+      +'<div class="hbar"><span class="dot '+hcl+'" style="width:12px;height:12px"></span>'+hTxt+' · Avance: '+pct+'% vs Tiempo: '+tp+'%</div>'
+      +'<div class="dg3"><div class="di"><div class="dl">Cliente</div><div class="dv">'+esc(cNm(p.cliente_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(p.owner_id))+'</div></div><div class="di"><div class="dl">Etapa</div><div class="dv">'+bPi(p.pipeline)+'</div></div><div class="di"><div class="dl">Inicio</div><div class="dv">'+fmt(p.fecha_inicio)+'</div></div><div class="di"><div class="dl">Vencimiento</div><div class="dv">'+fmt(p.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Estado</div><div class="dv">'+bSt(p.estado)+'</div></div></div>'
+      +'<div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700">Avance '+pct+'%</span><span style="font-size:12px;color:var(--muted)">'+done+'/'+tasks.length+'</span></div><div class="pb" style="height:7px"><div class="pf" style="width:'+pct+'%"></div></div></div>'
+      +'<div>'+drBtn+'</div>'
+      +'<div><div style="display:flex;justify-content:space-between;margin-bottom:10px"><strong>Tareas ('+tasks.length+')</strong><button class="btn btns btnc" onclick="mClose();A.nt(\''+id+'\')">+ Tarea</button></div>'+tH+'</div>'
+      +(adm()?'<div class="fa"><button class="btn btng" onclick="mClose();A.ep(\''+id+'\')">✏️ Editar</button></div>':'')
+      +'</div>',true);
+  },
+
+  /* TAREA */
+  nt: function(pid){ if(!DB.proyectos.length){toast('Primero crea un proyecto','r');return;} A._tm(null,pid||''); },
+  _tm: function(id,pid){
+    var t = id ? xid(DB.tareas,id) : null;
+    var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
+    var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
+    var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    mOpen(t?'Editar tarea':'Nueva tarea',
+      '<div class="fg">'
+      +'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
+      +FLD('ti','Título de la tarea','text',t&&t.titulo)
+      +FTA('dc','Descripción',t&&t.descripcion)
+      +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
+      +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
+      +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
+      +'</div>');
+  },
+  _st: async function(id){
+    var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
+    var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:fv('dc'),prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
+    var r = id ? await upd('tareas',id,data) : await ins('tareas',data);
+    if(r){mClose();await refresh();toast(id?'Tarea actualizada':'Tarea creada ✓','g');}
+  },
+  td: function(id){
+    var t = xid(DB.tareas,id); if(!t) return;
+    var subs = DB.subtareas.filter(function(s){return s.tarea_id===id;});
+    var coms = DB.comentarios.filter(function(c){return c.tarea_id===id;});
+    var fils = DB.entregables.filter(function(f){return f.tarea_id===id;});
+    var stBtns = ['pendiente','en_proceso','en_revision','aprobada','terminada'].map(function(s){
+      var ic = {pendiente:'📋',en_proceso:'⚙️',en_revision:'🔍',aprobada:'✅',terminada:'🏁'};
+      return '<button class="btn btns '+(t.estado===s?'btnc':'btng')+'" onclick="A.ss(\''+id+'\',\''+s+'\');mClose()">'+ic[s]+' '+s.replace('_',' ')+'</button>';
+    }).join('');
+    var subH = subs.map(function(s){
+      return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px"><span>'+esc(s.titulo)+'</span><div style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted)">'+esc(uNm(s.owner_id))+'</span>'+bSt(s.estado)+'</div></div>';
+    }).join('') || '<div style="color:var(--muted);font-size:13px">Sin subtareas</div>';
+    var comH = coms.map(function(c){
+      return '<div style="padding:9px;background:var(--surface2);border-radius:var(--rs);margin-bottom:7px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><strong style="font-size:13px">'+esc(uNm(c.usuario_id))+'</strong><span style="font-size:11px;color:var(--muted)">'+fmtdt(c.created_at)+'</span></div><p style="font-size:13px;margin:0">'+esc(c.texto)+'</p></div>';
+    }).join('') || '<div style="color:var(--muted);font-size:13px">Sin comentarios</div>';
+    var filH = fils.map(function(f){
+      return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center"><div><strong>'+esc(f.nombre)+'</strong><span style="color:var(--muted);margin-left:7px">v'+esc(f.version)+'</span></div><a href="'+esc(f.url)+'" target="_blank" class="btn btns btng">🔗 Abrir</a></div>';
+    }).join('') || '<div style="color:var(--muted);font-size:13px">Sin entregables</div>';
+    var ef = t.horas_estimadas ? Math.round(t.horas_reales/t.horas_estimadas*100) : 0;
+    mOpen('✓ '+t.titulo,
+      '<div style="display:grid;gap:15px">'
+      +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div>'
+      +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Vence</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
+      +'<p style="color:var(--muted);font-size:14px;margin:0">'+esc(t.descripcion||'Sin descripción.')+'</p>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
+      +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Subtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Subtarea</button></div>'+subH+'</div>'
+      +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Comentarios ('+coms.length+')</strong><button class="btn btns btng" onclick="A.ncom(\''+id+'\')">💬 Comentar</button></div>'+comH+'</div>'
+      +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Entregables ('+fils.length+')</strong><button class="btn btns btng" onclick="A.nfil(\''+id+'\')">📎 Agregar</button></div>'+filH+'</div>'
+      +(adm()?'<div class="fa"><button class="btn btns btng" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar</button><button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button></div>':'')
+      +'</div>',true);
+  },
+  ss: async function(id,st){
+    await upd('tareas',id,{estado:st});
+    await refresh(); toast('Estado actualizado ✓','g');
+  },
+  dt: async function(id){
+    if(!confirm('¿Eliminar esta tarea?')) return;
+    await del('tareas',id); mClose(); await refresh(); toast('Tarea eliminada');
+  },
+
+  /* SUBTAREA */
+  nsub: function(tid){
+    mClose();
+    var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    mOpen('Nueva subtarea',
+      '<div class="fg">'
+      +FLD('ti','Título')
+      +'<div class="fr2">'+FSL('oi','Responsable',uO,SES.userId)+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['terminada','Terminada']],'pendiente')+'</div>'
+      +FLD('fv','Fecha término','date',pd(5))
+      +'<div class="fa"><button class="btn btng" onclick="mClose();A.td(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A._ssub(\''+tid+'\')">Guardar</button></div>'
+      +'</div>');
+  },
+  _ssub: async function(tid){
+    var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
+    var r = await ins('subtareas',{tarea_id:tid,owner_id:fv('oi'),titulo:ti,estado:fv('es'),fecha_vencimiento:fv('fv')||null});
+    if(r){await loadAll();mClose();A.td(tid);toast('Subtarea creada ✓','g');}
+  },
+
+  /* COMENTARIO */
+  ncom: function(tid){
+    mClose();
+    mOpen('Nuevo comentario',
+      '<div class="fg">'+FTA('tx','Comentario')
+      +'<div class="fa"><button class="btn btng" onclick="mClose();A.td(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A._scom(\''+tid+'\')">Guardar</button></div></div>');
+  },
+  _scom: async function(tid){
+    var tx = fv('tx'); if(!tx){toast('Escribe algo','r');return;}
+    var r = await ins('comentarios',{tarea_id:tid,usuario_id:SES.userId,texto:tx});
+    if(r){await loadAll();mClose();A.td(tid);toast('Comentario agregado ✓','g');}
+  },
+
+  /* ENTREGABLE */
+  nfil: function(tid){
+    mClose();
+    mOpen('Agregar entregable',
+      '<div class="fg">'
+      +'<div class="fr2">'+FLD('nm','Nombre del archivo')+FLD('ti','Tipo (Plano, PDF…)')+'</div>'
+      +FLD('ur','URL o Link Google Drive')
+      +FLD('ve','Versión','text','1.0')
+      +'<div class="fa"><button class="btn btng" onclick="mClose();A.td(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A._sfil(\''+tid+'\')">Guardar</button></div>'
+      +'</div>');
+  },
+  _sfil: async function(tid){
+    var nm = fv('nm'), ur = fv('ur');
+    if(!nm||!ur){toast('Nombre y URL requeridos','r');return;}
+    var r = await ins('entregables',{tarea_id:tid,usuario_id:SES.userId,nombre:nm,url:ur,tipo:fv('ti'),version:fv('ve')||'1'});
+    if(r){await loadAll();mClose();A.td(tid);toast('Entregable guardado ✓','g');}
+  },
+
+  /* CLIENTE */
+  nc: function(){ A._cm(null); },
+  ec: function(id){ A._cm(id); },
+  _cm: function(id){
+    var c = id ? xid(DB.clientes,id) : null;
+    mOpen(c?'Editar cliente':'Nuevo cliente',
+      '<div class="fg">'
+      +'<div class="fr2">'+FLD('nm','Nombre de la empresa','text',c&&c.nombre)+FLD('ct','Persona de contacto','text',c&&c.contacto)+'</div>'
+      +'<div class="fr2">'+FLD('em','Email','email',c&&c.email)+FLD('te','Teléfono','text',c&&c.telefono)+'</div>'
+      +FLD('dr','Link Google Drive (contratos / cotizaciones)','url',c&&c.drive_url)
+      +'<div class="fr3">'+FLD('dp','Día de pago','number',c&&c.dia_pago||'15')+FLD('df','Día de facturación','number',c&&c.dia_factura||'10')+FSL('es','Estado',[['activo','Activo'],['inactivo','Inactivo']],c&&c.estado||'activo')+'</div>'
+      +FTA('nt','Notas',c&&c.notas)
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sc(\''+( id||'')+'\')">Guardar</button></div>'
+      +'</div>');
+  },
+  _sc: async function(id){
+    var nm = fv('nm'); if(!nm){toast('Nombre requerido','r');return;}
+    var data = {nombre:nm,contacto:fv('ct'),email:fv('em'),telefono:fv('te'),drive_url:fv('dr')||null,dia_pago:Number(fv('dp'))||0,dia_factura:Number(fv('df'))||0,estado:fv('es'),notas:fv('nt')};
+    var r = id ? await upd('clientes',id,data) : await ins('clientes',data);
+    if(r){mClose();await refresh();toast(id?'Cliente actualizado':'Cliente registrado ✓','g');}
+  },
+  pagos: function(cid){
+    var pays = DB.pagos.filter(function(p){return p.cliente_id===cid;});
+    var c = xid(DB.clientes,cid);
+    var rows = pays.map(function(pay){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)">'
+        +'<div><div style="font-weight:700;font-size:14px">'+esc(pay.concepto)+'</div><div style="font-size:12px;color:var(--muted)">Factura: '+fmt(pay.fecha_factura)+' · Vence: '+fmt(pay.fecha_vencimiento)+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:16px;font-weight:900;color:var(--navy)">$'+Number(pay.monto).toLocaleString()+'</div>'+bSt(pay.estado)
+        +(pay.estado!=='pagado'?'<br><button class="btn btns btng" style="margin-top:5px" onclick="A.mp(\''+pay.id+'\')">✓ Cobrado</button>':'')
+        +'</div></div>';
+    }).join('') || '<div class="empty"><p>Sin pagos registrados</p></div>';
+    mOpen('💰 Pagos — '+c.nombre,
+      '<div style="margin-bottom:13px;display:flex;justify-content:flex-end"><button class="btn btnc" onclick="mClose();A.np2(\''+cid+'\')">+ Registrar pago</button></div>'+rows,true);
+  },
+
+  /* PAGO */
+  np2: function(cid){
+    mClose();
+    var cO = DB.clientes.map(function(c){return [c.id,c.nombre];});
+    var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
+    mOpen('Registrar pago',
+      '<div class="fg">'
+      +FSL('ci','Cliente',cO,cid||'')
+      +FSL('pi','Proyecto',pO,'')
+      +FLD('co','Concepto del pago')
+      +FLD('mo','Monto','number')
+      +'<div class="fr2">'+FLD('fi','Fecha emisión factura','date',today())+FLD('fv','Fecha límite de pago','date',pd(15))+'</div>'
+      +FSL('es','Estado',[['pendiente','Pendiente'],['pagado','Pagado']],'pendiente')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sp2()">Guardar</button></div>'
+      +'</div>');
+  },
+  _sp2: async function(){
+    var co = fv('co'), mo = fv('mo');
+    if(!co||!mo){toast('Concepto y monto requeridos','r');return;}
+    var r = await ins('pagos',{cliente_id:fv('ci'),proyecto_id:fv('pi')||null,concepto:co,monto:Number(mo),estado:fv('es'),fecha_factura:fv('fi')||null,fecha_vencimiento:fv('fv')||null,fecha_pago:null});
+    if(r){mClose();await refresh();toast('Pago registrado ✓','g');}
+  },
+  mp: async function(id){
+    await upd('pagos',id,{estado:'pagado',fecha_pago:today()});
+    mClose(); await refresh(); toast('Pago cobrado ✓','g');
+  },
+
+  /* USUARIO */
+  nu: function(){ A._um(null); },
+  eu: function(id){ A._um(id); },
+  _um: function(id){
+    var u = id ? xid(DB.usuarios,id) : null;
+    mOpen(u?'Editar usuario':'Nuevo usuario',
+      '<div class="fg">'
+      +'<div class="fr2">'+FLD('nm','Nombre completo','text',u&&u.nombre)+FLD('us','Usuario (login)','text',u&&u.username)+'</div>'
+      +'<div class="fr2">'+FLD('pi','PIN','text',u&&u.pin)+FSL('ro','Rol',[['admin','Administrador'],['user','Usuario']],u&&u.rol||'user')+'</div>'
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._su(\''+( id||'')+'\')">Guardar</button></div>'
+      +'</div>');
+  },
+  _su: async function(id){
+    var nm=fv('nm'),us=fv('us'),pi=fv('pi');
+    if(!nm||!us||!pi){toast('Todos los campos son requeridos','r');return;}
+    if(!id && DB.usuarios.some(function(u){return u.username===us;})){toast('Ese usuario ya existe','r');return;}
+    var data = {nombre:nm,username:us,pin:pi,rol:fv('ro')};
+    var r = id ? await upd('usuarios',id,data) : await ins('usuarios',Object.assign({activo:true},data));
+    if(r){mClose();await refresh();buildSelector();toast(id?'Usuario actualizado':'Usuario creado ✓','g');}
+  },
+  tu: async function(id){
+    var u = xid(DB.usuarios,id); if(!u) return;
+    await upd('usuarios',id,{activo:!u.activo});
+    await refresh(); toast(u.activo?'Usuario desactivado':'Usuario activado','g');
+  }
+};
+
+/* ── LOGIN ── */
 function buildSelector(){
-  var users = state.users.filter(function(u){ return u.active; });
-  var html = '';
-  for(var i=0; i<users.length; i++){
-    var u = users[i];
-    var av = initials(u.name);
-    html += '<button type="button" class="user-sel-btn" data-uid="'+u.id+'">'
-          + '<div class="usel-av">'+av+'</div>'
-          + esc(u.name)
-          + '</button>';
-  }
-  document.getElementById('user-selector').innerHTML = html;
-  // Attach click handlers
-  var btns = document.querySelectorAll('.user-sel-btn');
-  for(var j=0; j<btns.length; j++){
-    btns[j].addEventListener('click', (function(btn, uid, name){
-      return function(){
-        selectedUid = uid;
-        var all = document.querySelectorAll('.user-sel-btn');
-        for(var k=0; k<all.length; k++) all[k].classList.remove('selected');
-        btn.classList.add('selected');
-        document.getElementById('pin-label').textContent = 'PIN de ' + name;
-        document.getElementById('pin-section').style.display = 'block';
-        document.getElementById('btn-login').style.display = 'block';
-        document.getElementById('login-err').textContent = '';
-        var pi = document.getElementById('f-pin');
-        pi.value = '';
-        setTimeout(function(){ pi.focus(); }, 80);
-      };
-    })(btns[j], users[j].id, users[j].name));
-  }
+  var users = DB.usuarios.filter(function(u){return u.activo;});
+  var container = document.getElementById('user-sel');
+  if(!container) return;
+  container.innerHTML = '';
+  users.forEach(function(u){
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'usbtn';
+    btn.innerHTML = '<div class="usav">'+ini(u.nombre)+'</div>'+esc(u.nombre);
+    btn.addEventListener('click', function(){
+      SELUID = u.id;
+      container.querySelectorAll('.usbtn').forEach(function(b){ b.classList.remove('sel'); });
+      btn.classList.add('sel');
+      document.getElementById('pin-lbl').textContent = 'PIN de '+u.nombre;
+      document.getElementById('pin-wrap').style.display = 'block';
+      document.getElementById('btn-login').style.display = 'block';
+      document.getElementById('lerr').textContent = '';
+      var pi = document.getElementById('f-pin');
+      pi.value = '';
+      setTimeout(function(){ pi.focus(); }, 80);
+    });
+    container.appendChild(btn);
+  });
 }
 
 function doLogin(){
-  if(!selectedUid){
-    document.getElementById('login-err').textContent = 'Selecciona tu nombre.';
-    return;
-  }
+  if(!SELUID){ document.getElementById('lerr').textContent='Selecciona tu nombre.'; return; }
   var pin = document.getElementById('f-pin').value.trim();
-  if(!pin){
-    document.getElementById('login-err').textContent = 'Ingresa tu PIN.';
-    return;
-  }
+  if(!pin){ document.getElementById('lerr').textContent='Ingresa tu PIN.'; return; }
   var found = null;
-  for(var i=0; i<state.users.length; i++){
-    var u = state.users[i];
-    if(u.id === selectedUid && String(u.pin) === String(pin) && u.active){
-      found = u; break;
-    }
+  for(var i=0;i<DB.usuarios.length;i++){
+    var u = DB.usuarios[i];
+    if(u.id===SELUID && String(u.pin)===String(pin) && u.activo){ found=u; break; }
   }
   if(!found){
-    document.getElementById('login-err').textContent = 'PIN incorrecto.';
+    document.getElementById('lerr').textContent = 'PIN incorrecto.';
     document.getElementById('f-pin').value = '';
     document.getElementById('f-pin').focus();
     return;
   }
-  session = {userId: found.id};
-  document.getElementById('login-err').textContent = '';
-  document.body.classList.add('is-app');
-  document.getElementById('sidebar-avatar').textContent = initials(found.name);
-  document.getElementById('sidebar-name').textContent = found.name;
-  document.getElementById('sidebar-role').textContent = found.role === 'admin' ? 'Administrador' : 'Usuario';
-  if(found.role === 'admin') document.getElementById('nav-admin').style.display = 'block';
-  navigate('dashboard');
+  SES = {userId: found.id};
+  document.getElementById('lerr').textContent = '';
+  document.body.classList.add('logged');
+  document.getElementById('sb-av').textContent = ini(found.nombre);
+  document.getElementById('sb-n').textContent = found.nombre;
+  document.getElementById('sb-r').textContent = found.rol==='admin' ? 'Administrador' : 'Usuario';
+  if(found.rol==='admin') document.getElementById('nav-admin').style.display = 'block';
+  document.getElementById('tb-live').style.display = 'block';
+  nav('dashboard');
 }
 
 document.getElementById('btn-login').addEventListener('click', doLogin);
-document.getElementById('f-pin').addEventListener('keydown', function(e){
-  if(e.key === 'Enter') doLogin();
-});
-
-document.getElementById('btn-logout').addEventListener('click', function(){
+document.getElementById('f-pin').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+document.getElementById('btn-out').addEventListener('click', function(){
   if(!confirm('¿Cerrar sesión?')) return;
-  session = null; selectedUid = null;
-  document.body.classList.remove('is-app');
+  SES=null; SELUID='';
+  document.body.classList.remove('logged');
   document.getElementById('nav-admin').style.display = 'none';
-  document.getElementById('pin-section').style.display = 'none';
+  document.getElementById('tb-live').style.display = 'none';
+  document.getElementById('pin-wrap').style.display = 'none';
   document.getElementById('btn-login').style.display = 'none';
   document.getElementById('f-pin').value = '';
-  document.getElementById('login-err').textContent = '';
-  var btns = document.querySelectorAll('.user-sel-btn');
-  for(var i=0; i<btns.length; i++) btns[i].classList.remove('selected');
+  document.getElementById('lerr').textContent = '';
+  document.querySelectorAll('.usbtn').forEach(function(b){ b.classList.remove('sel'); });
 });
 
-// Init date
-document.getElementById('tb-date').textContent = new Date().toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+/* ── DATE ── */
+document.getElementById('tb-date').textContent = new Date().toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
-// ── INIT: cargar state y mostrar selector ─────────────────
-(function(){
-  try{
-    var s = JSON.parse(localStorage.getItem('smos_v2'));
-    if(s && s.users && s.users.length > 0){
-      var hasAdmin = false;
-      for(var i=0; i<s.users.length; i++){
-        if(s.users[i].username === 'admin'){ hasAdmin = true; break; }
-      }
-      if(!hasAdmin){
-        s.users.unshift({id:'u1',name:'Administrador',username:'admin',pin:'0000',role:'admin',active:true});
-      }
-      state = s;
-      localStorage.setItem('smos_v2', JSON.stringify(state));
-    } else {
-      state = defaultState();
-      localStorage.setItem('smos_v2', JSON.stringify(state));
-    }
-  } catch(e){
-    state = defaultState();
-    localStorage.setItem('smos_v2', JSON.stringify(state));
+/* ── INIT ── */
+(async function(){
+  document.getElementById('vc').innerHTML = '<div class="loading"><div class="spin"></div><span>Conectando con Supabase…</span></div>';
+  var ok = await loadAll();
+  if(ok){
+    buildSelector();
+    document.getElementById('vc').innerHTML = '';
+  } else {
+    document.getElementById('vc').innerHTML = '<div class="loading"><span style="color:var(--red)">⚠️ Error de conexión. Recarga la página.</span></div>';
   }
-  buildSelector();
 })();
+
+/* ── REALTIME ── */
+var TABLES = ['proyectos','tareas','subtareas','comentarios','entregables','pagos','clientes','usuarios','reuniones'];
+TABLES.forEach(function(tbl){
+  sb.channel('rt:'+tbl)
+    .on('postgres_changes',{event:'*',schema:'public',table:tbl},function(){
+      if(SES) refresh();
+    })
+    .subscribe();
+});
 </script>
 </body>
 </html>
