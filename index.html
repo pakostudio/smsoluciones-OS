@@ -247,7 +247,7 @@ tr:hover td{background:var(--surface2)}
       <img src="assets/sm-logo.png" alt="SM Soluciones" style="width:130px;height:auto">
       <div class="lbrand">
         <div><span class="sm">SM</span><span class="sol">.SOLUCIONES</span></div>
-        <div class="ltag">Different results require different measures</div>
+        <div class="ltag">Inteligencia Comercial</div>
       </div>
     </div>
     <div class="lfield">
@@ -904,9 +904,9 @@ var A = {
     if(r){mClose();await refresh();toast(id?'Proyecto actualizado':'Proyecto creado ✓','g');}
   },
   baja: async function(id){
-    if(!confirm('¿Dar de baja este proyecto?')) return;
-    await upd('proyectos',id,{estado:'cerrado'});
-    await refresh(); toast('Proyecto cerrado','g');
+    if(!confirm('¿Dar de baja este proyecto? Se eliminará permanentemente.')) return;
+    var ok = await del('proyectos',id);
+    if(ok){ await refresh(); toast('Proyecto dado de baja ✓','g'); }
   },
   pd: function(id){
     var p = xid(DB.proyectos,id); if(!p) return;
