@@ -347,7 +347,7 @@ function xid(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return ar
 function uNm(id){ var u=xid(DB.usuarios,id); return u?u.nombre:'?'; }
 function cNm(id){ var c=xid(DB.clientes,id); return c?c.nombre:'?'; }
 function pNm(id){ var p=xid(DB.proyectos,id); return p?p.nombre:'?'; }
-function ini(s){ return (s||'?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2); }
+function ini(s){ var parts=(s||'?').split(' ').filter(function(w){return w.length>0;}); return (parts.length>=2?parts[0][0]+parts[1][0]:parts[0].slice(0,2)).toUpperCase(); }
 function me(){ return SES ? xid(DB.usuarios,SES.userId) : null; }
 function adm(){ var u=me(); return u && u.rol==='admin'; }
 
@@ -520,6 +520,7 @@ function updBadge(){
   else el.style.display='none';
 }
 function nav(v){
+  if(v!=='tareas'&&v!=='kanban') FPID='';
   VIEW = v;
   document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===v); });
   render();
@@ -575,7 +576,7 @@ function vAL(){
 
 /* PROYECTOS */
 function vPR(){
-  var projs = myProjs();
+  var projs = myProjs().filter(function(p){return p.estado!=='cerrado';});
   var html = projs.map(function(p){
     var pt = DB.tareas.filter(function(t){return t.proyecto_id===p.id;});
     var pd2 = pt.filter(function(t){return t.estado==='terminada';}).length;
@@ -667,9 +668,10 @@ function vKA(){
 /* GANTT */
 function vGA(){
   var projs = myProjs();
-  var start = new Date('2025-01-01');
+  var yr = new Date().getFullYear();
+  var start = new Date(yr+'-01-01');
   var months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  var total = 365;
+  var total = ((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
   var todayOff = Math.round((new Date()-start)/864e5);
   var todayPct = (todayOff/total*100).toFixed(1);
   var rows = [];
@@ -689,7 +691,7 @@ function vGA(){
         +'</tr>');
     });
   });
-  return '<div class="sh" style="margin-bottom:14px"><h2>Gantt — 2025</h2><span style="font-size:12px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:4px;opacity:.6"></span>Hoy</span></div>'
+  return '<div class="sh" style="margin-bottom:14px"><h2>Gantt — '+yr+'</h2><span style="font-size:12px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:4px;opacity:.6"></span>Hoy</span></div>'
     +'<div class="card"><div class="gwrap"><table class="gtable" style="width:100%"><thead><tr>'
     +'<th style="text-align:left;min-width:200px;padding:8px 13px">Tarea</th>'
     +'<th style="min-width:90px;text-align:left;padding:8px 13px;color:var(--muted);font-size:11px">Proyecto</th>'
@@ -700,9 +702,13 @@ function vGA(){
 }
 
 /* CALENDARIO */
+var CAL_OFF = 0; // offset de meses desde hoy
 function vCA(){
+  var base = new Date();
+  base.setDate(1);
+  base.setMonth(base.getMonth()+CAL_OFF);
+  var yr = base.getFullYear(), mo = base.getMonth();
   var now2 = new Date();
-  var yr = now2.getFullYear(), mo = now2.getMonth();
   var fd = new Date(yr,mo,1).getDay();
   var dim = new Date(yr,mo+1,0).getDate();
   var dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -737,10 +743,14 @@ function vCA(){
   for(var i=1;i<=dim;i++) cells.push(i);
   var cH = cells.map(function(day){
     if(!day) return '<div style="min-height:84px"></div>';
+    var isToday = day===now2.getDate()&&mo===now2.getMonth()&&yr===now2.getFullYear();
     var evs = (byD[day]||[]).slice(0,3).map(function(ev){return '<div class="cev '+ev.c+'" title="'+esc(ev.l)+'">'+esc(ev.l.slice(0,16))+'</div>';}).join('');
-    return '<div class="calday'+(day===now2.getDate()?' today':'')+'"><div class="caldn">'+day+'</div>'+evs+'</div>';
+    return '<div class="calday'+(isToday?' today':'')+'"><div class="caldn">'+day+'</div>'+evs+'</div>';
   }).join('');
-  return '<div class="sh" style="margin-bottom:14px"><h2>Calendario — '+mn[mo]+' '+yr+'</h2></div>'
+  return '<div class="sh" style="margin-bottom:14px"><h2>Calendario — '+mn[mo]+' '+yr+'</h2>'
+    +'<div style="display:flex;gap:8px"><button class="btn btns btng" onclick="CAL_OFF--;render()">← Anterior</button>'
+    +(CAL_OFF!==0?'<button class="btn btns btng" onclick="CAL_OFF=0;render()">Hoy</button>':'')
+    +'<button class="btn btns btng" onclick="CAL_OFF++;render()">Siguiente →</button></div></div>'
     +'<div class="card"><div class="calh">'+dn.map(function(d){return '<span>'+d+'</span>';}).join('')+'</div><div class="calg">'+cH+'</div></div>';
 }
 
@@ -843,7 +853,7 @@ function vRE(){
       }).join('')||'<tr><td colspan="6"><div class="empty"><p>Sin tareas asignadas</p></div></td></tr>'
       +'</tbody></table></div></div>';
   }
-  var tB = DB.proyectos.reduce(function(s,p){return s+(Number(p.presupuesto)||0);},0);
+  var tB = DB.proyectos.filter(function(p){return p.estado!=='cerrado';}).reduce(function(s,p){return s+(Number(p.presupuesto)||0);},0);
   var tP = DB.pagos.filter(function(p){return p.estado==='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
   var tPe = DB.pagos.filter(function(p){return p.estado!=='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
   var eff = DB.tareas.length ? Math.round(DB.tareas.filter(function(t){return t.estado==='terminada';}).length/DB.tareas.length*100) : 0;
@@ -998,7 +1008,10 @@ var A = {
   },
   dt: async function(id){
     if(!confirm('¿Eliminar esta tarea?')) return;
-    await del('tareas',id); mClose(); await refresh(); toast('Tarea eliminada');
+    await sb.from('comentarios').delete().eq('tarea_id',id);
+    await sb.from('subtareas').delete().eq('tarea_id',id);
+    await sb.from('entregables').delete().eq('tarea_id',id);
+    await del('tareas',id); mClose(); await refresh(); toast('Tarea eliminada','g');
   },
 
   /* SUBTAREA */
