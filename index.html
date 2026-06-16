@@ -282,7 +282,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="nav-sec">
       <div class="nav-lbl">General</div>
-      <button class="nbtn active" data-v="dashboard"><span class="ni">◈</span>Dashboard</button>
+      <button class="nbtn active" data-v="dashboard"><span class="ni">◈</span>Mis proyectos</button>
       <button class="nbtn" data-v="alertas"><span class="ni">🔔</span>Alertas<span id="abadge" style="margin-left:auto;background:var(--red);border-radius:999px;padding:1px 7px;font-size:11px;font-weight:800;color:#fff;display:none">0</span></button>
     </div>
     <div class="nav-sec">
@@ -621,8 +621,8 @@ function render(){
   updTopbar();
 }
 function updTopbar(){
-  var nm = {dashboard:'Dashboard',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
-  var ar = {dashboard:'Vista Ejecutiva',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Análisis'};
+  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
+  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
   updClock();
@@ -644,7 +644,7 @@ function updBadge(){
   else el.style.display='none';
 }
 function nav(v){
-  if(v!=='tareas'&&v!=='kanban') FPID='';
+  if(['proyectos','tareas','kanban','gantt','calendario','pipeline','reportes'].indexOf(v)<0) FPID='';
   VIEW = v;
   document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===v); });
   render();
@@ -659,40 +659,100 @@ document.querySelectorAll('.nbtn').forEach(function(b){ b.addEventListener('clic
 
 /* ══ VIEWS ══════════════════════════════════════════════════ */
 
+function projectTasks(pid){
+  return DB.tareas.filter(function(t){ return t.proyecto_id===pid && (adm() || t.owner_id===SES.userId || myProjs().some(function(p){return p.id===pid;})); });
+}
+function projectStats(p){
+  var tasks = projectTasks(p.id);
+  var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
+  var progress = tasks.length ? Math.round(done/tasks.length*100) : 0;
+  var overdue = tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
+  var noNext = tasks.filter(function(t){return crmEnabled() && t.estado!=='terminada' && !nextAction(t);}).length;
+  var next = tasks.filter(function(t){return t.estado!=='terminada';}).sort(function(a,b){
+    return dayDiff(a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_vencimiento||pd(999));
+  })[0];
+  return {tasks:tasks,done:done,progress:progress,overdue:overdue,noNext:noNext,next:next};
+}
+function projectTree(p,limit){
+  var tasks = projectTasks(p.id).sort(function(a,b){
+    return dayDiff(a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_vencimiento||pd(999));
+  });
+  if(limit) tasks = tasks.slice(0,limit);
+  if(!tasks.length) return '<div class="empty"><p>Sin tareas madre en este proyecto</p></div>';
+  return tasks.map(function(t){
+    var subs = DB.subtareas.filter(function(s){return s.tarea_id===t.id;});
+    var subH = subs.length ? subs.map(function(s){
+      return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0 7px 18px;border-top:1px solid var(--line);font-size:12px">'
+        +'<div><span style="color:var(--muted)">↳</span> <strong>'+esc(s.titulo)+'</strong><span style="color:var(--muted);margin-left:7px">'+esc(uNm(s.owner_id))+' · '+fmt(s.fecha_vencimiento)+'</span></div>'
+        +'<div style="display:flex;gap:5px;align-items:center">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar</button></div>'
+        +'</div>';
+    }).join('') : '<div style="padding:7px 0 0 18px;color:var(--muted);font-size:12px">Sin subtareas</div>';
+    return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:12px;background:var(--surface);margin-bottom:10px">'
+      +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start">'
+      +'<div><div style="font-size:15px;font-weight:900;color:var(--ink);cursor:pointer" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:6px">'+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Ver</button>'
+      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar</button>':'')
+      +'<button class="btn btns btng" onclick="A.nsub(\''+t.id+'\')">+ Subtarea</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
+      +'</div>'+subH+'</div>';
+  }).join('');
+}
+function projectReportHtml(pid){
+  var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
+  var tasks=projectTasks(pid), done=tasks.filter(function(t){return t.estado==='terminada';}).length;
+  var inP=tasks.filter(function(t){return t.estado==='en_proceso';}).length;
+  var over=tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
+  var noNext=tasks.filter(function(t){return crmEnabled() && t.estado!=='terminada' && !nextAction(t);}).length;
+  var pct=tasks.length?Math.round(done/tasks.length*100):0;
+  var pays=DB.pagos.filter(function(pay){return pay.proyecto_id===pid;});
+  var paid=pays.filter(function(pay){return pay.estado==='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
+  var pending=pays.filter(function(pay){return pay.estado!=='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
+  var rows=tasks.map(function(t){
+    return '<tr><td><span style="font-weight:800;cursor:pointer;color:var(--navy)" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</span></td><td>'+bSt(t.estado)+'</td><td>'+sem(t)+'</td><td style="font-size:12px;color:var(--muted)">'+esc(nextAction(t)||'—')+'</td><td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td></tr>';
+  }).join('') || '<tr><td colspan="5"><div class="empty"><p>Sin tareas</p></div></td></tr>';
+  return '<div class="sh"><h2>Reporte · '+esc(p.nombre)+'</h2><button class="btn btns btng" onclick="A.openProject(\''+pid+'\')">Volver al proyecto</button></div>'
+    +'<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
+    +'<div class="card"><div class="ch"><h3>Tareas y seguimiento</h3></div><div class="tw"><table><thead><tr><th>Tarea madre</th><th>Estado</th><th>Semáforo</th><th>Siguiente acción</th><th>Vence</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function projectCard(p,compact){
+  var s=projectStats(p);
+  var h=s.overdue>0?'dr':s.noNext>0?'dy':'dg';
+  var next=s.next?esc(s.next.titulo)+' · '+fmt(s.next.fecha_vencimiento):'Sin pendientes';
+  return '<div class="card" style="border-left:3px solid var(--cyan)">'
+    +'<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">'
+    +'<div><div style="font-size:18px;font-weight:900;color:var(--ink);cursor:pointer" onclick="A.openProject(\''+p.id+'\')">'+esc(p.nombre)+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+bPi(p.pipeline)+' '+bSt(p.estado)+'<button class="btn btns btnc" onclick="A.openProject(\''+p.id+'\')">Entrar</button></div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 10px"><div class="di"><div class="dl">Avance</div><div class="dv">'+s.progress+'%</div></div><div class="di"><div class="dl">Tareas</div><div class="dv">'+s.tasks.length+'</div></div><div class="di"><div class="dl">Riesgos</div><div class="dv">'+(s.overdue+s.noNext)+'</div></div><div class="di"><div class="dl">Próximo</div><div class="dv" style="font-size:13px">'+next+'</div></div></div>'
+    +'<div style="display:flex;align-items:center;gap:9px"><div class="pb" style="flex:1"><div class="pf" style="width:'+s.progress+'%"></div></div><span class="dot '+h+'" style="width:10px;height:10px"></span></div>'
+    +(compact?'':'<div style="margin-top:12px">'+projectTree(p,3)+'</div>')
+    +'</div>';
+}
+function projectWorkspace(p){
+  var s=projectStats(p);
+  return '<div class="sh"><div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Tarea madre</button><button class="btn btng" onclick="FPID=\''+p.id+'\';nav(\'reportes\')">Reporte</button><button class="btn btng" onclick="FPID=\''+p.id+'\';nav(\'kanban\')">Kanban</button><button class="btn btng" onclick="FPID=\''+p.id+'\';nav(\'calendario\')">Calendario</button>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
+    +'<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+s.progress+'%</div></div><div class="sc y"><div class="sl">Pendientes</div><div class="sn">'+(s.tasks.length-s.done)+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
+    +(/prokicks/i.test(p.nombre)?'<div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="nav(\'prokicks\')">Abrir módulo ProKicks</button></div><p style="color:var(--muted);font-size:13px;margin:0">Inventario, prospectos, ventas, comodatos y cobranza viven aquí, ligados al proyecto.</p></div>':'')
+    +'<div class="card"><div class="ch"><h3>Tareas madre y subtareas</h3></div>'+projectTree(p)+'</div>'
+    +projectReportHtml(p.id);
+}
+
 /* DASHBOARD */
 function vDB(){
-  var tasks = myTasks(), projs = myProjs();
+  var projs = myProjs().filter(function(p){return p.estado!=='cerrado';});
+  var tasks = myTasks();
+  var alerts = getAlerts().slice(0,3);
   var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
   var over = tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
-  var pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
-  var alerts = getAlerts().slice(0,3);
-
-  var projH = projs.map(function(p){
-    var pt = DB.tareas.filter(function(t){return t.proyecto_id===p.id;});
-    var pd2 = pt.filter(function(t){return t.estado==='terminada';}).length;
-    var pp = pt.length ? Math.round(pd2/pt.length*100) : 0;
-    return '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:700">'+esc(p.nombre)+'</span><span style="font-size:12px;color:var(--muted)">'+pp+'%</span></div><div class="pb"><div class="pf" style="width:'+pp+'%"></div></div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(cNm(p.cliente_id))+' · '+pd2+'/'+pt.length+'</div></div>';
-  }).join('') || '<div style="color:var(--muted);font-size:13px">Sin proyectos</div>';
-
+  var noNext = tasks.filter(function(t){return crmEnabled() && t.estado!=='terminada' && !nextAction(t);}).length;
   var alH = alerts.length ? alerts.map(function(a){
     return '<div class="alitem '+a.cl+'"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';
   }).join('') : '<div style="color:var(--muted);font-size:13px">✓ Sin alertas</div>';
-
-  var rows = tasks.slice(0,6).map(function(t){
-    return '<tr><td><span style="font-weight:700;cursor:pointer;color:var(--navy)" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</span></td><td style="font-size:12px;color:var(--muted)">'+esc(pNm(t.proyecto_id))+'</td><td>'+esc(uNm(t.owner_id))+'</td><td>'+bPr(t.prioridad)+'</td><td>'+bSt(t.estado)+'</td><td>'+sem(t)+'</td><td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td></tr>';
-  }).join('') || '<tr><td colspan="7"><div class="empty"><p>Sin tareas</p></div></td></tr>';
-
-  return '<div class="sg">'
-    +'<div class="sc"><div class="sl">Proyectos activos</div><div class="sn">'+projs.filter(function(p){return p.estado!=='cerrado';}).length+'</div><div class="ss">'+DB.clientes.length+' clientes</div></div>'
-    +'<div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div><div class="ss">'+pct+'% del total</div></div>'
-    +'<div class="sc y"><div class="sl">En proceso</div><div class="sn">'+tasks.filter(function(t){return t.estado==='en_proceso';}).length+'</div><div class="ss">activas</div></div>'
-    +'<div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+over+'</div><div class="ss">urgentes</div></div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    +'<div class="card"><div class="ch"><h3>Avance por proyecto</h3></div>'+projH+'</div>'
-    +'<div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div>'
-    +'</div>'
-    +'<div class="card"><div class="ch"><h3>Actividad reciente</h3><button class="btn btns btng" onclick="nav(\'tareas\')">Ver todas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Semáforo</th><th>Vence</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  var cards = projs.map(function(p){return projectCard(p,true);}).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
+  return '<div class="sh"><div><h2>Mis proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Entra al proyecto para ver tareas madre, subtareas y reportes propios.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
+    +'<div class="sg"><div class="sc"><div class="sl">Proyectos activos</div><div class="sn">'+projs.length+'</div></div><div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div></div><div class="sc y"><div class="sl">Sin siguiente acción</div><div class="sn">'+noNext+'</div></div><div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+over+'</div></div></div>'
+    +'<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:14px"><div style="display:grid;gap:14px">'+cards+'</div><div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div></div>';
 }
 
 /* ALERTAS */
@@ -705,36 +765,13 @@ function vAL(){
 
 /* PROYECTOS */
 function vPR(){
+  if(FPID){
+    var selected=xid(DB.proyectos,FPID);
+    if(selected) return projectWorkspace(selected);
+  }
   var projs = myProjs().filter(function(p){return p.estado!=='cerrado';});
-  var html = projs.map(function(p){
-    var pt = DB.tareas.filter(function(t){return t.proyecto_id===p.id;});
-    var pd2 = pt.filter(function(t){return t.estado==='terminada';}).length;
-    var pp = pt.length ? Math.round(pd2/pt.length*100) : 0;
-    var fi = p.fecha_inicio ? dateObj(p.fecha_inicio) : null;
-    var fv2 = p.fecha_vencimiento ? dateObj(p.fecha_vencimiento) : null;
-    var tu = fi ? Math.ceil((new Date()-fi)/864e5) : 0;
-    var td2 = fi&&fv2 ? Math.ceil((fv2-fi)/864e5) : 100;
-    var tp = td2>0 ? Math.round(tu/td2*100) : 0;
-    var hcl = pp>=tp-10?'dg':pp>=tp-25?'dy':'dr';
-    var drBtn = p.drive_url ? '<a href="'+esc(p.drive_url)+'" target="_blank" class="btn btns btng">📁 Drive</a>' : '';
-    var editBtn = adm() ? '<button class="btn btns btng" onclick="A.ep(\''+p.id+'\')">✏️ Editar</button>' : '';
-    var bajaBtn = adm() ? '<button class="btn btns btnd" onclick="A.baja(\''+p.id+'\')">Dar de baja</button>' : '';
-    var budg = adm() ? '$'+Number(p.presupuesto||0).toLocaleString() : '—';
-    return '<div class="card" style="border-left:3px solid var(--cyan)">'
-      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">'
-      +'<div><div style="font-size:16px;font-weight:800;color:var(--ink);cursor:pointer" onclick="A.pd(\''+p.id+'\')">'+esc(p.nombre)+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+esc(p.descripcion||'')+'</div></div>'
-      +'<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+bPi(p.pipeline)+' '+bSt(p.estado)+'<button class="btn btns" onclick="A.nt(\''+p.id+'\')">+ Tarea</button><button class="btn btns btnc" onclick="A.pd(\''+p.id+'\')">Ver →</button>'+editBtn+drBtn+bajaBtn+'</div>'
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px;margin-bottom:10px">'
-      +'<div><span style="color:var(--muted)">Cliente</span><br><strong>'+esc(cNm(p.cliente_id))+'</strong></div>'
-      +'<div><span style="color:var(--muted)">Responsable</span><br><strong>'+esc(uNm(p.owner_id))+'</strong></div>'
-      +'<div><span style="color:var(--muted)">Vence</span><br><strong>'+fmt(p.fecha_vencimiento)+'</strong></div>'
-      +'<div><span style="color:var(--muted)">Presupuesto</span><br><strong>'+budg+'</strong></div>'
-      +'</div>'
-      +'<div style="display:flex;align-items:center;gap:10px"><div class="pb" style="flex:1"><div class="pf" style="width:'+pp+'%"></div></div><span class="dot '+hcl+'" style="width:10px;height:10px;flex-shrink:0" title="Salud"></span><span style="font-size:12px;color:var(--muted);white-space:nowrap">'+pp+'% · '+pd2+'/'+pt.length+'</span></div>'
-      +'</div>';
-  }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
-  return '<div class="sh"><h2>Proyectos</h2>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'+html;
+  var html = projs.map(function(p){ return projectCard(p,false); }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
+  return '<div class="sh"><div><h2>Proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Escoge un proyecto para trabajar dentro de su propio contexto.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'+html;
 }
 
 /* TAREAS */
@@ -1005,6 +1042,13 @@ function vUS(){
 
 /* REPORTES */
 function vRE(){
+  if(FPID && xid(DB.proyectos,FPID)) return projectReportHtml(FPID);
+  var projs = myProjs().filter(function(p){return p.estado!=='cerrado';});
+  var cards = projs.map(function(p){
+    var s=projectStats(p);
+    return '<div class="card" style="border-left:3px solid var(--cyan)"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div style="font-size:17px;font-weight:900;color:var(--ink)">'+esc(p.nombre)+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+s.progress+'% avance · '+s.tasks.length+' tareas · '+(s.overdue+s.noNext)+' riesgos</div></div><button class="btn btnc" onclick="FPID=\''+p.id+'\';render()">Ver reporte</button></div></div>';
+  }).join('') || '<div class="card"><div class="empty"><p>Sin proyectos para reportar</p></div></div>';
+  return '<div class="sh"><div><h2>Reportes por proyecto</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Selecciona un proyecto para evitar mezclar métricas.</div></div></div>'+cards;
   // Usuario normal: solo ve su propio rendimiento
   if(!adm()){
     var u = me();
@@ -1080,6 +1124,10 @@ function vRE(){
 var A = {
 
   /* PROYECTO */
+  openProject: function(id){
+    FPID = id;
+    nav('proyectos');
+  },
   np: function(){ A._pm(null); },
   ep: function(id){ A._pm(id); },
   _pm: function(id){
@@ -1253,6 +1301,32 @@ var A = {
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var r = await ins('subtareas',{tarea_id:tid,owner_id:fv('oi'),titulo:ti,estado:fv('es'),fecha_vencimiento:fv('fv')||null});
     if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Subtarea creada ✓','g');}
+  },
+  esub: function(id){
+    var s=xid(DB.subtareas,id); if(!s) return;
+    var t=xid(DB.tareas,s.tarea_id);
+    if(t && !canEditTask(t)){ toast('Solo el responsable puede editar esta subtarea','r'); return; }
+    var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    mOpen('Editar subtarea',
+      '<div class="fg">'
+      +FLD('ti','Título', 'text', s.titulo)
+      +'<div class="fr2">'+FSL('oi','Responsable',uO,s.owner_id)+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['terminada','Terminada']],s.estado)+'</div>'
+      +FLD('fv','Fecha término','date',s.fecha_vencimiento)
+      +'<div class="fa"><button class="btn btng" onclick="mClose();'+(t?'A.td(\''+t.id+'\')':'render()')+'">Cancelar</button><button class="btn btnc" onclick="A._usub(\''+id+'\')">Guardar</button></div>'
+      +'</div>');
+  },
+  _usub: async function(id){
+    var s=xid(DB.subtareas,id); if(!s) return;
+    var t=xid(DB.tareas,s.tarea_id);
+    if(t && !canEditTask(t)){ toast('Solo el responsable puede editar esta subtarea','r'); return; }
+    var ti=fv('ti'); if(!ti){toast('Título requerido','r');return;}
+    var r=await upd('subtareas',id,{titulo:ti,owner_id:fv('oi'),estado:fv('es'),fecha_vencimiento:fv('fv')||null});
+    if(r){
+      if(t && crmEnabled()) await upd('tareas',t.id,{ultima_actividad:new Date().toISOString()});
+      await loadAll(); mClose();
+      if(t) A.td(t.id); else render();
+      toast('Subtarea actualizada ✓','g');
+    }
   },
 
   /* COMENTARIO */
