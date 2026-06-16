@@ -648,6 +648,11 @@ function nav(v){
   render();
   window.scrollTo(0,0);
 }
+window.openProkicks = function(tab){
+  PKTAB = tab || 'dashboard';
+  mClose();
+  nav('prokicks');
+};
 document.querySelectorAll('.nbtn').forEach(function(b){ b.addEventListener('click',function(){ nav(b.dataset.v); }); });
 
 /* ══ VIEWS ══════════════════════════════════════════════════ */
@@ -1194,11 +1199,13 @@ var A = {
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin entregables</div>';
     var ef = t.horas_estimadas ? Math.round(t.horas_reales/t.horas_estimadas*100) : 0;
     var editActions = canEditTask(t) ? '<div class="fa" style="justify-content:flex-start;margin-top:0;padding-top:0;border-top:0"><button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar información</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button>':'')+'</div>' : '';
+    var pkAccess = /prokicks/i.test(pNm(t.proyecto_id)+' '+t.titulo) ? '<div class="hbar" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><span><span class="dot dg"></span>Operación ProKicks centralizada</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btns btnc" onclick="openProkicks(\'dashboard\')">Dashboard inventario</button><button class="btn btns btng" onclick="openProkicks(\'prospecto\')">Prospectos</button><button class="btn btns btng" onclick="openProkicks(\'venta\')">Ventas</button><button class="btn btns btng" onclick="openProkicks(\'comodato\')">Comodatos</button><button class="btn btns btng" onclick="openProkicks(\'cobranza\')">Cobranza</button></div></div>' : '';
     mOpen('✓ '+t.titulo,
       '<div style="display:grid;gap:15px">'
       +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div>'
       +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Vence</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
       +'<p style="color:var(--muted);font-size:14px;margin:0">'+esc(t.descripcion||'Sin descripción.')+'</p>'
+      +pkAccess
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
       +editActions
       +crmPanel(t)
