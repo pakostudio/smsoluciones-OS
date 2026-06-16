@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SM OS · SM Soluciones</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+if(!window.supabase){
+  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\\/script>');
+}
+</script>
 <style>
 :root {
   --bg:#F2F0EC; --bg2:#EAE8E3; --surface:#FFFFFF;
@@ -337,7 +342,45 @@ tr:hover td{background:var(--surface2)}
 /* ── SUPABASE ── */
 const SB_URL = 'https://bljqlibgwvpflrtwgsef.supabase.co';
 const SB_KEY = 'sb_publishable_09cUDYT1aBp4lJF1l1duUA_WLhJXCfb';
-const sb = supabase.createClient(SB_URL, SB_KEY);
+function restClient(url,key){
+  function enc(v){ return encodeURIComponent(v==null?'':v); }
+  function builder(tbl){
+    var st={tbl:tbl,method:'GET',params:new URLSearchParams(),body:null,headers:{apikey:key,Authorization:'Bearer '+key},single:false,returning:false};
+    var api={
+      select:function(cols){ st.params.set('select',cols||'*'); st.returning=true; return api; },
+      order:function(col,opt){ st.params.set('order',col+'.'+((opt&&opt.ascending===false)?'desc':'asc')); return api; },
+      eq:function(col,val){ st.params.set(col,'eq.'+enc(val)); return api; },
+      insert:function(data){ st.method='POST'; st.body=data; st.returning=true; return api; },
+      update:function(data){ st.method='PATCH'; st.body=data; st.returning=true; return api; },
+      delete:function(){ st.method='DELETE'; return api; },
+      upsert:function(data,opt){ st.method='POST'; st.body=data; st.returning=true; st.headers.Prefer='resolution=merge-duplicates,return=representation'; if(opt&&opt.onConflict) st.params.set('on_conflict',opt.onConflict); return api; },
+      single:function(){ st.single=true; return api; },
+      then:function(res,rej){ return api.exec().then(res,rej); },
+      catch:function(rej){ return api.exec().catch(rej); },
+      exec:async function(){
+        var qs=st.params.toString();
+        var headers=Object.assign({},st.headers);
+        if(st.body!==null) headers['Content-Type']='application/json';
+        if(st.returning && !headers.Prefer) headers.Prefer='return=representation';
+        if(st.single) headers.Accept='application/vnd.pgrst.object+json';
+        var ctrl=new AbortController();
+        var timer=setTimeout(function(){ctrl.abort();},12000);
+        try{
+          var r=await fetch(url+'/rest/v1/'+st.tbl+(qs?'?'+qs:''),{method:st.method,headers:headers,body:st.body!==null?JSON.stringify(st.body):undefined,signal:ctrl.signal});
+          clearTimeout(timer);
+          var txt=await r.text();
+          var data=txt?JSON.parse(txt):null;
+          if(!r.ok) return {data:null,error:data||{message:r.statusText}};
+          if(st.single && Array.isArray(data)) data=data[0]||null;
+          return {data:data,error:null};
+        }catch(e){ clearTimeout(timer); return {data:null,error:e}; }
+      }
+    };
+    return api;
+  }
+  return {from:builder,channel:function(){return {on:function(){return this;},subscribe:function(){return this;}};}};
+}
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : restClient(SB_URL, SB_KEY);
 
 /* ── STATE ── */
 var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[],prokicks_records:[],prokicks_settings:[]};
@@ -1648,6 +1691,7 @@ setInterval(updClock, 60000);
     buildProjectNav();
     document.getElementById('vc').innerHTML = '';
   } else {
+    document.getElementById('lerr').textContent = 'No se pudo conectar con Supabase. Revisa internet/VPN y recarga.';
     document.getElementById('vc').innerHTML = '<div class="loading"><span style="color:var(--red)">⚠️ Error de conexión. Recarga la página.</span></div>';
   }
 })();
