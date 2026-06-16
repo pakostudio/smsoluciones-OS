@@ -288,18 +288,17 @@ tr:hover td{background:var(--surface2)}
     <div class="nav-sec">
       <div class="nav-lbl">Proyectos</div>
       <button class="nbtn" data-v="proyectos"><span class="ni">📁</span>Proyectos</button>
+      <div id="project-nav"></div>
       <button class="nbtn" data-v="tareas"><span class="ni">✓</span>Mis tareas</button>
       <button class="nbtn" data-v="kanban"><span class="ni">▦</span>Kanban</button>
       <button class="nbtn" data-v="gantt"><span class="ni">▬</span>Gantt</button>
       <button class="nbtn" data-v="calendario"><span class="ni">📅</span>Calendario</button>
       <button class="nbtn" data-v="pipeline"><span class="ni">◑</span>Pipeline</button>
-      <button class="nbtn" data-v="prokicks"><span class="ni">⚽</span>ProKicks</button>
     </div>
     <div class="nav-sec" id="nav-admin" style="display:none">
       <div class="nav-lbl">Administración</div>
       <button class="nbtn" data-v="clientes"><span class="ni">🏢</span>Clientes</button>
       <button class="nbtn" data-v="usuarios"><span class="ni">👤</span>Usuarios</button>
-      <button class="nbtn" data-v="reportes"><span class="ni">📊</span>Reportes</button>
     </div>
     <div class="sb-foot">
       <div class="upill">
@@ -569,6 +568,7 @@ async function del(tbl,id){
 }
 async function refresh(){
   await loadAll();
+  buildProjectNav();
   render();
   updBadge();
 }
@@ -612,6 +612,24 @@ function myTasks(){
   var uid = SES.userId;
   return DB.tareas.filter(function(t){ return t.owner_id===uid; });
 }
+function projectIcon(p){
+  return /prokicks/i.test(p.nombre||'') ? '⚽' : '📁';
+}
+function buildProjectNav(){
+  var box=document.getElementById('project-nav');
+  if(!box) return;
+  if(!SES){ box.innerHTML=''; return; }
+  var projs=myProjs().filter(function(p){return p.estado!=='cerrado';}).sort(function(a,b){return String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
+  box.innerHTML = projs.map(function(p){
+    return '<button class="nbtn pnavbtn '+(VIEW==='proyectos'&&FPID===p.id?'active':'')+'" type="button" onclick="A.openProject(\''+p.id+'\')"><span class="ni">'+projectIcon(p)+'</span>'+esc(p.nombre)+'</button>';
+  }).join('');
+}
+function updateProjectNavActive(){
+  var box=document.getElementById('project-nav'); if(!box) return;
+  box.querySelectorAll('.pnavbtn').forEach(function(b){ b.classList.remove('active'); });
+  var active = FPID ? box.querySelector('[onclick*="'+FPID+'"]') : null;
+  if(VIEW==='proyectos' && active) active.classList.add('active');
+}
 
 /* ── RENDER ENGINE ── */
 function render(){
@@ -619,6 +637,7 @@ function render(){
   var map = {dashboard:vDB,alertas:vAL,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,clientes:vCL,usuarios:vUS,reportes:vRE};
   vc.innerHTML = (map[VIEW]||vDB)();
   updTopbar();
+  updateProjectNavActive();
 }
 function updTopbar(){
   var nm = {dashboard:'Mis proyectos',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
@@ -1560,6 +1579,7 @@ function doLogin(){
   document.getElementById('sb-r').textContent = found.rol==='admin' ? 'Administrador' : 'Usuario';
   if(found.rol==='admin') document.getElementById('nav-admin').style.display = 'block';
   document.getElementById('tb-live').style.display = 'block';
+  buildProjectNav();
   nav('dashboard');
 }
 
@@ -1571,6 +1591,7 @@ function doLogout(){
   document.body.classList.remove('logged');
   document.getElementById('nav-admin').style.display = 'none';
   document.getElementById('tb-live').style.display = 'none';
+  buildProjectNav();
   document.getElementById('pin-wrap').style.display = 'none';
   document.getElementById('btn-login').style.display = 'none';
   document.getElementById('f-pin').value = '';
@@ -1590,6 +1611,7 @@ setInterval(updClock, 60000);
   var ok = await loadAll();
   if(ok){
     buildSelector();
+    buildProjectNav();
     document.getElementById('vc').innerHTML = '';
   } else {
     document.getElementById('vc').innerHTML = '<div class="loading"><span style="color:var(--red)">⚠️ Error de conexión. Recarga la página.</span></div>';
