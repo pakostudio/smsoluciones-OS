@@ -293,6 +293,7 @@ tr:hover td{background:var(--surface2)}
       <button class="nbtn" data-v="gantt"><span class="ni">▬</span>Gantt</button>
       <button class="nbtn" data-v="calendario"><span class="ni">📅</span>Calendario</button>
       <button class="nbtn" data-v="pipeline"><span class="ni">◑</span>Pipeline</button>
+      <button class="nbtn" data-v="prokicks"><span class="ni">⚽</span>ProKicks</button>
     </div>
     <div class="nav-sec" id="nav-admin" style="display:none">
       <div class="nav-lbl">Administración</div>
@@ -340,11 +341,12 @@ const SB_KEY = 'sb_publishable_09cUDYT1aBp4lJF1l1duUA_WLhJXCfb';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 /* ── STATE ── */
-var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[]};
+var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[],prokicks_records:[],prokicks_settings:[]};
 var SES = null;  // {userId}
 var VIEW = 'dashboard';
 var FPID = '';   // filter project id
 var SELUID = ''; // selected user on login
+var PKTAB = 'dashboard';
 
 /* ── UTILS ── */
 function dateObj(s){
@@ -543,6 +545,10 @@ async function loadAll(){
     DB.usuarios=u.data||[]; DB.clientes=c.data||[]; DB.proyectos=p.data||[];
     DB.tareas=t.data||[]; DB.subtareas=st.data||[]; DB.comentarios=cm.data||[];
     DB.entregables=en.data||[]; DB.pagos=pa.data||[]; DB.reuniones=re.data||[];
+    var pk = await sb.from('prokicks_records').select('*').order('created_at',{ascending:false});
+    var pkset = await sb.from('prokicks_settings').select('*');
+    DB.prokicks_records = pk.error ? [] : (pk.data||[]);
+    DB.prokicks_settings = pkset.error ? [] : (pkset.data||[]);
     return true;
   } catch(e){ console.error(e); return false; }
 }
@@ -608,13 +614,13 @@ function myTasks(){
 /* ── RENDER ENGINE ── */
 function render(){
   var vc = document.getElementById('vc');
-  var map = {dashboard:vDB,alertas:vAL,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,clientes:vCL,usuarios:vUS,reportes:vRE};
+  var map = {dashboard:vDB,alertas:vAL,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,clientes:vCL,usuarios:vUS,reportes:vRE};
   vc.innerHTML = (map[VIEW]||vDB)();
   updTopbar();
 }
 function updTopbar(){
-  var nm = {dashboard:'Dashboard',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
-  var ar = {dashboard:'Vista Ejecutiva',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Análisis'};
+  var nm = {dashboard:'Dashboard',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
+  var ar = {dashboard:'Vista Ejecutiva',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Análisis'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
   updClock();
@@ -890,6 +896,59 @@ function vPI(){
   }).join('');
   return '<div class="sh" style="margin-bottom:14px"><h2>Pipeline comercial</h2>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
     +'<div class="pipeline">'+cols+'</div>';
+}
+
+/* PROKICKS */
+var PKTABS = [['dashboard','Dashboard inventario'],['prospecto','Prospectos'],['cliente','Clientes ProKicks'],['venta','Ventas'],['comodato','Comodatos'],['cobranza','Cobranza']];
+var PKSCHEMAS = {
+  prospecto:[['cliente','Club / empresa','text',true],['contacto','Contacto','text'],['cargo','Cargo','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['rep','Rep','text'],['fuente','Fuente','text'],['etapa','Etapa','select',true,['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido']],['siguiente_accion','Siguiente acción','text'],['proximo_seguimiento','Próximo seguimiento','date'],['probabilidad','Probabilidad %','number'],['monto_estimado','Monto estimado','number'],['devices_estimados','Devices estimados','number'],['notas','Notas','textarea']],
+  cliente:[['nombre','Nombre','text',true],['empresa','Club / Empresa','text'],['contacto','Contacto','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['fuente','Fuente','text'],['notas','Notas','textarea']],
+  venta:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['monto','Monto total','number',true],['saldo','Saldo pendiente','number'],['estadoVenta','Estado venta','select',true,['EN PROSPECCIÓN','VENTA INCOMPLETA','VENTA CERRADA']],['estadoPago','Estado pago','select',false,['PENDIENTE','PARCIAL','PAGADO']],['formaPago','Forma de pago','text'],['entrega','Entrega','select',false,['NO ENVIADO','ENVIADO','ENTREGADO','POR DEFINIR']],['fechaEntrega','Fecha entrega','text'],['ciudad','Ciudad','text'],['factura','Factura','select',false,['NO','SI']],['notas','Notas','textarea']],
+  comodato:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['estado','Estado','select',true,['EN USO','DEVUELTO','POR DEVOLVER']],['fechaEntrega','Fecha entrega','text'],['fechaDevolucion','Fecha devolución','text'],['ciudad','Ciudad','text'],['notas','Notas','textarea']],
+  cobranza:[['cliente','Cliente','text',true],['rep','Rep','text'],['monto','Monto total','number'],['saldo','Saldo pendiente','number',true],['estadoVenta','Estado','text'],['accion','Acción sugerida','text']]
+};
+function pkProject(){
+  return DB.proyectos.find(function(p){ return String(p.nombre||'').toLowerCase()==='prokicks'; }) ||
+         DB.proyectos.find(function(p){ return String(p.nombre||'').toLowerCase().indexOf('prokicks')>=0; });
+}
+function canUseProkicks(){
+  var p = pkProject(); if(!p || !SES) return false;
+  if(adm() || p.owner_id===SES.userId) return true;
+  return DB.tareas.some(function(t){ return t.proyecto_id===p.id && t.owner_id===SES.userId; });
+}
+function pkRows(tipo){ var p=pkProject(); return p ? DB.prokicks_records.filter(function(r){return r.proyecto_id===p.id && r.tipo===tipo;}) : []; }
+function pkSetting(){ var p=pkProject(); var s=p&&DB.prokicks_settings.find(function(x){return x.proyecto_id===p.id;}); return s ? (s.data||{}) : {}; }
+function pkVal(r,k){ return (r.data||{})[k]; }
+function pkMoney(v){ return '$'+Number(v||0).toLocaleString('es-MX'); }
+function pkStatus(v){
+  var s=String(v||'POR DEFINIR');
+  var cl=/PAGADO|CERRADA|ENTREGADO|EN USO|cerrado/i.test(s)?'bg_':(/INCOMPLETA|NO ENVIADO|perdido/i.test(s)?'br_':'by_');
+  return '<span class="badge '+cl+'">'+esc(s)+'</span>';
+}
+function vPK(){
+  var p=pkProject();
+  if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
+  if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
+  var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
+  var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
+  return '<div class="sh"><h2>Operación ProKicks</h2>'+(PKTAB!=='dashboard'?'<button class="btn btnc" onclick="A.pkNew()">+ Nuevo registro</button>':'')+'</div><div class="tabs">'+tabs+'</div>'+body;
+}
+function pkDashboard(){
+  var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
+  var cerradas=ventas.filter(function(r){return pkVal(r,'estadoVenta')==='VENTA CERRADA';});
+  var incompletas=ventas.filter(function(r){return pkVal(r,'estadoVenta')==='VENTA INCOMPLETA';});
+  var vendidos=ventas.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
+  var comodato=comodatos.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
+  var saldo=ventas.reduce(function(s,r){return s+Number(pkVal(r,'saldo')||0);},0);
+  var metrics=[['Total producción',st.totalProducidos||300],['Inventario',st.inventarioRedwood||0],['Vendidos',vendidos],['En comodato',comodato],['Prospectos',prospectos.length],['Ventas cerradas',cerradas.length],['Ventas incompletas',incompletas.length],['Por cobrar',pkMoney(saldo)]];
+  return '<div class="sg">'+metrics.map(function(m){return '<div class="sc"><div class="sl">'+esc(m[0])+'</div><div class="sn" style="font-size:24px">'+esc(String(m[1]))+'</div></div>';}).join('')+'</div>';
+}
+function pkTable(tipo){
+  var rows=pkRows(tipo);
+  var cols={prospecto:[['cliente','Prospecto'],['contacto','Contacto'],['rep','Rep'],['etapa','Etapa'],['siguiente_accion','Siguiente acción'],['proximo_seguimiento','Seguimiento'],['probabilidad','Prob.'],['monto_estimado','Monto']],cliente:[['nombre','Nombre'],['empresa','Club / Empresa'],['contacto','Contacto'],['ciudad','Ciudad'],['telefono','Teléfono'],['fuente','Fuente']],venta:[['cliente','Cliente'],['rep','Rep'],['devices','Devices'],['monto','Monto'],['saldo','Saldo'],['estadoVenta','Venta'],['estadoPago','Pago'],['entrega','Entrega']],comodato:[['cliente','Cliente'],['rep','Rep'],['devices','Devices'],['estado','Estado'],['fechaEntrega','Entrega'],['fechaDevolucion','Devolución'],['ciudad','Ciudad']],cobranza:[['cliente','Cliente'],['rep','Rep'],['monto','Monto'],['saldo','Saldo'],['estadoVenta','Estado'],['accion','Acción']]}[tipo]||[];
+  var head=cols.map(function(c){return '<th>'+esc(c[1])+'</th>';}).join('')+'<th></th>';
+  var body=rows.map(function(r){return '<tr>'+cols.map(function(c){var v=pkVal(r,c[0]); if(['monto','saldo','monto_estimado'].indexOf(c[0])>=0)v=pkMoney(v); else if(['estadoVenta','estadoPago','entrega','estado','etapa'].indexOf(c[0])>=0)v=pkStatus(v); else v=esc(v||''); return '<td>'+v+'</td>';}).join('')+'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.pkEdit(\''+r.id+'\')">Editar</button><button class="btn btns btnd" onclick="A.pkDel(\''+r.id+'\')">Eliminar</button></div></td></tr>';}).join('') || '<tr><td colspan="'+(cols.length+1)+'"><div class="empty"><p>Sin registros</p></div></td></tr>';
+  return '<div class="card"><div class="ch"><h3>'+esc((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo)+'</h3><span class="chip">'+rows.length+' registro(s)</span></div><div class="tw"><table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
 }
 
 /* CLIENTES */
@@ -1211,6 +1270,41 @@ var A = {
     if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Entregable guardado ✓','g');}
   },
 
+  /* PROKICKS */
+  pkNew: function(){ A.pkForm(null, PKTAB); },
+  pkEdit: function(id){ var r=DB.prokicks_records.find(function(x){return x.id===id;}); if(r) A.pkForm(r, r.tipo); },
+  pkForm: function(row,tipo){
+    if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
+    var schema = PKSCHEMAS[tipo]; if(!schema){ toast('Tipo no disponible','r'); return; }
+    var data = row ? (row.data||{}) : {};
+    var fields = schema.map(function(f){
+      var key=f[0], lbl=f[1], typ=f[2]||'text', req=f[3]?' required':'', val=data[key]||'', opts=f[4]||[];
+      if(typ==='textarea') return '<div class="fld"><label>'+esc(lbl)+'</label><textarea id="f_'+key+'"'+req+'>'+esc(val)+'</textarea></div>';
+      if(typ==='select') return FSL(key,lbl,opts.map(function(o){return [o,o];}),val);
+      return FLD(key,lbl,typ,val);
+    }).join('');
+    var title = (row?'Editar ':'Nuevo ')+((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo);
+    mOpen(title,'<div class="fg">'+fields+'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkSave(\''+(row?row.id:'')+'\',\''+tipo+'\')">Guardar</button></div></div>',true);
+  },
+  pkSave: async function(id,tipo){
+    var schema = PKSCHEMAS[tipo]; if(!schema) return;
+    var p = pkProject(); if(!p){ toast('No existe proyecto ProKicks','r'); return; }
+    var data = {};
+    for(var i=0;i<schema.length;i++){
+      var f=schema[i], key=f[0], typ=f[2]||'text';
+      if(f[3] && !fv(key)){ toast(f[1]+' requerido','r'); return; }
+      data[key] = typ==='number' ? Number(fv(key)||0) : fv(key);
+    }
+    var payload = {proyecto_id:p.id, owner_id:SES.userId, tipo:tipo, data:data, updated_at:new Date().toISOString()};
+    var r = id ? await upd('prokicks_records',id,payload) : await ins('prokicks_records',payload);
+    if(r){ mClose(); await refresh(); PKTAB=tipo; toast(id?'Registro actualizado':'Registro creado ✓','g'); }
+  },
+  pkDel: async function(id){
+    if(!confirm('¿Eliminar este registro de ProKicks?')) return;
+    var ok = await del('prokicks_records',id);
+    if(ok){ await refresh(); toast('Registro eliminado','g'); }
+  },
+
   /* CLIENTE */
   nc: function(){ A._cm(null); },
   ec: function(id){ A._cm(id); },
@@ -1387,7 +1481,7 @@ setInterval(updClock, 60000);
 })();
 
 /* ── REALTIME ── */
-var TABLES = ['proyectos','tareas','subtareas','comentarios','entregables','pagos','clientes','usuarios','reuniones'];
+var TABLES = ['proyectos','tareas','subtareas','comentarios','entregables','pagos','clientes','usuarios','reuniones','prokicks_records','prokicks_settings'];
 TABLES.forEach(function(tbl){
   sb.channel('rt:'+tbl)
     .on('postgres_changes',{event:'*',schema:'public',table:tbl},function(){
