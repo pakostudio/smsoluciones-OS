@@ -696,16 +696,28 @@ function projectTree(p,limit){
   var tasks = projectTasks(p.id).sort(function(a,b){
     return dayDiff(a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_vencimiento||pd(999));
   });
-  if(limit) tasks = tasks.slice(0,limit);
   if(!tasks.length) return '<div class="empty"><p>Sin tareas madre en este proyecto</p></div>';
-  return tasks.map(function(t){
+
+  function taskLine(t, nested){
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:'+(nested?'9px 0 9px 24px':'9px 0')+';border-top:1px solid var(--line);font-size:12px;background:'+(nested?'var(--surface2)':'transparent')+'">'
+      +'<div><span style="color:var(--muted)">'+(nested?'↳':'•')+'</span> <strong>'+esc(t.titulo)+'</strong>'
+      +'<span style="display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:8px">'+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></span>'
+      +'<div style="color:var(--muted);margin-top:4px">'+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
+      +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Ver</button>'
+      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar</button>':'')
+      +'<button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
+      +'</div>';
+  }
+  function parentCard(t, extraChildren){
     var subs = DB.subtareas.filter(function(s){return s.tarea_id===t.id;});
     var subH = subs.length ? subs.map(function(s){
       return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0 7px 18px;border-top:1px solid var(--line);font-size:12px">'
-        +'<div><span style="color:var(--muted)">↳</span> <strong>'+esc(s.titulo)+'</strong><span style="color:var(--muted);margin-left:7px">'+esc(uNm(s.owner_id))+' · '+fmt(s.fecha_vencimiento)+'</span></div>'
+        +'<div><span style="color:var(--muted)">↳</span> <strong>'+esc(s.titulo)+'</strong><span style="color:var(--muted);margin-left:10px">'+esc(uNm(s.owner_id))+' · '+fmt(s.fecha_vencimiento)+'</span></div>'
         +'<div style="display:flex;gap:5px;align-items:center">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar</button></div>'
         +'</div>';
-    }).join('') : '<div style="padding:7px 0 0 18px;color:var(--muted);font-size:12px">Sin subtareas</div>';
+    }).join('') : '';
+    var children = (extraChildren||[]).map(function(ch){return taskLine(ch,true);}).join('');
+    var empty = !subH && !children ? '<div style="padding:7px 0 0 18px;color:var(--muted);font-size:12px">Sin subtareas</div>' : '';
     return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:12px;background:var(--surface);margin-bottom:10px">'
       +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start">'
       +'<div><div style="font-size:15px;font-weight:900;color:var(--ink);cursor:pointer" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</div>'
@@ -714,8 +726,30 @@ function projectTree(p,limit){
       +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Ver</button>'
       +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar</button>':'')
       +'<button class="btn btns btng" onclick="A.nsub(\''+t.id+'\')">+ Subtarea</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
-      +'</div>'+subH+'</div>';
+      +'</div>'+subH+children+empty+'</div>';
+  }
+
+  var embassyParent = tasks.find(function(t){return /embajad/i.test(t.titulo||'') && !/—/.test(t.titulo||'');});
+  var embassyChildren = embassyParent ? tasks.filter(function(t){
+    return t.id!==embassyParent.id && /—/.test(t.titulo||'');
+  }) : [];
+  var childrenIds = {};
+  embassyChildren.forEach(function(t){childrenIds[t.id]=true;});
+  var mothers = tasks.filter(function(t){
+    return !childrenIds[t.id] && (t.id===(embassyParent&&embassyParent.id) || DB.subtareas.some(function(s){return s.tarea_id===t.id;}) || !/—/.test(t.titulo||''));
+  });
+  var standalone = tasks.filter(function(t){
+    return !childrenIds[t.id] && !mothers.some(function(m){return m.id===t.id;});
+  });
+  if(limit) mothers = mothers.slice(0,limit);
+  var html = mothers.map(function(t){
+    return parentCard(t, embassyParent && t.id===embassyParent.id ? embassyChildren : []);
   }).join('');
+  if(standalone.length && !limit){
+    html += '<div class="hbar" style="margin:12px 0 8px"><span class="dot dy"></span>Seguimientos independientes</div>'
+      +standalone.map(function(t){return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:0 12px;background:var(--surface);margin-bottom:8px">'+taskLine(t,false)+'</div>';}).join('');
+  }
+  return html || '<div class="empty"><p>Sin tareas madre en este proyecto</p></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
