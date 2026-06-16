@@ -387,6 +387,7 @@ var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentario
 var SES = null;  // {userId}
 var VIEW = 'dashboard';
 var FPID = '';   // filter project id
+var PTAB = 'resumen'; // project workspace tab
 var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
 
@@ -804,12 +805,49 @@ function projectReportHtml(pid){
   var pays=DB.pagos.filter(function(pay){return pay.proyecto_id===pid;});
   var paid=pays.filter(function(pay){return pay.estado==='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
   var pending=pays.filter(function(pay){return pay.estado!=='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
-  var rows=tasks.map(function(t){
-    return '<tr><td><span style="font-weight:800;cursor:pointer;color:var(--navy)" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</span></td><td>'+bSt(t.estado)+'</td><td>'+sem(t)+'</td><td style="font-size:12px;color:var(--muted)">'+esc(nextAction(t)||'—')+'</td><td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td></tr>';
-  }).join('') || '<tr><td colspan="5"><div class="empty"><p>Sin tareas</p></div></td></tr>';
-  return '<div class="sh"><h2>Reporte · '+esc(p.nombre)+'</h2><button class="btn btns btng" onclick="A.openProject(\''+pid+'\')">Volver al proyecto</button></div>'
-    +'<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
-    +'<div class="card"><div class="ch"><h3>Tareas y seguimiento</h3></div><div class="tw"><table><thead><tr><th>Tarea madre</th><th>Estado</th><th>Semáforo</th><th>Siguiente acción</th><th>Vence</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  return '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
+    +'<div class="card"><div class="ch"><h3>Jerarquía y seguimiento</h3></div>'+projectTree(p)+'</div>';
+}
+function projectTabs(p){
+  var tabs=[['resumen','Resumen'],['tareas','Tareas'],['reporte','Reporte'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
+}
+function projectKanbanHtml(p){
+  var tasks=projectTasks(p.id);
+  var cols=[['pendiente','📋 Pendiente'],['en_proceso','⚙️ En proceso'],['en_revision','🔍 En revisión'],['aprobada','✅ Aprobada'],['terminada','🏁 Terminada']];
+  return '<div class="kanban">'+cols.map(function(col){
+    var ct=tasks.filter(function(t){return t.estado===col[0];});
+    var cards=ct.map(function(t){return '<div class="kcard" onclick="A.td(\''+t.id+'\')"><div class="kct2">'+esc(t.titulo)+'</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin:7px 0">'+bPr(t.prioridad)+' '+sem(t)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(nextAction(t)||'Sin siguiente acción')+'</div><div class="kmeta"><span class="kdue">'+fmt(t.fecha_vencimiento)+'</span><span class="kown">'+ini(uNm(t.owner_id))+'</span></div></div>';}).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">Sin tareas</div>';
+    return '<div class="kcol"><div class="kch"><span class="kct">'+col[1]+'</span><span class="kcc">'+ct.length+'</span></div>'+cards+'</div>';
+  }).join('')+'</div>';
+}
+function projectGanttHtml(p){
+  var yr=new Date().getFullYear(), start=new Date(yr,0,1), total=((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
+  var months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var todayPct=(Math.round((new Date()-start)/864e5)/total*100).toFixed(1);
+  var rows=projectTasks(p.id).filter(function(t){return t.fecha_inicio&&t.fecha_vencimiento;}).map(function(t){
+    var s=dateObj(t.fecha_inicio), e=dateObj(t.fecha_vencimiento), off=Math.max(0,Math.round((s-start)/864e5)), dur=Math.max(1,Math.round((e-s)/864e5));
+    return '<tr><td style="font-size:13px;font-weight:700;white-space:nowrap;color:var(--ink)">'+esc(t.titulo)+'</td><td colspan="12" class="gbc"><div class="gbar" style="left:'+(off/total*100).toFixed(1)+'%;width:'+(dur/total*100).toFixed(1)+'%">'+(dur>20?esc(t.titulo):'')+'</div><div class="gtoday" style="left:'+todayPct+'%"></div></td></tr>';
+  }).join('') || '<tr><td colspan="13"><div class="empty"><p>Sin tareas con fechas</p></div></td></tr>';
+  return '<div class="card"><div class="gwrap"><table class="gtable" style="width:100%"><thead><tr><th style="text-align:left;min-width:220px;padding:8px 13px">Tarea</th>'+months.map(function(m){return '<th>'+m+'</th>';}).join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function projectCalendarHtml(p){
+  var tasks=projectTasks(p.id), next=tasks.filter(function(t){return t.fecha_vencimiento&&t.estado!=='terminada';}).sort(function(a,b){return dayDiff(a.fecha_vencimiento)-dayDiff(b.fecha_vencimiento);})[0];
+  var base=next?dateObj(next.fecha_vencimiento):new Date(); base=new Date(base.getFullYear(),base.getMonth()+CAL_OFF,1);
+  var yr=base.getFullYear(), mo=base.getMonth(), fd=new Date(yr,mo,1).getDay(), dim=new Date(yr,mo+1,0).getDate(), mn=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'], dn=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], byD={};
+  tasks.forEach(function(t){ if(!t.fecha_vencimiento) return; var d=dateObj(t.fecha_vencimiento); if(d.getMonth()===mo&&d.getFullYear()===yr){var k=d.getDate(); if(!byD[k]) byD[k]=[]; byD[k].push({l:t.titulo,c:t.estado==='terminada'?'':'er'});} });
+  var cells=[]; for(var i=0;i<fd;i++) cells.push(null); for(var d=1;d<=dim;d++) cells.push(d);
+  var cH=cells.map(function(day){ if(!day) return '<div style="min-height:84px"></div>'; var evs=(byD[day]||[]).slice(0,4).map(function(ev){return '<div class="cev '+ev.c+'" title="'+esc(ev.l)+'">'+esc(ev.l.slice(0,18))+'</div>';}).join(''); return '<div class="calday"><div class="caldn">'+day+'</div>'+evs+'</div>'; }).join('');
+  return '<div class="sh" style="margin-bottom:14px"><h2>'+esc(p.nombre)+' · Calendario — '+mn[mo]+' '+yr+'</h2><div style="display:flex;gap:8px"><button class="btn btns btng" onclick="CAL_OFF--;render()">← Anterior</button><button class="btn btns btng" onclick="CAL_OFF=0;render()">Mes clave</button><button class="btn btns btng" onclick="CAL_OFF++;render()">Siguiente →</button></div></div><div class="card"><div class="calh">'+dn.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div><div class="calg">'+cH+'</div></div>';
+}
+function projectPipelineHtml(p){
+  var stages=/prokicks/i.test(p.nombre)?[['prospecto','Prospectos'],['venta_incompleta','Venta incompleta'],['venta_cerrada','Venta cerrada'],['comodato','Comodatos'],['cobranza','Cobranza']]:[['por_contactar','Por contactar'],['contactado','Contactado'],['respondio','Respondió'],['reunion_agendada','Reunión'],['propuesta_enviada','Propuesta'],['negociacion','Negociación'],['aprobado','Aprobado']];
+  if(/prokicks/i.test(p.nombre)){
+    var recs={prospecto:pkRows('prospecto'),venta_incompleta:pkRows('venta').filter(function(r){return pkVal(r,'estadoVenta')==='VENTA INCOMPLETA';}),venta_cerrada:pkRows('venta').filter(function(r){return pkVal(r,'estadoVenta')==='VENTA CERRADA';}),comodato:pkRows('comodato'),cobranza:pkRows('cobranza')};
+    return '<div class="pipeline">'+stages.map(function(st){var items=recs[st[0]]||[]; return '<div class="pstage"><div class="psh"><span class="psn">'+st[1]+'</span><span class="badge bx_">'+items.length+'</span></div>'+items.slice(0,20).map(function(r){return '<div class="pcard"><div class="pcn">'+esc(pkVal(r,'cliente')||pkVal(r,'nombre')||'Registro')+'</div><div class="pcc">'+esc(pkVal(r,'siguiente_accion')||pkVal(r,'accion')||pkVal(r,'estadoVenta')||'—')+'</div></div>';}).join('')+'</div>';}).join('')+'</div>';
+  }
+  var tasks=projectTasks(p.id);
+  return '<div class="pipeline">'+stages.map(function(st){var items=tasks.filter(function(t){return (t.etapa_crm||descVal(t,'Etapa')||'por_contactar')===st[0];}); return '<div class="pstage"><div class="psh"><span class="psn">'+st[1]+'</span><span class="badge bx_">'+items.length+'</span></div>'+items.map(function(t){return '<div class="pcard" onclick="A.td(\''+t.id+'\')"><div class="pcn">'+esc(t.titulo)+'</div><div class="pcc">'+esc(nextAction(t)||'Sin siguiente acción')+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px">'+fmt(t.fecha_vencimiento)+'</div></div>';}).join('')+'</div>';}).join('')+'</div>';
 }
 function projectCard(p,compact){
   var s=projectStats(p);
@@ -826,12 +864,22 @@ function projectCard(p,compact){
 }
 function projectWorkspace(p){
   var s=projectStats(p);
-  return '<div class="sh"><div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
-    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Tarea madre</button><button class="btn btng" onclick="FPID=\''+p.id+'\';nav(\'reportes\')">Reporte</button><button class="btn btng" onclick="FPID=\''+p.id+'\';nav(\'kanban\')">Kanban</button><button class="btn btng" onclick="FPID=\''+p.id+'\';nav(\'calendario\')">Calendario</button>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
-    +'<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+s.progress+'%</div></div><div class="sc y"><div class="sl">Pendientes</div><div class="sn">'+(s.tasks.length-s.done)+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
-    +(/prokicks/i.test(p.nombre)?'<div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="nav(\'prokicks\')">Abrir módulo ProKicks</button></div><p style="color:var(--muted);font-size:13px;margin:0">Inventario, prospectos, ventas, comodatos y cobranza viven aquí, ligados al proyecto.</p></div>':'')
-    +'<div class="card"><div class="ch"><h3>Tareas madre y subtareas</h3></div>'+projectTree(p)+'</div>'
-    +projectReportHtml(p.id);
+  var tab = PTAB || 'resumen';
+  var resumen = '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+s.progress+'%</div></div><div class="sc y"><div class="sl">Pendientes</div><div class="sn">'+(s.tasks.length-s.done)+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
+    +(/prokicks/i.test(p.nombre)?'<div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="nav(\'prokicks\')">Abrir operación</button></div><p style="color:var(--muted);font-size:13px;margin:0">Inventario, prospectos, ventas, comodatos y cobranza viven ligados a este proyecto.</p></div>':'')
+    +'<div class="card"><div class="ch"><h3>Tareas madre y subtareas</h3><button class="btn btns btng" onclick="A.openProject(\''+p.id+'\',\'tareas\')">Ver jerarquía</button></div>'+projectTree(p,4)+'</div>';
+  var tareas = '<div class="card"><div class="ch"><h3>Tareas madre y subtareas</h3><button class="btn btns btnc" onclick="A.nt(\''+p.id+'\')">+ Tarea madre</button></div>'+projectTree(p)+'</div>';
+  var body = tab==='tareas'?tareas
+    : tab==='reporte'?projectReportHtml(p.id)
+    : tab==='kanban'?projectKanbanHtml(p)
+    : tab==='calendario'?projectCalendarHtml(p)
+    : tab==='gantt'?projectGanttHtml(p)
+    : tab==='pipeline'?projectPipelineHtml(p)
+    : resumen;
+  return '<div class="sh"><div><div style="margin-bottom:8px"><button class="btn btns btng" onclick="FPID=\'\';PTAB=\'resumen\';nav(\'proyectos\')">← Mis proyectos</button></div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Tarea madre</button>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
+    +projectTabs(p)
+    +body;
 }
 
 /* DASHBOARD */
@@ -902,6 +950,7 @@ function vTA(){
 function vKA(){
   var tasks = myTasks();
   var shown = FPID ? tasks.filter(function(t){return t.proyecto_id===FPID;}) : tasks;
+  var ctx = FPID ? xid(DB.proyectos,FPID) : null;
   var cols = [
     {k:'pendiente',l:'📋 Pendiente'},
     {k:'en_proceso',l:'⚙️ En proceso'},
@@ -922,15 +971,16 @@ function vKA(){
     }).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">Sin tareas</div>';
     return '<div class="kcol"><div class="kch"><span class="kct">'+col.l+'</span><span class="kcc">'+ct.length+'</span></div>'+cards+'</div>';
   }).join('');
-  return '<div class="sh" style="margin-bottom:14px"><h2>Kanban</h2>'
-    +'<div style="display:flex;gap:8px"><select onchange="FPID=this.value;render()" style="background:var(--surface);border:1px solid var(--line2);border-radius:var(--rs);padding:7px 12px;color:var(--ink);font-size:13px;outline:none"><option value="">Todos los proyectos</option>'+sel+'</select>'
+  return '<div class="sh" style="margin-bottom:14px"><h2>Kanban'+(ctx?' · '+esc(ctx.nombre):'')+'</h2>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+(ctx?'<button class="btn btns btng" onclick="A.openProject(\''+ctx.id+'\')">Volver al proyecto</button>':'')+'<select onchange="FPID=this.value;render()" style="background:var(--surface);border:1px solid var(--line2);border-radius:var(--rs);padding:7px 12px;color:var(--ink);font-size:13px;outline:none"><option value="">Todos los proyectos</option>'+sel+'</select>'
     +'<button class="btn btnc" onclick="A.nt(FPID)">+ Tarea</button></div></div>'
     +'<div class="kanban">'+colH+'</div>';
 }
 
 /* GANTT */
 function vGA(){
-  var projs = myProjs();
+  var ctx = FPID ? xid(DB.proyectos,FPID) : null;
+  var projs = ctx ? [ctx] : myProjs();
   var yr = new Date().getFullYear();
   var start = new Date(yr,0,1);
   var months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -954,7 +1004,7 @@ function vGA(){
         +'</tr>');
     });
   });
-  return '<div class="sh" style="margin-bottom:14px"><h2>Gantt — '+yr+'</h2><span style="font-size:12px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:4px;opacity:.6"></span>Hoy</span></div>'
+  return '<div class="sh" style="margin-bottom:14px"><h2>Gantt'+(ctx?' · '+esc(ctx.nombre):'')+' — '+yr+'</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+(ctx?'<button class="btn btns btng" onclick="A.openProject(\''+ctx.id+'\')">Volver al proyecto</button>':'')+'<span style="font-size:12px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:4px;opacity:.6"></span>Hoy</span></div></div>'
     +'<div class="card"><div class="gwrap"><table class="gtable" style="width:100%"><thead><tr>'
     +'<th style="text-align:left;min-width:200px;padding:8px 13px">Tarea</th>'
     +'<th style="min-width:90px;text-align:left;padding:8px 13px;color:var(--muted);font-size:11px">Proyecto</th>'
@@ -967,6 +1017,7 @@ function vGA(){
 /* CALENDARIO */
 var CAL_OFF = 0; // offset de meses desde hoy
 function vCA(){
+  var ctx = FPID ? xid(DB.proyectos,FPID) : null;
   var base = new Date();
   base.setDate(1);
   base.setMonth(base.getMonth()+CAL_OFF);
@@ -977,7 +1028,7 @@ function vCA(){
   var dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   var mn = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   var byD = {};
-  myTasks().forEach(function(t){
+  (ctx ? myTasks().filter(function(t){return t.proyecto_id===ctx.id;}) : myTasks()).forEach(function(t){
     if(!t.fecha_vencimiento) return;
     var d = dateObj(t.fecha_vencimiento);
     if(d.getMonth()===mo&&d.getFullYear()===yr){
@@ -985,7 +1036,7 @@ function vCA(){
       byD[k].push({l:t.titulo,c:t.estado==='terminada'?'':'er'});
     }
   });
-  if(adm()) DB.pagos.forEach(function(pay){
+  if(adm() && !ctx) DB.pagos.forEach(function(pay){
     if(!pay.fecha_vencimiento||pay.estado==='pagado') return;
     var d = dateObj(pay.fecha_vencimiento);
     if(d.getMonth()===mo&&d.getFullYear()===yr){
@@ -993,7 +1044,7 @@ function vCA(){
       byD[k].push({l:'💰 '+pay.concepto,c:'ey'});
     }
   });
-  DB.reuniones.forEach(function(r){
+  DB.reuniones.filter(function(r){return !ctx || r.proyecto_id===ctx.id;}).forEach(function(r){
     if(!r.fecha) return;
     var d = dateObj(String(r.fecha).slice(0,10));
     if(d.getMonth()===mo&&d.getFullYear()===yr){
@@ -1010,8 +1061,8 @@ function vCA(){
     var evs = (byD[day]||[]).slice(0,3).map(function(ev){return '<div class="cev '+ev.c+'" title="'+esc(ev.l)+'">'+esc(ev.l.slice(0,16))+'</div>';}).join('');
     return '<div class="calday'+(isToday?' today':'')+'"><div class="caldn">'+day+'</div>'+evs+'</div>';
   }).join('');
-  return '<div class="sh" style="margin-bottom:14px"><h2>Calendario — '+mn[mo]+' '+yr+'</h2>'
-    +'<div style="display:flex;gap:8px"><button class="btn btns btng" onclick="CAL_OFF--;render()">← Anterior</button>'
+  return '<div class="sh" style="margin-bottom:14px"><h2>Calendario'+(ctx?' · '+esc(ctx.nombre):'')+' — '+mn[mo]+' '+yr+'</h2>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+(ctx?'<button class="btn btns btng" onclick="A.openProject(\''+ctx.id+'\')">Volver al proyecto</button>':'')+'<button class="btn btns btng" onclick="CAL_OFF--;render()">← Anterior</button>'
     +(CAL_OFF!==0?'<button class="btn btns btng" onclick="CAL_OFF=0;render()">Hoy</button>':'')
     +'<button class="btn btns btng" onclick="CAL_OFF++;render()">Siguiente →</button></div></div>'
     +'<div class="card"><div class="calh">'+dn.map(function(d){return '<span>'+d+'</span>';}).join('')+'</div><div class="calg">'+cH+'</div></div>';
@@ -1019,6 +1070,10 @@ function vCA(){
 
 /* PIPELINE */
 function vPI(){
+  if(FPID && xid(DB.proyectos,FPID)){
+    var ctx = xid(DB.proyectos,FPID);
+    return '<div class="sh" style="margin-bottom:14px"><h2>Pipeline · '+esc(ctx.nombre)+'</h2><button class="btn btns btng" onclick="A.openProject(\''+ctx.id+'\')">Volver al proyecto</button></div>'+projectPipelineHtml(ctx);
+  }
   var projs = myProjs();
   var stages = [{k:'prospecto',l:'Prospecto'},{k:'propuesta',l:'Propuesta'},{k:'negociacion',l:'Negociación'},{k:'ejecucion',l:'Ejecución'},{k:'cerrado_ganado',l:'✓ Ganado'},{k:'cerrado_perdido',l:'✗ Perdido'}];
   var cols = stages.map(function(st){
@@ -1220,8 +1275,11 @@ function vRE(){
 var A = {
 
   /* PROYECTO */
-  openProject: function(id){
+  openProject: function(id,tab){
+    var was = FPID;
     FPID = id;
+    PTAB = tab || 'resumen';
+    if(was!==id || PTAB!=='calendario') CAL_OFF = 0;
     nav('proyectos');
   },
   np: function(){ A._pm(null); },
