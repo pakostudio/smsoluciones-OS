@@ -424,6 +424,28 @@ function descVal(t,key){
   var m = String(t.descripcion||'').match(re);
   return m ? m[1].trim() : '';
 }
+function stripDescFields(desc){
+  var keys = ['Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado'];
+  var lines = String(desc||'').split(/\r?\n/);
+  return lines.filter(function(line){
+    return !keys.some(function(k){ return new RegExp('^'+k+'\\s*:','i').test(line); });
+  }).join('\n').trim();
+}
+function buildDesc(base,fields){
+  var lines = [];
+  if(fields.email) lines.push('Email: '+fields.email);
+  if(fields.tel) lines.push('Telefono: '+fields.tel);
+  if(fields.dir) lines.push('Direccion: '+fields.dir);
+  if(fields.gancho) lines.push('Gancho: '+fields.gancho);
+  if(fields.instrumento) lines.push('Instrumento: '+fields.instrumento);
+  if(fields.accion) lines.push('Siguiente accion: '+fields.accion);
+  if(fields.seguimiento) lines.push('Proximo seguimiento: '+fields.seguimiento);
+  if(fields.etapa) lines.push('Etapa: '+fields.etapa);
+  if(fields.probabilidad) lines.push('Probabilidad: '+fields.probabilidad);
+  if(fields.monto) lines.push('Monto estimado: '+fields.monto);
+  var rest = stripDescFields(base);
+  return lines.concat(rest?['',rest]:[]).join('\n');
+}
 function lastActivity(t){
   var dates = [];
   if(t.created_at) dates.push(t.created_at);
@@ -1039,16 +1061,20 @@ var A = {
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
     var crm = crmEnabled();
-    var crmH = crm ? '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Control CRM</h3>'
-      +'<div class="fr2">'+FSL('ec','Etapa',[['por_contactar','Por contactar'],['contactado','Contactado'],['respondio','Respondió'],['reunion_agendada','Reunión agendada'],['propuesta_enviada','Propuesta enviada'],['negociacion','Negociación'],['aprobado','Aprobado'],['rechazado','Rechazado'],['dormido','Dormido']],t&&t.etapa_crm||'por_contactar')+FLD('ps','Próximo seguimiento','date',t&&t.fecha_proximo_seguimiento||'')+'</div>'
-      +FLD('sa','Siguiente acción','text',t&&t.siguiente_accion||'')
-      +'<div class="fr2">'+FLD('pb','Probabilidad %','number',t&&t.probabilidad||'')+FLD('me','Monto estimado','number',t&&t.monto_estimado||'')+'</div>'
-      +'</div>' : '<div class="hbar"><span class="dot dy"></span>Campos CRM avanzados pendientes de migración. La ficha leerá Email, Teléfono, Gancho e Instrumento desde la descripción.</div>';
+    var crmH = '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Contacto y control</h3>'
+      +'<div class="fr2">'+FLD('emx','Email','email',t&&descVal(t,'Email')||'')+FLD('tel','Teléfono','text',t&&(descVal(t,'Telefono')||descVal(t,'Teléfono'))||'')+'</div>'
+      +FLD('dir','Dirección','text',t&&(descVal(t,'Direccion')||descVal(t,'Dirección'))||'')
+      +'<div class="fr2">'+FLD('ga','Gancho','text',t&&descVal(t,'Gancho')||'')+FLD('ins','Instrumento','text',t&&descVal(t,'Instrumento')||'')+'</div>'
+      +'<div class="fr2">'+FSL('ec','Etapa',[['por_contactar','Por contactar'],['contactado','Contactado'],['respondio','Respondió'],['reunion_agendada','Reunión agendada'],['propuesta_enviada','Propuesta enviada'],['negociacion','Negociación'],['aprobado','Aprobado'],['rechazado','Rechazado'],['dormido','Dormido']],t&&(t.etapa_crm||descVal(t,'Etapa'))||'por_contactar')+FLD('ps','Próximo seguimiento','date',t&&(t.fecha_proximo_seguimiento||followDate(t))||'')+'</div>'
+      +FLD('sa','Siguiente acción','text',t&&(t.siguiente_accion||nextAction(t))||'')
+      +'<div class="fr2">'+FLD('pb','Probabilidad %','number',t&&(t.probabilidad||descVal(t,'Probabilidad'))||'')+FLD('me','Monto estimado','number',t&&(t.monto_estimado||descVal(t,'Monto estimado'))||'')+'</div>'
+      +(crm?'':'<div class="hbar"><span class="dot dy"></span>Modo compatible: estos datos se guardarán en la descripción hasta ejecutar la migración CRM.</div>')
+      +'</div>';
     mOpen(t?'Editar tarea':'Nueva tarea',
       '<div class="fg">'
       +'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
       +FLD('ti','Título de la tarea','text',t&&t.titulo)
-      +FTA('dc','Descripción',t&&t.descripcion)
+      +FTA('dc','Notas / descripción libre',t&&stripDescFields(t.descripcion))
       +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
       +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
       +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'')
@@ -1060,7 +1086,12 @@ var A = {
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var old = id ? xid(DB.tareas,id) : null;
     if(id && !canEditTask(old)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
-    var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:fv('dc'),prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
+    var desc = buildDesc(fv('dc'),{email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
+    var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:desc,prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
+    if(id && old && !adm()){
+      data.proyecto_id = old.proyecto_id;
+      data.owner_id = old.owner_id;
+    }
     if(crmEnabled()){
       data.etapa_crm = fv('ec') || null;
       data.siguiente_accion = fv('sa') || null;
@@ -1091,17 +1122,18 @@ var A = {
       return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center"><div><strong>'+esc(f.nombre)+'</strong><span style="color:var(--muted);margin-left:7px">v'+esc(f.version)+'</span></div><a href="'+esc(f.url)+'" target="_blank" class="btn btns btng">🔗 Abrir</a></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin entregables</div>';
     var ef = t.horas_estimadas ? Math.round(t.horas_reales/t.horas_estimadas*100) : 0;
+    var editActions = canEditTask(t) ? '<div class="fa" style="justify-content:flex-start;margin-top:0;padding-top:0;border-top:0"><button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar información</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button>':'')+'</div>' : '';
     mOpen('✓ '+t.titulo,
       '<div style="display:grid;gap:15px">'
       +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div>'
       +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Vence</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
       +'<p style="color:var(--muted);font-size:14px;margin:0">'+esc(t.descripcion||'Sin descripción.')+'</p>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
+      +editActions
       +crmPanel(t)
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Subtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Subtarea</button></div>'+subH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Comentarios ('+coms.length+')</strong><button class="btn btns btng" onclick="A.ncom(\''+id+'\')">💬 Comentar</button></div>'+comH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Entregables ('+fils.length+')</strong><button class="btn btns btng" onclick="A.nfil(\''+id+'\')">📎 Agregar</button></div>'+filH+'</div>'
-      +(canEditTask(t)?'<div class="fa"><button class="btn btns btng" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button>':'')+'</div>':'')
       +'</div>',true);
   },
   ss: async function(id,st){
