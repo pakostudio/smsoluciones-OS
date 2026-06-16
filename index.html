@@ -81,6 +81,8 @@ body.logged #app{display:grid}
 .tb-ti{font-size:19px;font-weight:800;color:var(--ink)}
 .tb-r{display:flex;align-items:center;gap:8px}
 .chip{border:1px solid var(--line2);border-radius:var(--rs);padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);background:var(--surface2);white-space:nowrap}
+.topout{background:var(--navy);color:#fff;border-color:var(--navy);cursor:pointer;font-weight:800}
+.topout:hover{background:#163460;border-color:#163460}
 .content{flex:1;padding:24px 28px 40px;display:grid;gap:16px;align-content:start}
 
 /* BUTTONS */
@@ -241,7 +243,7 @@ tr:hover td{background:var(--surface2)}
 .ei{font-size:30px;margin-bottom:10px}
 
 @media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:none}.sg{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}}
+@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;padding:14px}.tb-r{flex-wrap:wrap;justify-content:flex-end}.chip{font-size:11px;padding:6px 9px}}
 </style>
 </head>
 <body>
@@ -316,6 +318,7 @@ tr:hover td{background:var(--surface2)}
         <span class="chip" id="tb-date">—</span>
         <span class="chip" id="tb-user">—</span>
         <span class="chip" id="tb-live" style="color:var(--green);display:none">● En vivo</span>
+        <button class="chip topout" id="btn-out-top" type="button">Cerrar sesión</button>
       </div>
     </header>
     <main class="content" id="vc"></main>
@@ -614,8 +617,17 @@ function updTopbar(){
   var ar = {dashboard:'Vista Ejecutiva',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Análisis'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
-  document.getElementById('tb-date').textContent = new Date().toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  updClock();
   document.getElementById('tb-user').textContent = me()?me().nombre:'—';
+}
+function fmtNow(){
+  var d = new Date();
+  var fecha = d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  var hora = d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
+  return fecha+' · '+hora;
+}
+function updClock(){
+  document.getElementById('tb-date').textContent = fmtNow();
 }
 function updBadge(){
   var n = getAlerts().length;
@@ -1343,7 +1355,7 @@ function doLogin(){
 
 document.getElementById('btn-login').addEventListener('click', doLogin);
 document.getElementById('f-pin').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
-document.getElementById('btn-out').addEventListener('click', function(){
+function doLogout(){
   if(!confirm('¿Cerrar sesión?')) return;
   SES=null; SELUID='';
   document.body.classList.remove('logged');
@@ -1354,10 +1366,13 @@ document.getElementById('btn-out').addEventListener('click', function(){
   document.getElementById('f-pin').value = '';
   document.getElementById('lerr').textContent = '';
   document.querySelectorAll('.usbtn').forEach(function(b){ b.classList.remove('sel'); });
-});
+}
+document.getElementById('btn-out').addEventListener('click', doLogout);
+document.getElementById('btn-out-top').addEventListener('click', doLogout);
 
 /* ── DATE ── */
-document.getElementById('tb-date').textContent = new Date().toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+updClock();
+setInterval(updClock, 60000);
 
 /* ── INIT ── */
 (async function(){
