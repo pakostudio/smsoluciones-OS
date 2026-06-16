@@ -537,6 +537,27 @@ function crmPanel(t){
     +'<div class="crmcell"><div class="dl">Probabilidad / monto</div><div class="dv">'+proba+' · '+monto+'</div></div>'
     +'</div></div>';
 }
+function taskAlertsHtml(t){
+  var items = [];
+  var h = crmHealth(t);
+  var d = t.fecha_vencimiento ? dayDiff(t.fecha_vencimiento) : null;
+  if(t.estado!=='terminada' && d!==null && d<0) items.push({cl:'ar',ic:'🚨',ti:'Vencida',su:'Fecha término: '+fmt(t.fecha_vencimiento)});
+  else if(t.estado!=='terminada' && d!==null && d<=3) items.push({cl:d<=1?'ar':'',ic:'⚠️',ti:d<=1?'Vence hoy/mañana':'Vence pronto',su:'Fecha término: '+fmt(t.fecha_vencimiento)});
+  if(t.estado!=='terminada' && !nextAction(t)) items.push({cl:'ar',ic:'🎯',ti:'Sin siguiente acción',su:'Define el próximo paso en Editar fechas y datos'});
+  var fs = followDate(t);
+  if(t.estado!=='terminada' && fs){
+    var df = dayDiff(fs);
+    if(df<0) items.push({cl:'ar',ic:'📌',ti:'Seguimiento vencido',su:'Programado para '+fmt(fs)});
+    else if(df<=1) items.push({cl:'',ic:'📌',ti:'Seguimiento hoy/mañana',su:'Programado para '+fmt(fs)});
+  }
+  var ds = daysSince(lastActivity(t));
+  if(t.estado!=='terminada' && ds!==null && ds>=14) items.push({cl:'ar',ic:'⏳',ti:'Sin movimiento '+ds+'d',su:'Agrega comentario o actualiza la siguiente acción'});
+  else if(t.estado!=='terminada' && ds!==null && ds>=7) items.push({cl:'',ic:'⏳',ti:'Seguimiento frío '+ds+'d',su:'Conviene registrar avance'});
+  if(!items.length && h.cl==='dg') items.push({cl:'',ic:'✅',ti:'Sin alertas críticas',su:h.txt});
+  return '<div class="card" style="padding:14px"><div class="ch"><h3>Alertas y control</h3></div>'
+    +items.map(function(a){return '<div class="alitem '+a.cl+'" style="margin-bottom:7px"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';}).join('')
+    +'</div>';
+}
 
 /* ── ALERTS ── */
 function getAlerts(){
@@ -746,9 +767,9 @@ function projectTree(p,limit){
     return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:'+(nested?'9px 0 9px 24px':'9px 0')+';border-top:1px solid var(--line);font-size:12px;background:'+(nested?'var(--surface2)':'transparent')+'">'
       +'<div><span style="color:var(--muted)">'+(nested?'↳':'•')+'</span> <strong>'+esc(t.titulo)+'</strong>'
       +'<span style="display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:8px">'+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></span>'
-      +'<div style="color:var(--muted);margin-top:4px">'+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
-      +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Ver</button>'
-      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar</button>':'')
+      +'<div style="color:var(--muted);margin-top:4px">Inicio: '+fmt(t.fecha_inicio)+' · Término: '+fmt(t.fecha_vencimiento)+' · '+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
+      +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button>'
+      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar fechas/datos</button>':'')
       +'<button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
       +'</div>';
   }
@@ -756,8 +777,8 @@ function projectTree(p,limit){
     var subs = DB.subtareas.filter(function(s){return s.tarea_id===t.id;});
     var subH = subs.length ? subs.map(function(s){
       return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0 7px 18px;border-top:1px solid var(--line);font-size:12px">'
-        +'<div><span style="color:var(--muted)">↳</span> <strong>'+esc(s.titulo)+'</strong><span style="color:var(--muted);margin-left:10px">'+esc(uNm(s.owner_id))+' · '+fmt(s.fecha_vencimiento)+'</span></div>'
-        +'<div style="display:flex;gap:5px;align-items:center">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar</button></div>'
+        +'<div><span style="color:var(--muted)">↳</span> <strong>'+esc(s.titulo)+'</strong><span style="color:var(--muted);margin-left:10px">'+esc(uNm(s.owner_id))+' · Término: '+fmt(s.fecha_vencimiento)+'</span></div>'
+        +'<div style="display:flex;gap:5px;align-items:center">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar fecha/estado</button></div>'
         +'</div>';
     }).join('') : '';
     var children = (extraChildren||[]).map(function(ch){return taskLine(ch,true);}).join('');
@@ -766,9 +787,9 @@ function projectTree(p,limit){
       +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start">'
       +'<div><div style="font-size:15px;font-weight:900;color:var(--ink);cursor:pointer" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-top:6px">'+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
-      +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Ver</button>'
-      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar</button>':'')
+      +'<div style="font-size:12px;color:var(--muted);margin-top:6px">Inicio: '+fmt(t.fecha_inicio)+' · Término: '+fmt(t.fecha_vencimiento)+' · '+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button>'
+      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar fechas/datos</button>':'')
       +'<button class="btn btns btng" onclick="A.nsub(\''+t.id+'\')">+ Subtarea</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
       +'</div>'+subH+children+empty+'</div>';
   }
@@ -809,7 +830,7 @@ function projectReportHtml(pid){
     +'<div class="card"><div class="ch"><h3>Jerarquía y seguimiento</h3></div>'+projectTree(p)+'</div>';
 }
 function projectTabs(p){
-  var tabs=[['resumen','Resumen'],['tareas','Tareas'],['reporte','Reporte'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var tabs=[['resumen','Resumen'],['tareas','Tareas y subtareas'],['reporte','Reporte del proyecto'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -1400,7 +1421,7 @@ var A = {
       return '<button class="btn btns '+(t.estado===s?'btnc':'btng')+'" onclick="A.ss(\''+id+'\',\''+s+'\');mClose()">'+ic[s]+' '+s.replace('_',' ')+'</button>';
     }).join('');
     var subH = subs.map(function(s){
-      return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px"><span>'+esc(s.titulo)+'</span><div style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted)">'+esc(uNm(s.owner_id))+'</span>'+bSt(s.estado)+'</div></div>';
+      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;align-items:center"><div><strong>'+esc(s.titulo)+'</strong><div style="color:var(--muted);font-size:12px;margin-top:3px">'+esc(uNm(s.owner_id))+' · Término: '+fmt(s.fecha_vencimiento)+'</div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar fecha/estado</button></div></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin subtareas</div>';
     var comH = coms.map(function(c){
       return '<div style="padding:9px;background:var(--surface2);border-radius:var(--rs);margin-bottom:7px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><strong style="font-size:13px">'+esc(uNm(c.usuario_id))+'</strong><span style="font-size:11px;color:var(--muted)">'+fmtdt(c.created_at)+'</span></div><p style="font-size:13px;margin:0">'+esc(c.texto)+'</p></div>';
@@ -1409,16 +1430,24 @@ var A = {
       return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center"><div><strong>'+esc(f.nombre)+'</strong><span style="color:var(--muted);margin-left:7px">v'+esc(f.version)+'</span></div><a href="'+esc(f.url)+'" target="_blank" class="btn btns btng">🔗 Abrir</a></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin entregables</div>';
     var ef = t.horas_estimadas ? Math.round(t.horas_reales/t.horas_estimadas*100) : 0;
-    var editActions = canEditTask(t) ? '<div class="fa" style="justify-content:flex-start;margin-top:0;padding-top:0;border-top:0"><button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar información</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button>':'')+'</div>' : '';
+    var editActions = canEditTask(t) ? '<button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">Editar fechas y datos</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">Eliminar</button>':'') : '';
+    var quickActions = '<div class="card" style="padding:14px"><div class="ch"><h3>Acciones rápidas</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btns btng" onclick="mClose();A.openProject(\''+t.proyecto_id+'\',\'tareas\')">Volver a tareas</button>'
+      +'<button class="btn btns btng" onclick="mClose();A.openProject(\''+t.proyecto_id+'\',\'reporte\')">Ver reporte</button>'
+      +editActions
+      +'<button class="btn btns btng" onclick="A.ncom(\''+id+'\')">Agregar comentario</button>'
+      +'<button class="btn btns btng" onclick="A.nfil(\''+id+'\')">Agregar entregable</button>'
+      +'</div></div>';
     var pkAccess = /prokicks/i.test(pNm(t.proyecto_id)+' '+t.titulo) ? '<div class="hbar" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><span><span class="dot dg"></span>Operación ProKicks centralizada</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btns btnc" onclick="openProkicks(\'dashboard\')">Dashboard inventario</button><button class="btn btns btng" onclick="openProkicks(\'prospecto\')">Prospectos</button><button class="btn btns btng" onclick="openProkicks(\'venta\')">Ventas</button><button class="btn btns btng" onclick="openProkicks(\'comodato\')">Comodatos</button><button class="btn btns btng" onclick="openProkicks(\'cobranza\')">Cobranza</button></div></div>' : '';
     mOpen('✓ '+t.titulo,
       '<div style="display:grid;gap:15px">'
       +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div>'
-      +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Vence</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
+      +quickActions
+      +taskAlertsHtml(t)
+      +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Inicio</div><div class="dv">'+fmt(t.fecha_inicio)+'</div></div><div class="di"><div class="dl">Término</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
       +'<p style="color:var(--muted);font-size:14px;margin:0">'+esc(t.descripcion||'Sin descripción.')+'</p>'
       +pkAccess
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
-      +editActions
       +crmPanel(t)
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Subtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Subtarea</button></div>'+subH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Comentarios ('+coms.length+')</strong><button class="btn btns btng" onclick="A.ncom(\''+id+'\')">💬 Comentar</button></div>'+comH+'</div>'
