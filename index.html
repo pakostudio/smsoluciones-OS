@@ -223,6 +223,12 @@ tr:hover td{background:var(--surface2)}
 
 /* HEALTH */
 .hbar{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:600}
+.crmgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.crmcell{background:var(--surface2);border:1px solid var(--line);border-radius:var(--rs);padding:10px}
+.crmcell .dl{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.crmcell .dv{font-size:13px;font-weight:700;color:var(--ink);line-height:1.35;word-break:break-word}
+.crmwarn{border-left:3px solid var(--yellow)}
+.crmrisk{border-left:3px solid var(--red)}
 
 /* TABS */
 .tabs{display:flex;gap:3px;border-bottom:1px solid var(--line2);margin-bottom:18px}
@@ -235,7 +241,7 @@ tr:hover td{background:var(--surface2)}
 .ei{font-size:30px;margin-bottom:10px}
 
 @media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:none}.sg{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3{grid-template-columns:1fr}}
+@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -395,6 +401,61 @@ function bPi(p){
   var m = {prospecto:'<span class="badge bx_">Prospecto</span>',propuesta:'<span class="badge by_">Propuesta</span>',negociacion:'<span class="badge bb_">Negociación</span>',ejecucion:'<span class="badge bc_">Ejecución</span>',cerrado_ganado:'<span class="badge bg_">Ganado</span>',cerrado_perdido:'<span class="badge br_">Perdido</span>'};
   return m[p] || '<span class="badge bx_">'+esc(p)+'</span>';
 }
+function bCrm(s){
+  var m = {por_contactar:'<span class="badge bx_">Por contactar</span>',contactado:'<span class="badge bb_">Contactado</span>',respondio:'<span class="badge bc_">Respondió</span>',reunion_agendada:'<span class="badge by_">Reunión agendada</span>',propuesta_enviada:'<span class="badge bb_">Propuesta enviada</span>',negociacion:'<span class="badge by_">Negociación</span>',aprobado:'<span class="badge bg_">Aprobado</span>',rechazado:'<span class="badge br_">Rechazado</span>',dormido:'<span class="badge bx_">Dormido</span>'};
+  return m[s] || (s?'<span class="badge bx_">'+esc(s)+'</span>':'<span class="badge bx_">Sin etapa</span>');
+}
+function crmEnabled(){
+  return DB.tareas.some(function(t){ return Object.prototype.hasOwnProperty.call(t,'siguiente_accion'); });
+}
+function descVal(t,key){
+  var re = new RegExp('^'+key+'\\s*:\\s*(.+)$','im');
+  var m = String(t.descripcion||'').match(re);
+  return m ? m[1].trim() : '';
+}
+function lastActivity(t){
+  var dates = [];
+  if(t.created_at) dates.push(t.created_at);
+  DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).forEach(function(c){ if(c.created_at) dates.push(c.created_at); });
+  return dates.length ? dates.sort().pop() : '';
+}
+function daysSince(s){
+  if(!s) return null;
+  return Math.floor((new Date()-new Date(s))/864e5);
+}
+function nextAction(t){
+  return t.siguiente_accion || descVal(t,'Siguiente accion') || descVal(t,'Siguiente acción') || '';
+}
+function followDate(t){
+  return t.fecha_proximo_seguimiento || descVal(t,'Proximo seguimiento') || descVal(t,'Próximo seguimiento') || '';
+}
+function crmHealth(t){
+  if(t.estado==='terminada') return {cl:'dg',txt:'Cerrada'};
+  var dDue = t.fecha_vencimiento ? Math.ceil((new Date(t.fecha_vencimiento)-new Date())/864e5) : 999;
+  var dAct = daysSince(lastActivity(t));
+  if(dDue<0 || !nextAction(t)) return {cl:'dr',txt:dDue<0?'Vencida':'Sin siguiente acción'};
+  if(dAct!==null && dAct>=14) return {cl:'dr',txt:'Sin movimiento '+dAct+'d'};
+  if(dDue<=3 || (dAct!==null && dAct>=7)) return {cl:'dy',txt:dDue<=3?'Vence pronto':'Seguimiento frío'};
+  return {cl:'dg',txt:'En control'};
+}
+function crmPanel(t){
+  var h = crmHealth(t), la = lastActivity(t), ds = daysSince(la);
+  var etapa = t.etapa_crm || descVal(t,'Etapa') || '';
+  var proba = t.probabilidad ? t.probabilidad+'%' : '—';
+  var monto = t.monto_estimado ? '$'+Number(t.monto_estimado).toLocaleString() : '—';
+  return '<div style="border-top:1px solid var(--line);padding-top:12px">'
+    +'<div class="hbar '+(h.cl==='dr'?'crmrisk':h.cl==='dy'?'crmwarn':'')+'"><span class="dot '+h.cl+'" style="width:12px;height:12px"></span>Control CRM · '+esc(h.txt)+'</div>'
+    +'<div class="crmgrid" style="margin-top:10px">'
+    +'<div class="crmcell"><div class="dl">Etapa</div><div class="dv">'+bCrm(etapa)+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Siguiente acción</div><div class="dv">'+esc(nextAction(t)||'Por definir')+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Próximo seguimiento</div><div class="dv">'+fmt(followDate(t))+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Última actividad</div><div class="dv">'+(la?fmtdt(la)+' · '+ds+'d':'Sin actividad')+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Email</div><div class="dv">'+esc(descVal(t,'Email')||'Por nutrir')+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Teléfono</div><div class="dv">'+esc(descVal(t,'Telefono')||descVal(t,'Teléfono')||'Por nutrir')+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Gancho</div><div class="dv">'+esc(descVal(t,'Gancho')||'Por definir')+'</div></div>'
+    +'<div class="crmcell"><div class="dl">Probabilidad / monto</div><div class="dv">'+proba+' · '+monto+'</div></div>'
+    +'</div></div>';
+}
 
 /* ── ALERTS ── */
 function getAlerts(){
@@ -407,6 +468,16 @@ function getAlerts(){
     if(d<0) a.push({cl:'ar',ic:'🚨',ti:'Tarea vencida: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
     else if(d<=1) a.push({cl:'ar',ic:'⚠️',ti:'Vence hoy/mañana: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
     else if(d<=3) a.push({cl:'',ic:'⚠️',ti:'Vence en '+d+'d: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
+    if(!nextAction(t)) a.push({cl:'ar',ic:'🎯',ti:'Sin siguiente acción: '+t.titulo,su:pNm(t.proyecto_id)+' · define el próximo paso'});
+    var dAct = daysSince(lastActivity(t));
+    if(dAct!==null && dAct>=14) a.push({cl:'ar',ic:'⏳',ti:'Sin movimiento '+dAct+'d: '+t.titulo,su:pNm(t.proyecto_id)+' · requiere seguimiento'});
+    else if(dAct!==null && dAct>=7) a.push({cl:'',ic:'⏳',ti:'Seguimiento frío '+dAct+'d: '+t.titulo,su:pNm(t.proyecto_id)});
+    var fs = followDate(t);
+    if(fs){
+      var df = Math.ceil((new Date(fs)-new Date())/864e5);
+      if(df<0) a.push({cl:'ar',ic:'📌',ti:'Seguimiento vencido: '+t.titulo,su:'Programado para '+fmt(fs)});
+      else if(df<=1) a.push({cl:'',ic:'📌',ti:'Seguimiento hoy/mañana: '+t.titulo,su:pNm(t.proyecto_id)});
+    }
   });
   if(adm()){
     DB.pagos.forEach(function(pay){
@@ -620,19 +691,20 @@ function vTA(){
       +'<td>'+esc(uNm(t.owner_id))+'</td>'
       +'<td>'+bPr(t.prioridad)+'</td>'
       +'<td>'+bSt(t.estado)+'</td>'
-      +'<td>'+sem(t)+'</td>'
+      +'<td>'+sem(t)+'<br><span style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;font-size:11px;color:var(--muted)"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></td>'
+      +'<td style="font-size:12px;color:var(--muted);max-width:180px">'+esc(nextAction(t)||'—')+'</td>'
       +'<td style="font-size:12px;color:var(--muted)">'+t.horas_reales+'/'+t.horas_estimadas+'h</td>'
       +'<td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td>'
       +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ver</button>'
       +(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+t.id+'\')">✕</button>':'')
       +'</div></td></tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty"><p>Sin tareas</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="10"><div class="empty"><p>Sin tareas</p></div></td></tr>';
   return '<div class="sh"><h2>Tareas</h2>'
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     +'<select onchange="FPID=this.value;render()" style="background:var(--surface);border:1px solid var(--line2);border-radius:var(--rs);padding:7px 12px;color:var(--ink);font-size:13px;outline:none"><option value="">Todos los proyectos</option>'+sel+'</select>'
     +'<button class="btn btnc" onclick="A.nt(FPID)">+ Nueva tarea</button>'
     +'</div></div>'
-    +'<div class="card"><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Semáforo</th><th>H Est/Real</th><th>Vence</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    +'<div class="card"><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Control</th><th>Siguiente acción</th><th>H Est/Real</th><th>Vence</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 
 /* KANBAN */
@@ -954,6 +1026,12 @@ var A = {
     var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    var crm = crmEnabled();
+    var crmH = crm ? '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Control CRM</h3>'
+      +'<div class="fr2">'+FSL('ec','Etapa',[['por_contactar','Por contactar'],['contactado','Contactado'],['respondio','Respondió'],['reunion_agendada','Reunión agendada'],['propuesta_enviada','Propuesta enviada'],['negociacion','Negociación'],['aprobado','Aprobado'],['rechazado','Rechazado'],['dormido','Dormido']],t&&t.etapa_crm||'por_contactar')+FLD('ps','Próximo seguimiento','date',t&&t.fecha_proximo_seguimiento||'')+'</div>'
+      +FLD('sa','Siguiente acción','text',t&&t.siguiente_accion||'')
+      +'<div class="fr2">'+FLD('pb','Probabilidad %','number',t&&t.probabilidad||'')+FLD('me','Monto estimado','number',t&&t.monto_estimado||'')+'</div>'
+      +'</div>' : '<div class="hbar"><span class="dot dy"></span>Campos CRM avanzados pendientes de migración. La ficha leerá Email, Teléfono, Gancho e Instrumento desde la descripción.</div>';
     mOpen(t?'Editar tarea':'Nueva tarea',
       '<div class="fg">'
       +'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
@@ -962,12 +1040,21 @@ var A = {
       +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
       +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
       +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'')
+      +crmH
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
       +'</div>');
   },
   _st: async function(id){
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:fv('dc'),prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
+    if(crmEnabled()){
+      data.etapa_crm = fv('ec') || null;
+      data.siguiente_accion = fv('sa') || null;
+      data.fecha_proximo_seguimiento = fv('ps') || null;
+      data.probabilidad = fv('pb') ? Number(fv('pb')) : null;
+      data.monto_estimado = fv('me') ? Number(fv('me')) : null;
+      data.ultima_actividad = new Date().toISOString();
+    }
     var r = id ? await upd('tareas',id,data) : await ins('tareas',data);
     if(r){mClose();await refresh();toast(id?'Tarea actualizada':'Tarea creada ✓','g');}
   },
@@ -996,6 +1083,7 @@ var A = {
       +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Vence</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
       +'<p style="color:var(--muted);font-size:14px;margin:0">'+esc(t.descripcion||'Sin descripción.')+'</p>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
+      +crmPanel(t)
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Subtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Subtarea</button></div>'+subH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Comentarios ('+coms.length+')</strong><button class="btn btns btng" onclick="A.ncom(\''+id+'\')">💬 Comentar</button></div>'+comH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Entregables ('+fils.length+')</strong><button class="btn btns btng" onclick="A.nfil(\''+id+'\')">📎 Agregar</button></div>'+filH+'</div>'
@@ -1003,7 +1091,9 @@ var A = {
       +'</div>',true);
   },
   ss: async function(id,st){
-    await upd('tareas',id,{estado:st});
+    var data = {estado:st};
+    if(crmEnabled()) data.ultima_actividad = new Date().toISOString();
+    await upd('tareas',id,data);
     await refresh(); toast('Estado actualizado ✓','g');
   },
   dt: async function(id){
@@ -1029,7 +1119,7 @@ var A = {
   _ssub: async function(tid){
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var r = await ins('subtareas',{tarea_id:tid,owner_id:fv('oi'),titulo:ti,estado:fv('es'),fecha_vencimiento:fv('fv')||null});
-    if(r){await loadAll();mClose();A.td(tid);toast('Subtarea creada ✓','g');}
+    if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Subtarea creada ✓','g');}
   },
 
   /* COMENTARIO */
@@ -1042,7 +1132,7 @@ var A = {
   _scom: async function(tid){
     var tx = fv('tx'); if(!tx){toast('Escribe algo','r');return;}
     var r = await ins('comentarios',{tarea_id:tid,usuario_id:SES.userId,texto:tx});
-    if(r){await loadAll();mClose();A.td(tid);toast('Comentario agregado ✓','g');}
+    if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Comentario agregado ✓','g');}
   },
 
   /* ENTREGABLE */
@@ -1060,7 +1150,7 @@ var A = {
     var nm = fv('nm'), ur = fv('ur');
     if(!nm||!ur){toast('Nombre y URL requeridos','r');return;}
     var r = await ins('entregables',{tarea_id:tid,usuario_id:SES.userId,nombre:nm,url:ur,tipo:fv('ti'),version:fv('ve')||'1'});
-    if(r){await loadAll();mClose();A.td(tid);toast('Entregable guardado ✓','g');}
+    if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Entregable guardado ✓','g');}
   },
 
   /* CLIENTE */

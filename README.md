@@ -1,18 +1,35 @@
-# SM OS Stable v1
+# SM OS
 
-Versión estable para GitHub Pages.
+CRM ligero para SM Soluciones. Funciona como app estática en GitHub Pages y usa Supabase como base de datos.
 
 ## Archivos necesarios
 
 - index.html
+- assets/sm-logo.png
 - README.md
 
-## Login demo
+## Backend
 
-Usuario: pako  
-PIN: 1234
+El frontend se conecta a Supabase desde `index.html`. Las tablas principales son:
 
-## Notas
+- usuarios
+- clientes
+- proyectos
+- tareas
+- subtareas
+- comentarios
+- entregables
+- pagos
+- reuniones
 
-Esta versión no usa Vercel, Supabase, npm ni librerías externas.  
-Los datos se guardan en el navegador mediante localStorage.
+## Migraciones
+
+Para activar el control CRM avanzado en tareas, ejecuta en Supabase SQL Editor:
+
+`migrations/2026-06-15-crm-task-control.sql`
+
+Esto agrega etapa CRM, siguiente acción, próximo seguimiento, última actividad, probabilidad y monto estimado.
+
+## Login
+
+El login actual usa usuarios y PIN dentro de la tabla `usuarios`. Sirve para operación interna controlada, pero antes de producción conviene migrar a Supabase Auth y políticas RLS estrictas.
