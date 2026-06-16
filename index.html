@@ -344,9 +344,19 @@ var FPID = '';   // filter project id
 var SELUID = ''; // selected user on login
 
 /* ── UTILS ── */
-function today(){ return new Date().toISOString().slice(0,10); }
-function pd(n){ var d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
-function fmt(s){ return s ? new Date(s).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+function dateObj(s){
+  if(!s) return null;
+  var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? new Date(Number(m[1]),Number(m[2])-1,Number(m[3])) : new Date(s);
+}
+function dateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function startToday(){ var d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function dayDiff(s){ return Math.ceil((dateObj(s)-startToday())/864e5); }
+function today(){ return dateKey(new Date()); }
+function pd(n){ var d=new Date(); d.setDate(d.getDate()+n); return dateKey(d); }
+function fmt(s){ return s ? dateObj(s).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 function fmtdt(s){ return s ? new Date(s).toLocaleString('es-MX') : '—'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function xid(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return arr[i]; return null; }
@@ -356,6 +366,7 @@ function pNm(id){ var p=xid(DB.proyectos,id); return p?p.nombre:'?'; }
 function ini(s){ var parts=(s||'?').split(' ').filter(function(w){return w.length>0;}); return (parts.length>=2?parts[0][0]+parts[1][0]:parts[0].slice(0,2)).toUpperCase(); }
 function me(){ return SES ? xid(DB.usuarios,SES.userId) : null; }
 function adm(){ var u=me(); return u && u.rol==='admin'; }
+function canEditTask(t){ return !!(t && SES && (adm() || t.owner_id===SES.userId)); }
 
 function toast(msg, col){
   var el=document.getElementById('toast');
@@ -370,7 +381,7 @@ function toast(msg, col){
 function sem(t){
   if(t.estado==='terminada') return '<span class="sem"><span class="dot dg"></span>Completa</span>';
   if(!t.fecha_vencimiento) return '<span class="sem"><span class="dot dg"></span>—</span>';
-  var d = Math.ceil((new Date(t.fecha_vencimiento)-new Date())/864e5);
+  var d = dayDiff(t.fecha_vencimiento);
   if(d<0) return '<span class="sem"><span class="dot dr"></span>Vencida</span>';
   if(d<=1) return '<span class="sem"><span class="dot dr"></span>'+d+'d</span>';
   if(d<=3) return '<span class="sem"><span class="dot dy"></span>'+d+'d</span>';
@@ -421,7 +432,7 @@ function lastActivity(t){
 }
 function daysSince(s){
   if(!s) return null;
-  return Math.floor((new Date()-new Date(s))/864e5);
+  return Math.floor((new Date()-dateObj(s))/864e5);
 }
 function nextAction(t){
   return t.siguiente_accion || descVal(t,'Siguiente accion') || descVal(t,'Siguiente acción') || '';
@@ -431,7 +442,7 @@ function followDate(t){
 }
 function crmHealth(t){
   if(t.estado==='terminada') return {cl:'dg',txt:'Cerrada'};
-  var dDue = t.fecha_vencimiento ? Math.ceil((new Date(t.fecha_vencimiento)-new Date())/864e5) : 999;
+  var dDue = t.fecha_vencimiento ? dayDiff(t.fecha_vencimiento) : 999;
   var dAct = daysSince(lastActivity(t));
   if(dDue<0 || !nextAction(t)) return {cl:'dr',txt:dDue<0?'Vencida':'Sin siguiente acción'};
   if(dAct!==null && dAct>=14) return {cl:'dr',txt:'Sin movimiento '+dAct+'d'};
@@ -464,7 +475,7 @@ function getAlerts(){
   DB.tareas.forEach(function(t){
     if(!adm() && t.owner_id!==uid) return;
     if(t.estado==='terminada' || !t.fecha_vencimiento) return;
-    var d = Math.ceil((new Date(t.fecha_vencimiento)-new Date())/864e5);
+    var d = dayDiff(t.fecha_vencimiento);
     if(d<0) a.push({cl:'ar',ic:'🚨',ti:'Tarea vencida: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
     else if(d<=1) a.push({cl:'ar',ic:'⚠️',ti:'Vence hoy/mañana: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
     else if(d<=3) a.push({cl:'',ic:'⚠️',ti:'Vence en '+d+'d: '+t.titulo,su:pNm(t.proyecto_id)+' · '+uNm(t.owner_id)});
@@ -474,7 +485,7 @@ function getAlerts(){
     else if(dAct!==null && dAct>=7) a.push({cl:'',ic:'⏳',ti:'Seguimiento frío '+dAct+'d: '+t.titulo,su:pNm(t.proyecto_id)});
     var fs = followDate(t);
     if(fs){
-      var df = Math.ceil((new Date(fs)-new Date())/864e5);
+      var df = dayDiff(fs);
       if(df<0) a.push({cl:'ar',ic:'📌',ti:'Seguimiento vencido: '+t.titulo,su:'Programado para '+fmt(fs)});
       else if(df<=1) a.push({cl:'',ic:'📌',ti:'Seguimiento hoy/mañana: '+t.titulo,su:pNm(t.proyecto_id)});
     }
@@ -482,7 +493,7 @@ function getAlerts(){
   if(adm()){
     DB.pagos.forEach(function(pay){
       if(pay.estado==='pagado' || !pay.fecha_vencimiento) return;
-      var d = Math.ceil((new Date(pay.fecha_vencimiento)-new Date())/864e5);
+      var d = dayDiff(pay.fecha_vencimiento);
       if(d<0) a.push({cl:'ar',ic:'💸',ti:'Pago vencido: '+pay.concepto,su:cNm(pay.cliente_id)+' · $'+Number(pay.monto).toLocaleString()});
       else if(d<=5) a.push({cl:'',ic:'💰',ti:'Pago próximo ('+d+'d): '+pay.concepto,su:cNm(pay.cliente_id)+' · $'+Number(pay.monto).toLocaleString()});
     });
@@ -605,7 +616,7 @@ document.querySelectorAll('.nbtn').forEach(function(b){ b.addEventListener('clic
 function vDB(){
   var tasks = myTasks(), projs = myProjs();
   var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
-  var over = tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&new Date(t.fecha_vencimiento)<new Date();}).length;
+  var over = tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
   var pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
   var alerts = getAlerts().slice(0,3);
 
@@ -652,8 +663,8 @@ function vPR(){
     var pt = DB.tareas.filter(function(t){return t.proyecto_id===p.id;});
     var pd2 = pt.filter(function(t){return t.estado==='terminada';}).length;
     var pp = pt.length ? Math.round(pd2/pt.length*100) : 0;
-    var fi = p.fecha_inicio ? new Date(p.fecha_inicio) : null;
-    var fv2 = p.fecha_vencimiento ? new Date(p.fecha_vencimiento) : null;
+    var fi = p.fecha_inicio ? dateObj(p.fecha_inicio) : null;
+    var fv2 = p.fecha_vencimiento ? dateObj(p.fecha_vencimiento) : null;
     var tu = fi ? Math.ceil((new Date()-fi)/864e5) : 0;
     var td2 = fi&&fv2 ? Math.ceil((fv2-fi)/864e5) : 100;
     var tp = td2>0 ? Math.round(tu/td2*100) : 0;
@@ -741,7 +752,7 @@ function vKA(){
 function vGA(){
   var projs = myProjs();
   var yr = new Date().getFullYear();
-  var start = new Date(yr+'-01-01');
+  var start = new Date(yr,0,1);
   var months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   var total = ((yr%4===0&&yr%100!==0)||yr%400===0)?366:365;
   var todayOff = Math.round((new Date()-start)/864e5);
@@ -750,7 +761,7 @@ function vGA(){
   projs.forEach(function(p){
     DB.tareas.filter(function(t){return t.proyecto_id===p.id;}).forEach(function(t){
       if(!t.fecha_inicio||!t.fecha_vencimiento) return;
-      var s = new Date(t.fecha_inicio), e = new Date(t.fecha_vencimiento);
+      var s = dateObj(t.fecha_inicio), e = dateObj(t.fecha_vencimiento);
       var off = Math.max(0,Math.round((s-start)/864e5));
       var dur = Math.max(1,Math.round((e-s)/864e5));
       var l = (off/total*100).toFixed(1);
@@ -788,7 +799,7 @@ function vCA(){
   var byD = {};
   myTasks().forEach(function(t){
     if(!t.fecha_vencimiento) return;
-    var d = new Date(t.fecha_vencimiento);
+    var d = dateObj(t.fecha_vencimiento);
     if(d.getMonth()===mo&&d.getFullYear()===yr){
       var k = d.getDate(); if(!byD[k]) byD[k]=[];
       byD[k].push({l:t.titulo,c:t.estado==='terminada'?'':'er'});
@@ -796,7 +807,7 @@ function vCA(){
   });
   if(adm()) DB.pagos.forEach(function(pay){
     if(!pay.fecha_vencimiento||pay.estado==='pagado') return;
-    var d = new Date(pay.fecha_vencimiento);
+    var d = dateObj(pay.fecha_vencimiento);
     if(d.getMonth()===mo&&d.getFullYear()===yr){
       var k = d.getDate(); if(!byD[k]) byD[k]=[];
       byD[k].push({l:'💰 '+pay.concepto,c:'ey'});
@@ -804,7 +815,7 @@ function vCA(){
   });
   DB.reuniones.forEach(function(r){
     if(!r.fecha) return;
-    var d = new Date(r.fecha);
+    var d = dateObj(String(r.fecha).slice(0,10));
     if(d.getMonth()===mo&&d.getFullYear()===yr){
       var k = d.getDate(); if(!byD[k]) byD[k]=[];
       byD[k].push({l:'📋 '+r.titulo,c:''});
@@ -894,7 +905,7 @@ function vRE(){
     var done = ut.filter(function(t){return t.estado==='terminada';}).length;
     var inP = ut.filter(function(t){return t.estado==='en_proceso';}).length;
     var inR = ut.filter(function(t){return t.estado==='en_revision';}).length;
-    var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&new Date(t.fecha_vencimiento)<new Date();}).length;
+    var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
     var eff = ut.length ? Math.round(done/ut.length*100) : 0;
     var heTotal = ut.reduce(function(s,t){return s+(Number(t.horas_estimadas)||0);},0);
     var hrTotal = ut.reduce(function(s,t){return s+(Number(t.horas_reales)||0);},0);
@@ -933,7 +944,7 @@ function vRE(){
     var ut = DB.tareas.filter(function(t){return t.owner_id===u.id;});
     var d2 = ut.filter(function(t){return t.estado==='terminada';}).length;
     var ip = ut.filter(function(t){return t.estado==='en_proceso';}).length;
-    var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&new Date(t.fecha_vencimiento)<new Date();}).length;
+    var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
     var ef = ut.length ? Math.round(d2/ut.length*100) : 0;
     return '<tr>'
       +'<td><div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:28px;height:28px;font-size:11px">'+ini(u.nombre)+'</div><strong>'+esc(u.nombre)+'</strong></div></td>'
@@ -995,8 +1006,8 @@ var A = {
     var tasks = DB.tareas.filter(function(t){return t.proyecto_id===id;});
     var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
     var pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
-    var fi = p.fecha_inicio?new Date(p.fecha_inicio):null;
-    var fv2 = p.fecha_vencimiento?new Date(p.fecha_vencimiento):null;
+    var fi = p.fecha_inicio?dateObj(p.fecha_inicio):null;
+    var fv2 = p.fecha_vencimiento?dateObj(p.fecha_vencimiento):null;
     var tu = fi?Math.ceil((new Date()-fi)/864e5):0;
     var td2 = fi&&fv2?Math.ceil((fv2-fi)/864e5):100;
     var tp = td2>0?Math.round(tu/td2*100):0;
@@ -1023,6 +1034,7 @@ var A = {
   nt: function(pid){ if(!DB.proyectos.length){toast('Primero crea un proyecto','r');return;} A._tm(null,pid||''); },
   _tm: function(id,pid){
     var t = id ? xid(DB.tareas,id) : null;
+    if(id && !canEditTask(t)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
     var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
@@ -1046,6 +1058,8 @@ var A = {
   },
   _st: async function(id){
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
+    var old = id ? xid(DB.tareas,id) : null;
+    if(id && !canEditTask(old)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
     var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:fv('dc'),prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
     if(crmEnabled()){
       data.etapa_crm = fv('ec') || null;
@@ -1087,7 +1101,7 @@ var A = {
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Subtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Subtarea</button></div>'+subH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Comentarios ('+coms.length+')</strong><button class="btn btns btng" onclick="A.ncom(\''+id+'\')">💬 Comentar</button></div>'+comH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Entregables ('+fils.length+')</strong><button class="btn btns btng" onclick="A.nfil(\''+id+'\')">📎 Agregar</button></div>'+filH+'</div>'
-      +(adm()?'<div class="fa"><button class="btn btns btng" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar</button><button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button></div>':'')
+      +(canEditTask(t)?'<div class="fa"><button class="btn btns btng" onclick="mClose();A._tm(\''+id+'\')">✏️ Editar</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">🗑 Eliminar</button>':'')+'</div>':'')
       +'</div>',true);
   },
   ss: async function(id,st){
