@@ -473,12 +473,18 @@ function descVal(t,key){
   return m ? m[1].trim() : '';
 }
 var GROUPS = ['Embajadas','Fundaciones','Empresas','General'];
-function cleanGroupName(v){
+function isOfunamProject(p){ return !!p && /ofunam/i.test(String(p.nombre||'')); }
+function isProkicksProject(p){ return !!p && /prokicks/i.test(String(p.nombre||'')); }
+function taskProject(t){ return t ? xid(DB.proyectos,t.proyecto_id) : null; }
+function groupsForProject(p){ return isOfunamProject(p) ? ['Embajadas','Fundaciones','Empresas','General'] : ['General']; }
+function cleanGroupName(v,p){
   var s = String(v||'').trim();
-  var hit = GROUPS.find(function(g){return g.toLowerCase()===s.toLowerCase();});
+  var list = p ? groupsForProject(p) : GROUPS;
+  var hit = list.find(function(g){return g.toLowerCase()===s.toLowerCase();});
   return hit || 'General';
 }
 function isGroupHeader(t){
+  if(!isOfunamProject(taskProject(t))) return false;
   var title = String(t&&t.titulo||'').trim();
   return /^(empresas|fundaciones)$/i.test(title) || (/^embajadas/i.test(title) && !/—/.test(title));
 }
@@ -490,7 +496,9 @@ function groupFromHeader(t){
   return '';
 }
 function taskGroup(t){
-  return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (/—/.test(t&&t.titulo||'')?'Embajadas':'General'));
+  var p = taskProject(t);
+  if(!isOfunamProject(p)) return 'General';
+  return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (/—/.test(t&&t.titulo||'')?'Embajadas':'General'), p);
 }
 function stripDescFields(desc){
   var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado'];
@@ -647,7 +655,7 @@ async function loadAll(){
 async function normalizeProjectGroups(){
   if(!DB.tareas.length) return false;
   var changed = false;
-  var headers = DB.tareas.filter(isGroupHeader);
+  var headers = DB.tareas.filter(function(t){return isGroupHeader(t) && isOfunamProject(taskProject(t));});
   for(var i=0;i<headers.length;i++){
     var h = headers[i], g = groupFromHeader(h);
     var subs = DB.subtareas.filter(function(s){return s.tarea_id===h.id;});
@@ -676,7 +684,7 @@ async function normalizeProjectGroups(){
   }
   for(var k=0;k<DB.tareas.length;k++){
     var t = DB.tareas[k];
-    if(isGroupHeader(t) || descVal(t,'Grupo')) continue;
+    if(!isOfunamProject(taskProject(t)) || isGroupHeader(t) || descVal(t,'Grupo')) continue;
     var inferred = /—/.test(t.titulo||'') ? 'Embajadas' : '';
     if(!inferred) continue;
     var up = {descripcion:buildDesc(stripDescFields(t.descripcion),{grupo:inferred,email:descVal(t,'Email'),tel:descVal(t,'Telefono')||descVal(t,'Teléfono'),dir:descVal(t,'Direccion')||descVal(t,'Dirección'),gancho:descVal(t,'Gancho'),instrumento:descVal(t,'Instrumento'),accion:nextAction(t),seguimiento:followDate(t),etapa:t.etapa_crm||descVal(t,'Etapa'),probabilidad:t.probabilidad||descVal(t,'Probabilidad'),monto:t.monto_estimado||descVal(t,'Monto estimado')})};
@@ -827,6 +835,7 @@ function projectStats(p){
   return {tasks:tasks,done:done,progress:progress,overdue:overdue,noNext:noNext,next:next};
 }
 function projectTree(p,limit){
+  if(isProkicksProject(p)) return prokicksProjectOverview();
   var tasks = projectTasks(p.id).sort(function(a,b){
     return dayDiff(a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_vencimiento||pd(999));
   });
@@ -855,7 +864,7 @@ function projectTree(p,limit){
   }
 
   var shown = 0;
-  var html = GROUPS.map(function(g){
+  var html = groupsForProject(p).map(function(g){
     var items = tasks.filter(function(t){return taskGroup(t)===g;});
     if(limit) items = items.slice(0, Math.max(0,limit-shown));
     shown += items.length;
@@ -879,7 +888,8 @@ function projectReportHtml(pid){
     +'<div class="card"><div class="ch"><h3>Grupos, registros y seguimiento</h3></div>'+projectTree(p)+'</div>';
 }
 function projectTabs(p){
-  var tabs=[['resumen','Resumen'],['tareas','Grupos y registros'],['reporte','Reporte del proyecto'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var mainLabel = isProkicksProject(p) ? 'Operación ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
+  var tabs=[['resumen','Resumen'],['tareas',mainLabel],['reporte','Reporte del proyecto'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -935,10 +945,12 @@ function projectCard(p,compact){
 function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'resumen';
+  var mainTitle = isProkicksProject(p) ? 'Operación ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
+  var mainButton = isProkicksProject(p) ? '<button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación</button>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
   var resumen = '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+s.progress+'%</div></div><div class="sc y"><div class="sl">Pendientes</div><div class="sn">'+(s.tasks.length-s.done)+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
     +(/prokicks/i.test(p.nombre)?'<div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="nav(\'prokicks\')">Abrir operación</button></div><p style="color:var(--muted);font-size:13px;margin:0">Inventario, prospectos, ventas, comodatos y cobranza viven ligados a este proyecto.</p></div>':'')
-    +'<div class="card"><div class="ch"><h3>Grupos y registros</h3><button class="btn btns btng" onclick="A.openProject(\''+p.id+'\',\'tareas\')">Ver tablero</button></div>'+projectTree(p,4)+'</div>';
-  var tareas = '<div class="card"><div class="ch"><h3>Grupos y registros</h3><button class="btn btns btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button></div>'+projectTree(p)+'</div>';
+    +'<div class="card"><div class="ch"><h3>'+mainTitle+'</h3><button class="btn btns btng" onclick="A.openProject(\''+p.id+'\',\'tareas\')">Ver tablero</button></div>'+projectTree(p,4)+'</div>';
+  var tareas = '<div class="card"><div class="ch"><h3>'+mainTitle+'</h3>'+mainButton+'</div>'+projectTree(p)+'</div>';
   var body = tab==='tareas'?tareas
     : tab==='reporte'?projectReportHtml(p.id)
     : tab==='kanban'?projectKanbanHtml(p)
@@ -947,7 +959,7 @@ function projectWorkspace(p){
     : tab==='pipeline'?projectPipelineHtml(p)
     : resumen;
   return '<div class="sh"><div><div style="margin-bottom:8px"><button class="btn btns btng" onclick="FPID=\'\';PTAB=\'resumen\';nav(\'proyectos\')">← Mis proyectos</button></div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
-    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">'+mainButton+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
     +projectTabs(p)
     +body;
 }
@@ -1191,6 +1203,31 @@ function pkStatus(v){
   var cl=/PAGADO|CERRADA|ENTREGADO|EN USO|cerrado/i.test(s)?'bg_':(/INCOMPLETA|NO ENVIADO|perdido/i.test(s)?'br_':'by_');
   return '<span class="badge '+cl+'">'+esc(s)+'</span>';
 }
+function prokicksProjectOverview(){
+  var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto'), clientes=pkRows('cliente'), cobranza=pkRows('cobranza');
+  var vendidos=ventas.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
+  var comodato=comodatos.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
+  var saldo=ventas.reduce(function(s,r){return s+Number(pkVal(r,'saldo')||0);},0);
+  var total=pkNum(st.totalProducidos,300);
+  var invAuto=Math.max(total-vendidos-comodato,0);
+  var inventario=pkNum(st.inventarioRedwood,invAuto);
+  var cells=[
+    ['Inventario',inventario,'dashboard'],
+    ['Prospectos',prospectos.length,'prospecto'],
+    ['Clientes',clientes.length,'cliente'],
+    ['Ventas',ventas.length,'venta'],
+    ['Comodatos',comodatos.length,'comodato'],
+    ['Cobranza',cobranza.length,'cobranza'],
+    ['Por cobrar',pkMoney(saldo),'cobranza']
+  ];
+  var cards=cells.map(function(c){return '<button class="di" style="text-align:left;cursor:pointer;border:1px solid var(--line)" onclick="PKTAB=\''+c[2]+'\';nav(\'prokicks\')"><div class="dl">'+esc(c[0])+'</div><div class="dv">'+esc(String(c[1]))+'</div></button>';}).join('');
+  var p=pkProject();
+  var follow=p?projectTasks(p.id).map(function(t){
+    return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:12px;background:var(--surface);margin-top:10px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><strong>'+esc(t.titulo)+'</strong><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">'+esc(nextAction(t)||'Sin siguiente acción')+'</div></div><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div></div></div>';
+  }).join(''):'';
+  return '<div class="sg">'+cards+'</div><div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación completa</button></div><p style="font-size:13px;color:var(--muted);margin:0">La información de ProKicks está en su módulo operativo: inventario, prospectos, clientes, ventas, comodatos y cobranza.</p></div>'
+    +(follow?'<div class="card"><div class="ch"><h3>Seguimiento CRM ProKicks</h3></div>'+follow+'</div>':'');
+}
 function vPK(){
   var p=pkProject();
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
@@ -1417,7 +1454,7 @@ var A = {
     var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
-    var gO = GROUPS.map(function(g){return [g,g];});
+    var gO = groupsForProject(xid(DB.proyectos,p2)).map(function(g){return [g,g];});
     var crm = crmEnabled();
     var crmH = '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Contacto y control</h3>'
       +'<div class="fr2">'+FLD('emx','Email','email',t&&descVal(t,'Email')||'')+FLD('tel','Teléfono','text',t&&(descVal(t,'Telefono')||descVal(t,'Teléfono'))||'')+'</div>'
