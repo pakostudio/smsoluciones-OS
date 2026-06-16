@@ -587,10 +587,12 @@ document.getElementById('mbg').addEventListener('click',function(e){ if(e.target
 /* ── FORM HELPERS ── */
 function fv(id){ var el=document.getElementById('f_'+id); return el?el.value:''; }
 function FLD(id,lbl,typ,val){
-  return '<div class="fld"><label>'+esc(lbl)+'</label><input type="'+(typ||'text')+'" id="f_'+id+'" value="'+esc(val||'')+'"></div>';
+  var v = val===undefined||val===null ? '' : val;
+  return '<div class="fld"><label>'+esc(lbl)+'</label><input type="'+(typ||'text')+'" id="f_'+id+'" value="'+esc(v)+'"></div>';
 }
 function FTA(id,lbl,val){
-  return '<div class="fld"><label>'+esc(lbl)+'</label><textarea id="f_'+id+'">'+esc(val||'')+'</textarea></div>';
+  var v = val===undefined||val===null ? '' : val;
+  return '<div class="fld"><label>'+esc(lbl)+'</label><textarea id="f_'+id+'">'+esc(v)+'</textarea></div>';
 }
 function FSL(id,lbl,opts,sel){
   var ops = opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(sel)?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('');
@@ -925,6 +927,7 @@ function pkRows(tipo){ var p=pkProject(); return p ? DB.prokicks_records.filter(
 function pkSetting(){ var p=pkProject(); var s=p&&DB.prokicks_settings.find(function(x){return x.proyecto_id===p.id;}); return s ? (s.data||{}) : {}; }
 function pkVal(r,k){ return (r.data||{})[k]; }
 function pkMoney(v){ return '$'+Number(v||0).toLocaleString('es-MX'); }
+function pkNum(v,fb){ return v===undefined||v===null||v==='' ? (fb||0) : Number(v); }
 function pkStatus(v){
   var s=String(v||'POR DEFINIR');
   var cl=/PAGADO|CERRADA|ENTREGADO|EN USO|cerrado/i.test(s)?'bg_':(/INCOMPLETA|NO ENVIADO|perdido/i.test(s)?'br_':'by_');
@@ -945,8 +948,14 @@ function pkDashboard(){
   var vendidos=ventas.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
   var comodato=comodatos.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
   var saldo=ventas.reduce(function(s,r){return s+Number(pkVal(r,'saldo')||0);},0);
-  var metrics=[['Total producción',st.totalProducidos||300],['Inventario',st.inventarioRedwood||0],['Vendidos',vendidos],['En comodato',comodato],['Prospectos',prospectos.length],['Ventas cerradas',cerradas.length],['Ventas incompletas',incompletas.length],['Por cobrar',pkMoney(saldo)]];
-  return '<div class="sg">'+metrics.map(function(m){return '<div class="sc"><div class="sl">'+esc(m[0])+'</div><div class="sn" style="font-size:24px">'+esc(String(m[1]))+'</div></div>';}).join('')+'</div>';
+  var total=pkNum(st.totalProducidos,300);
+  var invAuto=Math.max(total-vendidos-comodato,0);
+  var inventario=pkNum(st.inventarioRedwood,invAuto);
+  var metrics=[['Total producción',total],['Inventario',inventario],['Vendidos',vendidos],['En comodato',comodato],['Prospectos',prospectos.length],['Ventas cerradas',cerradas.length],['Ventas incompletas',incompletas.length],['Por cobrar',pkMoney(saldo)]];
+  var note = st.inventarioRedwood===undefined||st.inventarioRedwood===null||st.inventarioRedwood==='' ? 'Inventario calculado automáticamente.' : 'Inventario capturado manualmente.';
+  return '<div class="sh"><h2>Dashboard inventario</h2><button class="btn btnc" onclick="A.pkSettings()">Editar inventario</button></div>'
+    +'<div class="sg">'+metrics.map(function(m){return '<div class="sc"><div class="sl">'+esc(m[0])+'</div><div class="sn" style="font-size:24px">'+esc(String(m[1]))+'</div></div>';}).join('')+'</div>'
+    +'<div class="card" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted)">'+esc(note)+' Inventario teórico: '+invAuto+' · Última actualización: '+(st.actualizadoEn?fmtdt(st.actualizadoEn):'—')+'</div></div>';
 }
 function pkTable(tipo){
   var rows=pkRows(tipo);
@@ -1279,6 +1288,32 @@ var A = {
 
   /* PROKICKS */
   pkNew: function(){ A.pkForm(null, PKTAB); },
+  pkSettings: function(){
+    if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
+    var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato');
+    var vendidos=ventas.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
+    var comodato=comodatos.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
+    var total=pkNum(st.totalProducidos,300);
+    var invAuto=Math.max(total-vendidos-comodato,0);
+    mOpen('Editar inventario ProKicks',
+      '<div class="fg">'
+      +'<div class="fr2">'+FLD('tp','Total producción','number',total)+FLD('ir','Inventario actual','number',st.inventarioRedwood===undefined||st.inventarioRedwood===null?'':st.inventarioRedwood)+'</div>'
+      +'<div class="hbar"><span class="dot dg"></span>Vendidos: '+vendidos+' · En comodato: '+comodato+' · Inventario teórico: '+invAuto+'</div>'
+      +FTA('nt','Notas internas',st.notas||'')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkSaveSettings()">Guardar inventario</button></div>'
+      +'</div>');
+  },
+  pkSaveSettings: async function(){
+    if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
+    var p=pkProject(); if(!p){ toast('No existe proyecto ProKicks','r'); return; }
+    var total=Number(fv('tp')||0), inv=fv('ir');
+    if(total<0 || (inv!=='' && Number(inv)<0)){ toast('Los números no pueden ser negativos','r'); return; }
+    var current=pkSetting();
+    var data=Object.assign({},current,{totalProducidos:total,inventarioRedwood:inv===''?null:Number(inv),notas:fv('nt')||'',actualizadoEn:new Date().toISOString(),actualizadoPor:SES.userId});
+    var r=await sb.from('prokicks_settings').upsert({proyecto_id:p.id,owner_id:SES.userId,data:data,updated_at:new Date().toISOString()},{onConflict:'proyecto_id'}).select().single();
+    if(r.error){ toast('Error al guardar inventario: '+r.error.message,'r'); return; }
+    mClose(); await refresh(); toast('Inventario actualizado ✓','g');
+  },
   pkEdit: function(id){ var r=DB.prokicks_records.find(function(x){return x.id===id;}); if(r) A.pkForm(r, r.tipo); },
   pkForm: function(row,tipo){
     if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
