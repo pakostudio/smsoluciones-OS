@@ -472,8 +472,28 @@ function descVal(t,key){
   var m = String(t.descripcion||'').match(re);
   return m ? m[1].trim() : '';
 }
+var GROUPS = ['Embajadas','Fundaciones','Empresas','General'];
+function cleanGroupName(v){
+  var s = String(v||'').trim();
+  var hit = GROUPS.find(function(g){return g.toLowerCase()===s.toLowerCase();});
+  return hit || 'General';
+}
+function isGroupHeader(t){
+  var title = String(t&&t.titulo||'').trim();
+  return /^(empresas|fundaciones)$/i.test(title) || (/^embajadas/i.test(title) && !/—/.test(title));
+}
+function groupFromHeader(t){
+  var title = String(t&&t.titulo||'').trim();
+  if(/^empresas$/i.test(title)) return 'Empresas';
+  if(/^fundaciones$/i.test(title)) return 'Fundaciones';
+  if(/^embajadas/i.test(title)) return 'Embajadas';
+  return '';
+}
+function taskGroup(t){
+  return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (/—/.test(t&&t.titulo||'')?'Embajadas':'General'));
+}
 function stripDescFields(desc){
-  var keys = ['Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado'];
+  var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado'];
   var lines = String(desc||'').split(/\r?\n/);
   return lines.filter(function(line){
     return !keys.some(function(k){ return new RegExp('^'+k+'\\s*:','i').test(line); });
@@ -481,6 +501,7 @@ function stripDescFields(desc){
 }
 function buildDesc(base,fields){
   var lines = [];
+  if(fields.grupo) lines.push('Grupo: '+cleanGroupName(fields.grupo));
   if(fields.email) lines.push('Email: '+fields.email);
   if(fields.tel) lines.push('Telefono: '+fields.tel);
   if(fields.dir) lines.push('Direccion: '+fields.dir);
@@ -613,8 +634,56 @@ async function loadAll(){
     var pkset = await sb.from('prokicks_settings').select('*');
     DB.prokicks_records = pk.error ? [] : (pk.data||[]);
     DB.prokicks_settings = pkset.error ? [] : (pkset.data||[]);
+    if(await normalizeProjectGroups()){
+      var [t2,st2] = await Promise.all([
+        sb.from('tareas').select('*').order('created_at',{ascending:false}),
+        sb.from('subtareas').select('*').order('created_at')
+      ]);
+      DB.tareas=t2.data||DB.tareas; DB.subtareas=st2.data||DB.subtareas;
+    }
     return true;
   } catch(e){ console.error(e); return false; }
+}
+async function normalizeProjectGroups(){
+  if(!DB.tareas.length) return false;
+  var changed = false;
+  var headers = DB.tareas.filter(isGroupHeader);
+  for(var i=0;i<headers.length;i++){
+    var h = headers[i], g = groupFromHeader(h);
+    var subs = DB.subtareas.filter(function(s){return s.tarea_id===h.id;});
+    for(var j=0;j<subs.length;j++){
+      var s = subs[j];
+      var exists = DB.tareas.some(function(t){
+        return t.proyecto_id===h.proyecto_id && !isGroupHeader(t) && String(t.titulo||'').trim().toLowerCase()===String(s.titulo||'').trim().toLowerCase() && taskGroup(t)===g;
+      });
+      if(exists) continue;
+      var data = {
+        proyecto_id:h.proyecto_id, owner_id:s.owner_id||h.owner_id, titulo:s.titulo,
+        descripcion:buildDesc('',{grupo:g,accion:'Definir siguiente acción'}),
+        prioridad:h.prioridad||'media', estado:s.estado||'pendiente',
+        fecha_inicio:h.fecha_inicio||today(), fecha_vencimiento:s.fecha_vencimiento||h.fecha_vencimiento||pd(30),
+        horas_estimadas:8, horas_reales:0
+      };
+      if(crmEnabled()){
+        data.etapa_crm='por_contactar';
+        data.siguiente_accion='Definir siguiente acción';
+        data.fecha_proximo_seguimiento=null;
+        data.ultima_actividad=new Date().toISOString();
+      }
+      var r = await sb.from('tareas').insert(data).select().single();
+      if(!r.error) changed = true;
+    }
+  }
+  for(var k=0;k<DB.tareas.length;k++){
+    var t = DB.tareas[k];
+    if(isGroupHeader(t) || descVal(t,'Grupo')) continue;
+    var inferred = /—/.test(t.titulo||'') ? 'Embajadas' : '';
+    if(!inferred) continue;
+    var up = {descripcion:buildDesc(stripDescFields(t.descripcion),{grupo:inferred,email:descVal(t,'Email'),tel:descVal(t,'Telefono')||descVal(t,'Teléfono'),dir:descVal(t,'Direccion')||descVal(t,'Dirección'),gancho:descVal(t,'Gancho'),instrumento:descVal(t,'Instrumento'),accion:nextAction(t),seguimiento:followDate(t),etapa:t.etapa_crm||descVal(t,'Etapa'),probabilidad:t.probabilidad||descVal(t,'Probabilidad'),monto:t.monto_estimado||descVal(t,'Monto estimado')})};
+    var ur = await sb.from('tareas').update(up).eq('id',t.id);
+    if(!ur.error) changed = true;
+  }
+  return changed;
 }
 async function ins(tbl,data){
   var r = await sb.from(tbl).insert(data).select().single();
@@ -744,7 +813,7 @@ document.querySelectorAll('.nbtn').forEach(function(b){ b.addEventListener('clic
 /* ══ VIEWS ══════════════════════════════════════════════════ */
 
 function projectTasks(pid){
-  return DB.tareas.filter(function(t){ return t.proyecto_id===pid && (adm() || t.owner_id===SES.userId || myProjs().some(function(p){return p.id===pid;})); });
+  return DB.tareas.filter(function(t){ return t.proyecto_id===pid && !isGroupHeader(t) && (adm() || t.owner_id===SES.userId || myProjs().some(function(p){return p.id===pid;})); });
 }
 function projectStats(p){
   var tasks = projectTasks(p.id);
@@ -761,60 +830,40 @@ function projectTree(p,limit){
   var tasks = projectTasks(p.id).sort(function(a,b){
     return dayDiff(a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_vencimiento||pd(999));
   });
-  if(!tasks.length) return '<div class="empty"><p>Sin tareas madre en este proyecto</p></div>';
+  if(!tasks.length) return '<div class="empty"><p>Sin registros en este proyecto</p></div>';
 
-  function taskLine(t, nested){
-    return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:'+(nested?'9px 0 9px 24px':'9px 0')+';border-top:1px solid var(--line);font-size:12px;background:'+(nested?'var(--surface2)':'transparent')+'">'
-      +'<div><span style="color:var(--muted)">'+(nested?'↳':'•')+'</span> <strong>'+esc(t.titulo)+'</strong>'
-      +'<span style="display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:8px">'+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></span>'
-      +'<div style="color:var(--muted);margin-top:4px">Inicio: '+fmt(t.fecha_inicio)+' · Término: '+fmt(t.fecha_vencimiento)+' · '+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
-      +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button>'
-      +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar fechas/datos</button>':'')
-      +'<button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
-      +'</div>';
-  }
-  function parentCard(t, extraChildren){
+  function microTasks(t){
     var subs = DB.subtareas.filter(function(s){return s.tarea_id===t.id;});
-    var subH = subs.length ? subs.map(function(s){
-      return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0 7px 18px;border-top:1px solid var(--line);font-size:12px">'
+    if(!subs.length) return '<div style="padding:7px 0 0 18px;color:var(--muted);font-size:12px">Sin microtareas</div>';
+    return subs.map(function(s){
+      return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0 7px 18px;border-top:1px solid var(--line);font-size:12px;background:var(--surface2)">'
         +'<div><span style="color:var(--muted)">↳</span> <strong>'+esc(s.titulo)+'</strong><span style="color:var(--muted);margin-left:10px">'+esc(uNm(s.owner_id))+' · Término: '+fmt(s.fecha_vencimiento)+'</span></div>'
-        +'<div style="display:flex;gap:5px;align-items:center">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar fecha/estado</button></div>'
+        +'<div style="display:flex;gap:5px;align-items:center">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar microtarea</button></div>'
         +'</div>';
-    }).join('') : '';
-    var children = (extraChildren||[]).map(function(ch){return taskLine(ch,true);}).join('');
-    var empty = !subH && !children ? '<div style="padding:7px 0 0 18px;color:var(--muted);font-size:12px">Sin subtareas</div>' : '';
+    }).join('');
+  }
+  function taskLine(t){
     return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:12px;background:var(--surface);margin-bottom:10px">'
       +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start">'
       +'<div><div style="font-size:15px;font-weight:900;color:var(--ink);cursor:pointer" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</div>'
-      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-top:6px">Inicio: '+fmt(t.fecha_inicio)+' · Término: '+fmt(t.fecha_vencimiento)+' · '+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
-      +'<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button>'
+      +'<span style="display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:8px">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'<span class="sem"><span class="dot '+crmHealth(t).cl+'"></span>'+esc(crmHealth(t).txt)+'</span></span>'
+      +'<div style="color:var(--muted);font-size:12px;margin-top:6px">Inicio: '+fmt(t.fecha_inicio)+' · Término: '+fmt(t.fecha_vencimiento)+' · '+esc(nextAction(t)||'Sin siguiente acción')+'</div></div>'
+      +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button>'
       +(canEditTask(t)?'<button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar fechas/datos</button>':'')
-      +'<button class="btn btns btng" onclick="A.nsub(\''+t.id+'\')">+ Subtarea</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
-      +'</div>'+subH+children+empty+'</div>';
+      +'<button class="btn btns btng" onclick="A.nsub(\''+t.id+'\')">+ Microtarea</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div>'
+      +'</div>'+microTasks(t)+'</div>';
   }
 
-  var embassyParent = tasks.find(function(t){return /embajad/i.test(t.titulo||'') && !/—/.test(t.titulo||'');});
-  var embassyChildren = embassyParent ? tasks.filter(function(t){
-    return t.id!==embassyParent.id && /—/.test(t.titulo||'');
-  }) : [];
-  var childrenIds = {};
-  embassyChildren.forEach(function(t){childrenIds[t.id]=true;});
-  var mothers = tasks.filter(function(t){
-    return !childrenIds[t.id] && (t.id===(embassyParent&&embassyParent.id) || DB.subtareas.some(function(s){return s.tarea_id===t.id;}) || !/—/.test(t.titulo||''));
-  });
-  var standalone = tasks.filter(function(t){
-    return !childrenIds[t.id] && !mothers.some(function(m){return m.id===t.id;});
-  });
-  if(limit) mothers = mothers.slice(0,limit);
-  var html = mothers.map(function(t){
-    return parentCard(t, embassyParent && t.id===embassyParent.id ? embassyChildren : []);
+  var shown = 0;
+  var html = GROUPS.map(function(g){
+    var items = tasks.filter(function(t){return taskGroup(t)===g;});
+    if(limit) items = items.slice(0, Math.max(0,limit-shown));
+    shown += items.length;
+    if(!items.length && (limit || g==='General')) return '';
+    return '<div class="hbar" style="margin:12px 0 10px;justify-content:space-between"><span><span class="dot dg"></span>'+g+'</span><span class="badge bx_">'+items.length+'</span></div>'
+      +(items.length?items.map(taskLine).join(''):'<div style="color:var(--muted);font-size:13px;margin:0 0 12px 14px">Sin registros</div>');
   }).join('');
-  if(standalone.length && !limit){
-    html += '<div class="hbar" style="margin:12px 0 8px"><span class="dot dy"></span>Seguimientos independientes</div>'
-      +standalone.map(function(t){return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:0 12px;background:var(--surface);margin-bottom:8px">'+taskLine(t,false)+'</div>';}).join('');
-  }
-  return html || '<div class="empty"><p>Sin tareas madre en este proyecto</p></div>';
+  return html || '<div class="empty"><p>Sin registros en este proyecto</p></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
@@ -827,10 +876,10 @@ function projectReportHtml(pid){
   var paid=pays.filter(function(pay){return pay.estado==='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
   var pending=pays.filter(function(pay){return pay.estado!=='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
   return '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
-    +'<div class="card"><div class="ch"><h3>Jerarquía y seguimiento</h3></div>'+projectTree(p)+'</div>';
+    +'<div class="card"><div class="ch"><h3>Grupos, registros y seguimiento</h3></div>'+projectTree(p)+'</div>';
 }
 function projectTabs(p){
-  var tabs=[['resumen','Resumen'],['tareas','Tareas y subtareas'],['reporte','Reporte del proyecto'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var tabs=[['resumen','Resumen'],['tareas','Grupos y registros'],['reporte','Reporte del proyecto'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -888,8 +937,8 @@ function projectWorkspace(p){
   var tab = PTAB || 'resumen';
   var resumen = '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+s.progress+'%</div></div><div class="sc y"><div class="sl">Pendientes</div><div class="sn">'+(s.tasks.length-s.done)+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
     +(/prokicks/i.test(p.nombre)?'<div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="nav(\'prokicks\')">Abrir operación</button></div><p style="color:var(--muted);font-size:13px;margin:0">Inventario, prospectos, ventas, comodatos y cobranza viven ligados a este proyecto.</p></div>':'')
-    +'<div class="card"><div class="ch"><h3>Tareas madre y subtareas</h3><button class="btn btns btng" onclick="A.openProject(\''+p.id+'\',\'tareas\')">Ver jerarquía</button></div>'+projectTree(p,4)+'</div>';
-  var tareas = '<div class="card"><div class="ch"><h3>Tareas madre y subtareas</h3><button class="btn btns btnc" onclick="A.nt(\''+p.id+'\')">+ Tarea madre</button></div>'+projectTree(p)+'</div>';
+    +'<div class="card"><div class="ch"><h3>Grupos y registros</h3><button class="btn btns btng" onclick="A.openProject(\''+p.id+'\',\'tareas\')">Ver tablero</button></div>'+projectTree(p,4)+'</div>';
+  var tareas = '<div class="card"><div class="ch"><h3>Grupos y registros</h3><button class="btn btns btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button></div>'+projectTree(p)+'</div>';
   var body = tab==='tareas'?tareas
     : tab==='reporte'?projectReportHtml(p.id)
     : tab==='kanban'?projectKanbanHtml(p)
@@ -898,7 +947,7 @@ function projectWorkspace(p){
     : tab==='pipeline'?projectPipelineHtml(p)
     : resumen;
   return '<div class="sh"><div><div style="margin-bottom:8px"><button class="btn btns btng" onclick="FPID=\'\';PTAB=\'resumen\';nav(\'proyectos\')">← Mis proyectos</button></div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
-    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Tarea madre</button>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
     +projectTabs(p)
     +body;
 }
@@ -915,7 +964,7 @@ function vDB(){
     return '<div class="alitem '+a.cl+'"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';
   }).join('') : '<div style="color:var(--muted);font-size:13px">✓ Sin alertas</div>';
   var cards = projs.map(function(p){return projectCard(p,true);}).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
-  return '<div class="sh"><div><h2>Mis proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Entra al proyecto para ver tareas madre, subtareas y reportes propios.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
+  return '<div class="sh"><div><h2>Mis proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Entra al proyecto para ver grupos, registros, reportes y seguimiento propio.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
     +'<div class="sg"><div class="sc"><div class="sl">Proyectos activos</div><div class="sn">'+projs.length+'</div></div><div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div></div><div class="sc y"><div class="sl">Sin siguiente acción</div><div class="sn">'+noNext+'</div></div><div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+over+'</div></div></div>'
     +'<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:14px"><div style="display:grid;gap:14px">'+cards+'</div><div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div></div>';
 }
@@ -959,12 +1008,12 @@ function vTA(){
       +(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+t.id+'\')">✕</button>':'')
       +'</div></td></tr>';
   }).join('') || '<tr><td colspan="10"><div class="empty"><p>Sin tareas</p></div></td></tr>';
-  return '<div class="sh"><h2>Tareas</h2>'
+  return '<div class="sh"><h2>Registros</h2>'
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     +'<select onchange="FPID=this.value;render()" style="background:var(--surface);border:1px solid var(--line2);border-radius:var(--rs);padding:7px 12px;color:var(--ink);font-size:13px;outline:none"><option value="">Todos los proyectos</option>'+sel+'</select>'
-    +'<button class="btn btnc" onclick="A.nt(FPID)">+ Nueva tarea</button>'
+    +'<button class="btn btnc" onclick="A.nt(FPID)">+ Registro</button>'
     +'</div></div>'
-    +'<div class="card"><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Control</th><th>Siguiente acción</th><th>H Est/Real</th><th>Vence</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    +'<div class="card"><div class="tw"><table><thead><tr><th>Registro</th><th>Proyecto</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th>Control</th><th>Siguiente acción</th><th>H Est/Real</th><th>Vence</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 
 /* KANBAN */
@@ -1368,6 +1417,7 @@ var A = {
     var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    var gO = GROUPS.map(function(g){return [g,g];});
     var crm = crmEnabled();
     var crmH = '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Contacto y control</h3>'
       +'<div class="fr2">'+FLD('emx','Email','email',t&&descVal(t,'Email')||'')+FLD('tel','Teléfono','text',t&&(descVal(t,'Telefono')||descVal(t,'Teléfono'))||'')+'</div>'
@@ -1378,10 +1428,10 @@ var A = {
       +'<div class="fr2">'+FLD('pb','Probabilidad %','number',t&&(t.probabilidad||descVal(t,'Probabilidad'))||'')+FLD('me','Monto estimado','number',t&&(t.monto_estimado||descVal(t,'Monto estimado'))||'')+'</div>'
       +(crm?'':'<div class="hbar"><span class="dot dy"></span>Modo compatible: estos datos se guardarán en la descripción hasta ejecutar la migración CRM.</div>')
       +'</div>';
-    mOpen(t?'Editar tarea':'Nueva tarea',
+    mOpen(t?'Editar registro':'Nuevo registro',
       '<div class="fg">'
       +'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
-      +FLD('ti','Título de la tarea','text',t&&t.titulo)
+      +'<div class="fr2">'+FLD('ti','Registro / prospecto','text',t&&t.titulo)+FSL('gr','Grupo',gO,t?taskGroup(t):'General')+'</div>'
       +FTA('dc','Notas / descripción libre',t&&stripDescFields(t.descripcion))
       +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
       +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
@@ -1394,7 +1444,7 @@ var A = {
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var old = id ? xid(DB.tareas,id) : null;
     if(id && !canEditTask(old)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
-    var desc = buildDesc(fv('dc'),{email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
+    var desc = buildDesc(fv('dc'),{grupo:fv('gr'),email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
     var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:desc,prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
     if(id && old && !adm()){
       data.proyecto_id = old.proyecto_id;
@@ -1449,7 +1499,7 @@ var A = {
       +pkAccess
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
       +crmPanel(t)
-      +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Subtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Subtarea</button></div>'+subH+'</div>'
+      +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Microtareas ('+subs.length+')</strong><button class="btn btns" onclick="A.nsub(\''+id+'\')">+ Microtarea</button></div>'+subH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Comentarios ('+coms.length+')</strong><button class="btn btns btng" onclick="A.ncom(\''+id+'\')">💬 Comentar</button></div>'+comH+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:9px"><strong>Entregables ('+fils.length+')</strong><button class="btn btns btng" onclick="A.nfil(\''+id+'\')">📎 Agregar</button></div>'+filH+'</div>'
       +'</div>',true);
@@ -1472,7 +1522,7 @@ var A = {
   nsub: function(tid){
     mClose();
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
-    mOpen('Nueva subtarea',
+    mOpen('Nueva microtarea',
       '<div class="fg">'
       +FLD('ti','Título')
       +'<div class="fr2">'+FSL('oi','Responsable',uO,SES.userId)+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['terminada','Terminada']],'pendiente')+'</div>'
@@ -1483,14 +1533,14 @@ var A = {
   _ssub: async function(tid){
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var r = await ins('subtareas',{tarea_id:tid,owner_id:fv('oi'),titulo:ti,estado:fv('es'),fecha_vencimiento:fv('fv')||null});
-    if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Subtarea creada ✓','g');}
+    if(r){ if(crmEnabled()) await upd('tareas',tid,{ultima_actividad:new Date().toISOString()}); await loadAll();mClose();A.td(tid);toast('Microtarea creada ✓','g');}
   },
   esub: function(id){
     var s=xid(DB.subtareas,id); if(!s) return;
     var t=xid(DB.tareas,s.tarea_id);
     if(t && !canEditTask(t)){ toast('Solo el responsable puede editar esta subtarea','r'); return; }
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
-    mOpen('Editar subtarea',
+    mOpen('Editar microtarea',
       '<div class="fg">'
       +FLD('ti','Título', 'text', s.titulo)
       +'<div class="fr2">'+FSL('oi','Responsable',uO,s.owner_id)+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['terminada','Terminada']],s.estado)+'</div>'
@@ -1508,7 +1558,7 @@ var A = {
       if(t && crmEnabled()) await upd('tareas',t.id,{ultima_actividad:new Date().toISOString()});
       await loadAll(); mClose();
       if(t) A.td(t.id); else render();
-      toast('Subtarea actualizada ✓','g');
+      toast('Microtarea actualizada ✓','g');
     }
   },
 
