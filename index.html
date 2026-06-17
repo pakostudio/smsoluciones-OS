@@ -131,6 +131,7 @@ body.logged #app{display:grid}
 .tw{width:100%;overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line2);text-align:left}
+.tw thead th{position:sticky;top:0;z-index:2;background:var(--surface);box-shadow:0 1px 0 var(--line2)}
 td{padding:12px 13px;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);vertical-align:middle}
 tr:hover td{background:var(--surface2)}
 
@@ -395,6 +396,7 @@ var FPID = '';   // filter project id
 var PTAB = 'tareas'; // project workspace tab
 var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
+var SESSION_KEY = 'sm_os_session_v1';
 
 /* ── UTILS ── */
 function dateObj(s){
@@ -796,6 +798,7 @@ function render(){
   vc.innerHTML = (map[VIEW]||vDB)();
   updTopbar();
   updateProjectNavActive();
+  saveSession();
 }
 function updTopbar(){
   var nm = {dashboard:'Mis proyectos',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
@@ -820,11 +823,24 @@ function updBadge(){
   if(n>0){el.textContent=n;el.style.display='block';}
   else el.style.display='none';
 }
+function saveSession(){
+  if(!SES) return;
+  try{
+    localStorage.setItem(SESSION_KEY, JSON.stringify({userId:SES.userId,view:VIEW,fpid:FPID,ptab:PTAB,pktab:PKTAB}));
+  }catch(e){}
+}
+function clearSession(){
+  try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+}
+function storedSession(){
+  try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; }
+}
 function nav(v){
   if(['proyectos','tareas','kanban','gantt','calendario','pipeline','reportes'].indexOf(v)<0) FPID='';
   VIEW = v;
   document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===v); });
   render();
+  saveSession();
   window.scrollTo(0,0);
 }
 window.openProkicks = function(tab){
@@ -1891,6 +1907,10 @@ function doLogin(){
     document.getElementById('f-pin').focus();
     return;
   }
+  activateSession(found,{view:'dashboard',fpid:'',ptab:'tareas',pktab:'dashboard'});
+}
+
+function activateSession(found,state){
   SES = {userId: found.id};
   document.getElementById('lerr').textContent = '';
   document.body.classList.add('logged');
@@ -1898,15 +1918,32 @@ function doLogin(){
   document.getElementById('sb-n').textContent = found.nombre;
   document.getElementById('sb-r').textContent = found.rol==='admin' ? 'Administrador' : 'Usuario';
   if(found.rol==='admin') document.getElementById('nav-admin').style.display = 'block';
+  else document.getElementById('nav-admin').style.display = 'none';
   document.getElementById('tb-live').style.display = 'block';
   buildProjectNav();
-  nav('dashboard');
+  VIEW = state&&state.view || 'dashboard';
+  FPID = state&&state.fpid || '';
+  PTAB = state&&state.ptab || 'tareas';
+  PKTAB = state&&state.pktab || 'dashboard';
+  document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===VIEW); });
+  render();
+  saveSession();
+}
+
+function restoreSession(){
+  var s = storedSession();
+  if(!s || !s.userId) return false;
+  var found = DB.usuarios.find(function(u){return u.id===s.userId && u.activo;});
+  if(!found){ clearSession(); return false; }
+  activateSession(found,s);
+  return true;
 }
 
 document.getElementById('btn-login').addEventListener('click', doLogin);
 document.getElementById('f-pin').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 function doLogout(){
   if(!confirm('¿Cerrar sesión?')) return;
+  clearSession();
   SES=null; SELUID='';
   document.body.classList.remove('logged');
   document.getElementById('nav-admin').style.display = 'none';
@@ -1934,7 +1971,7 @@ setInterval(updClock, 60000);
   if(ok){
     buildSelector();
     buildProjectNav();
-    document.getElementById('vc').innerHTML = '';
+    if(!restoreSession()) document.getElementById('vc').innerHTML = '';
   } else {
     document.getElementById('lerr').textContent = 'No se pudo conectar con Supabase. Revisa internet/VPN y recarga.';
     document.getElementById('vc').innerHTML = '<div class="loading"><span style="color:var(--red)">⚠️ Error de conexión. Recarga la página.</span></div>';
