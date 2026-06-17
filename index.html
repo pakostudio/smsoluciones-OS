@@ -155,6 +155,9 @@ tr:hover td{background:var(--surface2)}
 .mcls{background:transparent;border:0;cursor:pointer;color:var(--muted);font-size:19px;line-height:1}
 .mcls:hover{color:var(--red)}
 .mbody{padding:22px}
+.task-actions-sticky{position:sticky;top:-22px;z-index:3;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:0 8px 20px rgba(11,37,71,.08)}
+.task-actions-sticky .task-actions-title{font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px}
+.task-actions-sticky .task-actions-row{display:flex;gap:8px;flex-wrap:wrap}
 
 /* KANBAN */
 .kanban{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
@@ -323,6 +326,8 @@ tr:hover td{background:var(--surface2)}
         <span class="chip" id="tb-date">—</span>
         <span class="chip" id="tb-user">—</span>
         <span class="chip" id="tb-live" style="color:var(--green);display:none">● En vivo</span>
+        <button class="chip" id="btn-refresh-data" type="button" title="Actualizar datos de Supabase">Actualizar datos</button>
+        <button class="chip" id="btn-reload-app" type="button" title="Forzar última versión publicada">Recargar app</button>
         <button class="chip topout" id="btn-out-top" type="button">Cerrar sesión</button>
       </div>
     </header>
@@ -714,6 +719,16 @@ async function refresh(){
   buildProjectNav();
   render();
   updBadge();
+}
+async function manualRefresh(){
+  toast('Actualizando datos…','g');
+  await refresh();
+  toast('Datos actualizados ✓','g');
+}
+function hardReloadApp(){
+  var url = new URL(window.location.href);
+  url.searchParams.set('v', Date.now());
+  window.location.href = url.toString();
 }
 
 /* ── MODAL ── */
@@ -1571,13 +1586,13 @@ var A = {
       return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center"><div><strong>'+esc(f.nombre)+'</strong><span style="color:var(--muted);margin-left:7px">v'+esc(f.version)+'</span></div><a href="'+esc(f.url)+'" target="_blank" class="btn btns btng">🔗 Abrir</a></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin entregables</div>';
     var ef = t.horas_estimadas ? Math.round(t.horas_reales/t.horas_estimadas*100) : 0;
-    var editActions = canEditTask(t) ? '<button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">Editar fechas y datos</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">Eliminar</button>':'') : '';
-    var quickActions = '<div class="card" style="padding:14px"><div class="ch"><h3>Acciones rápidas</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +'<button class="btn btns btng" onclick="mClose();A.openProject(\''+t.proyecto_id+'\',\'tareas\')">Volver a tareas</button>'
-      +'<button class="btn btns btng" onclick="mClose();A.openProject(\''+t.proyecto_id+'\',\'reporte\')">Ver reporte</button>'
+    var editActions = canEditTask(t) ? '<button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">Editar información</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">Eliminar</button>':'') : '';
+    var quickActions = '<div class="task-actions-sticky"><div class="task-actions-title">Acciones de esta ficha</div><div class="task-actions-row">'
       +editActions
-      +'<button class="btn btns btng" onclick="A.ncom(\''+id+'\')">Agregar comentario</button>'
+      +'<button class="btn btns btng" onclick="A.ncom(\''+id+'\')">Comentar avance</button>'
       +'<button class="btn btns btng" onclick="A.nfil(\''+id+'\')">Agregar entregable</button>'
+      +'<button class="btn btns btng" onclick="mClose();A.openProject(\''+t.proyecto_id+'\',\'reporte\')">Ver reporte</button>'
+      +'<button class="btn btns btng" onclick="mClose();A.openProject(\''+t.proyecto_id+'\',\'tareas\')">Volver a tareas</button>'
       +'</div></div>';
     var pkAccess = /prokicks/i.test(pNm(t.proyecto_id)+' '+t.titulo) ? '<div class="hbar" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><span><span class="dot dg"></span>Operación ProKicks centralizada</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btns btnc" onclick="openProkicks(\'dashboard\')">Dashboard inventario</button><button class="btn btns btng" onclick="openProkicks(\'prospecto\')">Prospectos</button><button class="btn btns btng" onclick="openProkicks(\'venta\')">Ventas</button><button class="btn btns btng" onclick="openProkicks(\'comodato\')">Comodatos</button><button class="btn btns btng" onclick="openProkicks(\'cobranza\')">Cobranza</button></div></div>' : '';
     mOpen('✓ '+t.titulo,
@@ -1905,6 +1920,8 @@ function doLogout(){
 }
 document.getElementById('btn-out').addEventListener('click', doLogout);
 document.getElementById('btn-out-top').addEventListener('click', doLogout);
+document.getElementById('btn-refresh-data').addEventListener('click', manualRefresh);
+document.getElementById('btn-reload-app').addEventListener('click', hardReloadApp);
 
 /* ── DATE ── */
 updClock();
