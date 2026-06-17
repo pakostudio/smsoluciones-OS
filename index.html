@@ -135,8 +135,8 @@ body.logged #app{display:grid}
 table{width:100%;border-collapse:collapse}
 th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line2);text-align:left}
 .tw thead th{position:sticky;top:0;z-index:2;background:var(--surface);box-shadow:0 1px 0 var(--line2)}
-.sticky-board{overflow:visible!important}
-.sticky-board .tw{overflow:visible}
+.sticky-board{overflow:hidden!important}
+.sticky-board .tw{max-height:calc(100vh - 220px);overflow:auto}
 .sticky-board table{border-collapse:separate;border-spacing:0}
 .sticky-board thead{position:sticky;top:0;z-index:20;background:var(--surface);box-shadow:0 2px 0 var(--line2),0 8px 16px rgba(11,37,71,.08)}
 .sticky-board thead th{position:sticky;top:0;z-index:21;background:var(--surface)}
