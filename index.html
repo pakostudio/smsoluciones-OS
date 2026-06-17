@@ -387,7 +387,7 @@ var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentario
 var SES = null;  // {userId}
 var VIEW = 'dashboard';
 var FPID = '';   // filter project id
-var PTAB = 'resumen'; // project workspace tab
+var PTAB = 'tareas'; // project workspace tab
 var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
 
@@ -874,6 +874,35 @@ function projectTree(p,limit){
   }).join('');
   return html || '<div class="empty"><p>Sin registros en este proyecto</p></div>';
 }
+function lastComment(t){
+  return DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));})[0] || null;
+}
+function operationalBoard(p,limit){
+  if(isProkicksProject(p)) return prokicksProjectOverview();
+  var tasks = projectTasks(p.id).sort(function(a,b){
+    var ga = taskGroup(a), gb = taskGroup(b);
+    if(ga!==gb) return groupsForProject(p).indexOf(ga)-groupsForProject(p).indexOf(gb);
+    return dayDiff(a.fecha_proximo_seguimiento||a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_proximo_seguimiento||b.fecha_vencimiento||pd(999));
+  });
+  if(limit) tasks = tasks.slice(0,limit);
+  if(!tasks.length) return '<div class="empty"><p>Sin registros en este proyecto</p></div>';
+  var rows = tasks.map(function(t){
+    var h=crmHealth(t), lc=lastComment(t), cCount=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).length;
+    var alert = '<span class="sem"><span class="dot '+h.cl+'"></span>'+esc(h.txt)+'</span>';
+    return '<tr>'
+      +'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>'
+      +'<td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;cursor:pointer;text-align:left" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted);margin-top:3px">Inicio '+fmt(t.fecha_inicio)+' · Término '+fmt(t.fecha_vencimiento)+'</div></td>'
+      +'<td>'+bSt(t.estado)+'</td>'
+      +'<td style="min-width:220px">'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
+      +'<td>'+fmt(followDate(t)||t.fecha_proximo_seguimiento)+'</td>'
+      +'<td>'+esc(uNm(t.owner_id))+'</td>'
+      +'<td>'+alert+'</td>'
+      +'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>'
+      +'<td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btns btnc" onclick="A.qe(\''+t.id+'\')">Actualizar</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
+      +'</tr>';
+  }).join('');
+  return '<div class="card" style="padding:0;overflow:hidden"><div class="tw"><table><thead><tr><th>Grupo</th><th>Registro</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
   var tasks=projectTasks(pid), done=tasks.filter(function(t){return t.estado==='terminada';}).length;
@@ -889,7 +918,7 @@ function projectReportHtml(pid){
 }
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Operación ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
-  var tabs=[['resumen','Resumen'],['tareas',mainLabel],['reporte','Reporte del proyecto'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var tabs=[['tareas',isProkicksProject(p)?mainLabel:'Tablero operativo'],['reporte','Reporte'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -944,21 +973,20 @@ function projectCard(p,compact){
 }
 function projectWorkspace(p){
   var s=projectStats(p);
-  var tab = PTAB || 'resumen';
+  var tab = PTAB || 'tareas';
   var mainTitle = isProkicksProject(p) ? 'Operación ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
   var mainButton = isProkicksProject(p) ? '<button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación</button>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
-  var resumen = '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+s.progress+'%</div></div><div class="sc y"><div class="sl">Pendientes</div><div class="sn">'+(s.tasks.length-s.done)+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
-    +(/prokicks/i.test(p.nombre)?'<div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="nav(\'prokicks\')">Abrir operación</button></div><p style="color:var(--muted);font-size:13px;margin:0">Inventario, prospectos, ventas, comodatos y cobranza viven ligados a este proyecto.</p></div>':'')
-    +'<div class="card"><div class="ch"><h3>'+mainTitle+'</h3><button class="btn btns btng" onclick="A.openProject(\''+p.id+'\',\'tareas\')">Ver tablero</button></div>'+projectTree(p,4)+'</div>';
-  var tareas = '<div class="card"><div class="ch"><h3>'+mainTitle+'</h3>'+mainButton+'</div>'+projectTree(p)+'</div>';
-  var body = tab==='tareas'?tareas
+  var board = '<div class="sg" style="margin-bottom:14px"><div class="sc"><div class="sl">Registros</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn" style="font-size:22px">'+esc(uNm(p.owner_id))+'</div></div></div>'
+    +'<div class="sh" style="margin-bottom:10px"><h2>'+mainTitle+'</h2>'+mainButton+'</div>'
+    +operationalBoard(p);
+  var body = tab==='tareas'?board
     : tab==='reporte'?projectReportHtml(p.id)
     : tab==='kanban'?projectKanbanHtml(p)
     : tab==='calendario'?projectCalendarHtml(p)
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
-    : resumen;
-  return '<div class="sh"><div><div style="margin-bottom:8px"><button class="btn btns btng" onclick="FPID=\'\';PTAB=\'resumen\';nav(\'proyectos\')">← Mis proyectos</button></div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
+    : board;
+  return '<div class="sh"><div><div style="margin-bottom:8px"><button class="btn btns btng" onclick="FPID=\'\';PTAB=\'tareas\';nav(\'proyectos\')">← Mis proyectos</button></div><h2>'+esc(p.nombre)+'</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">'+esc(p.descripcion||cNm(p.cliente_id))+'</div></div>'
     +'<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">'+mainButton+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div></div>'
     +projectTabs(p)
     +body;
@@ -1385,7 +1413,7 @@ var A = {
   openProject: function(id,tab){
     var was = FPID;
     FPID = id;
-    PTAB = tab || 'resumen';
+    PTAB = tab || 'tareas';
     if(was!==id || PTAB!=='calendario') CAL_OFF = 0;
     nav('proyectos');
   },
@@ -1497,6 +1525,30 @@ var A = {
     }
     var r = id ? await upd('tareas',id,data) : await ins('tareas',data);
     if(r){mClose();await refresh();toast(id?'Tarea actualizada':'Tarea creada ✓','g');}
+  },
+  qe: function(id){
+    var t=xid(DB.tareas,id); if(!t) return;
+    if(!canEditTask(t)){toast('Solo el responsable puede actualizar este registro','r');return;}
+    mOpen('Actualizar · '+t.titulo,
+      '<div class="fg">'
+      +FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t.estado||'pendiente')
+      +FLD('sa','Siguiente acción','text',nextAction(t)||'')
+      +FLD('ps','Próximo seguimiento','date',followDate(t)||'')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sqe(\''+id+'\')">Guardar actualización</button></div>'
+      +'</div>');
+  },
+  _sqe: async function(id){
+    var t=xid(DB.tareas,id); if(!t) return;
+    if(!canEditTask(t)){toast('Solo el responsable puede actualizar este registro','r');return;}
+    var desc=buildDesc(stripDescFields(t.descripcion),{grupo:taskGroup(t),email:descVal(t,'Email'),tel:descVal(t,'Telefono')||descVal(t,'Teléfono'),dir:descVal(t,'Direccion')||descVal(t,'Dirección'),gancho:descVal(t,'Gancho'),instrumento:descVal(t,'Instrumento'),accion:fv('sa'),seguimiento:fv('ps'),etapa:t.etapa_crm||descVal(t,'Etapa'),probabilidad:t.probabilidad||descVal(t,'Probabilidad'),monto:t.monto_estimado||descVal(t,'Monto estimado')});
+    var data={estado:fv('es'),descripcion:desc};
+    if(crmEnabled()){
+      data.siguiente_accion=fv('sa')||null;
+      data.fecha_proximo_seguimiento=fv('ps')||null;
+      data.ultima_actividad=new Date().toISOString();
+    }
+    var r=await upd('tareas',id,data);
+    if(r){mClose();await refresh();toast('Registro actualizado ✓','g');}
   },
   td: function(id){
     var t = xid(DB.tareas,id); if(!t) return;
