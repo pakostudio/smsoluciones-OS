@@ -593,6 +593,7 @@ function getAlerts(){
   var a = [];
   var uid = SES ? SES.userId : '';
   DB.tareas.forEach(function(t){
+    if(isGroupHeader(t)) return;
     if(!adm() && t.owner_id!==uid) return;
     if(t.estado==='terminada' || !t.fecha_vencimiento) return;
     var d = dayDiff(t.fecha_vencimiento);
@@ -750,9 +751,9 @@ function myProjs(){
   });
 }
 function myTasks(){
-  if(adm()) return DB.tareas;
+  if(adm()) return DB.tareas.filter(function(t){return !isGroupHeader(t);});
   var uid = SES.userId;
-  return DB.tareas.filter(function(t){ return t.owner_id===uid; });
+  return DB.tareas.filter(function(t){ return !isGroupHeader(t) && t.owner_id===uid; });
 }
 function projectIcon(p){
   return /prokicks/i.test(p.nombre||'') ? '⚽' : '📁';
@@ -1099,7 +1100,7 @@ function vGA(){
   var todayPct = (todayOff/total*100).toFixed(1);
   var rows = [];
   projs.forEach(function(p){
-    DB.tareas.filter(function(t){return t.proyecto_id===p.id;}).forEach(function(t){
+    DB.tareas.filter(function(t){return t.proyecto_id===p.id && !isGroupHeader(t);}).forEach(function(t){
       if(!t.fecha_inicio||!t.fecha_vencimiento) return;
       var s = dateObj(t.fecha_inicio), e = dateObj(t.fecha_vencimiento);
       var off = Math.max(0,Math.round((s-start)/864e5));
@@ -1376,9 +1377,10 @@ function vRE(){
   var tB = DB.proyectos.filter(function(p){return p.estado!=='cerrado';}).reduce(function(s,p){return s+(Number(p.presupuesto)||0);},0);
   var tP = DB.pagos.filter(function(p){return p.estado==='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
   var tPe = DB.pagos.filter(function(p){return p.estado!=='pagado';}).reduce(function(s,p){return s+(Number(p.monto)||0);},0);
-  var eff = DB.tareas.length ? Math.round(DB.tareas.filter(function(t){return t.estado==='terminada';}).length/DB.tareas.length*100) : 0;
+  var realTasks = DB.tareas.filter(function(t){return !isGroupHeader(t);});
+  var eff = realTasks.length ? Math.round(realTasks.filter(function(t){return t.estado==='terminada';}).length/realTasks.length*100) : 0;
   var urows = DB.usuarios.filter(function(u){return u.rol!=='admin';}).map(function(u){
-    var ut = DB.tareas.filter(function(t){return t.owner_id===u.id;});
+    var ut = realTasks.filter(function(t){return t.owner_id===u.id;});
     var d2 = ut.filter(function(t){return t.estado==='terminada';}).length;
     var ip = ut.filter(function(t){return t.estado==='en_proceso';}).length;
     var ov = ut.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
