@@ -508,7 +508,16 @@ var GROUPS = ['Embajadas','Fundaciones','Empresas','General'];
 function isOfunamProject(p){ return !!p && /ofunam/i.test(String(p.nombre||'')); }
 function isProkicksProject(p){ return !!p && /prokicks/i.test(String(p.nombre||'')); }
 function taskProject(t){ return t ? xid(DB.proyectos,t.proyecto_id) : null; }
-function groupsForProject(p){ return isOfunamProject(p) ? ['Embajadas','Fundaciones','Empresas','General'] : ['General']; }
+function configuredProjectGroups(p){
+  var m = String(p&&p.descripcion||'').match(/(?:^|[.\n])\s*Frentes\s*:\s*([^\n.]+)/i);
+  if(!m) return [];
+  return m[1].split('|').map(function(g){return g.trim();}).filter(Boolean);
+}
+function groupsForProject(p){
+  if(isOfunamProject(p)) return ['Embajadas','Fundaciones','Empresas','General'];
+  var configured = configuredProjectGroups(p);
+  return configured.length ? configured : ['General'];
+}
 function cleanGroupName(v,p){
   var s = String(v||'').trim();
   var list = p ? groupsForProject(p) : GROUPS;
@@ -529,8 +538,7 @@ function groupFromHeader(t){
 }
 function taskGroup(t){
   var p = taskProject(t);
-  if(!isOfunamProject(p)) return 'General';
-  return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (/—/.test(t&&t.titulo||'')?'Embajadas':'General'), p);
+  return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (isOfunamProject(p)&&/—/.test(t&&t.titulo||'')?'Embajadas':'General'), p);
 }
 function stripDescFields(desc){
   var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado'];
@@ -541,7 +549,7 @@ function stripDescFields(desc){
 }
 function buildDesc(base,fields){
   var lines = [];
-  if(fields.grupo) lines.push('Grupo: '+cleanGroupName(fields.grupo));
+  if(fields.grupo) lines.push('Grupo: '+String(fields.grupo).trim());
   if(fields.email) lines.push('Email: '+fields.email);
   if(fields.tel) lines.push('Telefono: '+fields.tel);
   if(fields.dir) lines.push('Direccion: '+fields.dir);
