@@ -21,6 +21,9 @@ El frontend se conecta a Supabase desde `index.html`. Las tablas principales son
 - entregables
 - pagos
 - reuniones
+- notification_preferences
+- notification_log
+- usage_events
 
 ## Migraciones
 
@@ -29,6 +32,24 @@ Para activar el control CRM avanzado en tareas, ejecuta en Supabase SQL Editor:
 `migrations/2026-06-15-crm-task-control.sql`
 
 Esto agrega etapa CRM, siguiente acción, próximo seguimiento, última actividad, probabilidad y monto estimado.
+
+Ejecuta después:
+
+`migrations/2026-06-20-alerts-observability.sql`
+
+Esta migración agrega preferencias de notificación por usuario, deduplicación de envíos y analítica interna sin contenido sensible.
+
+## Alertas y observabilidad
+
+El CRM muestra alertas internas, permite notificaciones del navegador mientras está abierto y genera enlaces para Google Calendar sin instalar aplicaciones.
+
+El correo automático vive en `supabase/functions/process-alerts/index.ts`. Para activarlo hay que desplegar la función y configurar estos secretos en Supabase:
+
+- `RESEND_API_KEY`
+- `ALERT_FROM_EMAIL`
+- `APP_URL`
+
+Sentry está integrado sin grabación de sesiones y con filtrado de datos sensibles. Se activa mediante `window.SM_CONFIG.sentryDsn` en el despliegue; Mixpanel queda preparado pero inactivo hasta definir `window.SM_CONFIG.mixpanelToken`.
 
 ## Login
 
