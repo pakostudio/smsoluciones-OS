@@ -91,7 +91,7 @@ body.logged #app{display:grid}
 .chip{border:1px solid var(--line2);border-radius:var(--rs);padding:5px 10px;font-size:11px;font-weight:600;color:var(--muted);background:var(--surface2);white-space:nowrap}
 .topout{background:var(--navy);color:#fff;border-color:var(--navy);cursor:pointer;font-weight:800}
 .topout:hover{background:#163460;border-color:#163460}
-.content{flex:1;padding:14px 24px 28px;display:grid;gap:10px;align-content:start}
+.content{flex:1;min-width:0;padding:14px 24px 28px;display:grid;gap:10px;align-content:start;overflow-x:hidden}
 
 /* BUTTONS */
 .btn{border:0;border-radius:var(--rs);padding:9px 15px;background:var(--navy);color:#fff;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;white-space:nowrap}
@@ -157,6 +157,26 @@ th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--muted);text-trans
 .sticky-board table{border-collapse:separate;border-spacing:0}
 .sticky-board thead{position:sticky;top:0;z-index:20;background:var(--surface);box-shadow:0 2px 0 var(--line2),0 8px 16px rgba(11,37,71,.08)}
 .sticky-board thead th{position:sticky;top:0;z-index:21;background:var(--surface)}
+.operational-table{width:100%;table-layout:fixed;min-width:0}
+.operational-table th,.operational-table td{min-width:0;overflow-wrap:anywhere;word-break:normal}
+.operational-table th:nth-child(1){width:13%}
+.operational-table th:nth-child(2){width:16%}
+.operational-table th:nth-child(3){width:8%}
+.operational-table th:nth-child(4){width:19%}
+.operational-table th:nth-child(5){width:9%}
+.operational-table th:nth-child(6){width:7%}
+.operational-table th:nth-child(7){width:8%}
+.operational-table th:nth-child(8){width:13%}
+.operational-table th:nth-child(9){width:96px}
+.operational-table td:first-child .badge{max-width:100%;white-space:normal;line-height:1.2;text-align:center;justify-content:center}
+.operational-table td:nth-child(2)>button{display:block;width:100%;line-height:1.25}
+.operational-table td:nth-child(2)>div{clear:both;line-height:1.35}
+.operational-table th:last-child,.operational-table td:last-child{position:sticky;right:0;background:var(--surface);box-shadow:-8px 0 14px rgba(11,37,71,.06)}
+.operational-table th:last-child{z-index:24}
+.operational-table td:last-child{z-index:4}
+.operational-table tr:hover td:last-child{background:var(--surface2)}
+.operational-actions{display:grid;gap:5px}
+.operational-actions .btn{width:100%;justify-content:center;padding-left:6px;padding-right:6px}
 td{padding:12px 13px;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);vertical-align:middle}
 tr:hover td{background:var(--surface2)}
 
@@ -276,6 +296,7 @@ tr:hover td{background:var(--surface2)}
 .empty{text-align:center;padding:42px 24px;color:var(--muted)}
 .ei{font-size:30px;margin-bottom:10px}
 
+@media(max-width:1500px){.operational-table{min-width:1180px;table-layout:fixed}}
 @media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:none}.sg{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;padding:14px}.tb-r{flex-wrap:wrap;justify-content:flex-end}.chip{font-size:11px;padding:6px 9px}}
 </style>
@@ -963,10 +984,10 @@ function operationalBoard(p,limit){
       +'<td>'+esc(uNm(t.owner_id))+'</td>'
       +'<td>'+alert+'</td>'
       +'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>'
-      +'<td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btns btnc" onclick="A.qe(\''+t.id+'\')">Actualizar</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
+      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.qe(\''+t.id+'\')">Actualizar</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
       +'</tr>';
   }).join('');
-  return '<div class="card sticky-board" style="padding:0"><div class="tw"><table><thead><tr><th>Grupo</th><th>Registro</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  return '<div class="card sticky-board" style="padding:0"><div class="tw"><table class="operational-table"><thead><tr><th>Grupo</th><th>Registro</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
