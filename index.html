@@ -176,17 +176,20 @@ th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--muted);text-trans
 .sticky-board table{border-collapse:separate;border-spacing:0}
 .sticky-board thead{position:sticky;top:0;z-index:20;background:var(--surface);box-shadow:0 2px 0 var(--line2),0 8px 16px rgba(11,37,71,.08)}
 .sticky-board thead th{position:sticky;top:0;z-index:21;background:var(--surface)}
-.operational-table{width:100%;table-layout:fixed;min-width:0}
-.operational-table th,.operational-table td{min-width:0;overflow-wrap:anywhere;word-break:normal}
+.operational-table{width:100%;table-layout:fixed;min-width:1280px}
+.operational-table th,.operational-table td{min-width:0;word-break:normal}
+.operational-table th{overflow-wrap:normal;hyphens:none;line-height:1.15;padding:9px 10px;letter-spacing:.04em}
+.operational-table td{padding:11px 10px;font-size:12px}
+.operational-table td:nth-child(2),.operational-table td:nth-child(4),.operational-table td:nth-child(8){overflow-wrap:anywhere}
 .operational-table th:nth-child(1){width:13%}
-.operational-table th:nth-child(2){width:16%}
+.operational-table th:nth-child(2){width:18%}
 .operational-table th:nth-child(3){width:8%}
-.operational-table th:nth-child(4){width:19%}
-.operational-table th:nth-child(5){width:9%}
-.operational-table th:nth-child(6){width:7%}
+.operational-table th:nth-child(4){width:17%}
+.operational-table th:nth-child(5){width:10%}
+.operational-table th:nth-child(6){width:8%}
 .operational-table th:nth-child(7){width:8%}
-.operational-table th:nth-child(8){width:13%}
-.operational-table th:nth-child(9){width:96px}
+.operational-table th:nth-child(8){width:11%}
+.operational-table th:nth-child(9){width:132px}
 .operational-table td:first-child .badge{max-width:100%;white-space:normal;line-height:1.2;text-align:center;justify-content:center}
 .operational-table td:nth-child(2)>button{display:block;width:100%;line-height:1.25}
 .operational-table td:nth-child(2)>div{clear:both;line-height:1.35}
@@ -195,7 +198,7 @@ th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--muted);text-trans
 .operational-table td:last-child{z-index:4}
 .operational-table tr:hover td:last-child{background:var(--surface2)}
 .operational-actions{display:grid;gap:5px}
-.operational-actions .btn{width:100%;justify-content:center;padding-left:6px;padding-right:6px}
+.operational-actions .btn{width:100%;justify-content:center;padding:5px 4px;font-size:10px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
 .icon-picker{display:flex;gap:7px;flex-wrap:wrap}
 .icon-choice,.color-choice{border:1px solid var(--line2);background:var(--surface2);border-radius:7px;cursor:pointer;display:grid;place-items:center}
 .icon-choice{width:38px;height:38px;color:var(--muted)}
@@ -209,10 +212,11 @@ td{padding:12px 13px;border-bottom:1px solid var(--line);font-size:13px;color:va
 tr:hover td{background:var(--surface2)}
 
 /* FORM */
-.fg{display:grid;gap:13px}
-.fr2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
-.fr3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
-.fld label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.fg{display:grid;gap:16px}
+.fr2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.fr3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.fld{min-width:0}
+.fld label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;line-height:1.25;margin-bottom:6px}
 .fld input,.fld select,.fld textarea{width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--rs);padding:10px 13px;color:var(--ink);font-size:14px;outline:none;transition:border-color .2s}
 .fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,170,221,.10)}
 .fld select option{background:var(--surface)}
@@ -344,9 +348,9 @@ tr:hover td{background:var(--surface2)}
 .pkw-people{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
 .pkw-person{display:inline-flex;align-items:center;background:var(--cyan-soft);color:var(--navy);border:1px solid rgba(0,167,216,.22);border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800}
 .pkw-empty{padding:28px;text-align:center;border:1px dashed var(--line2);border-radius:var(--r);background:var(--surface2);color:var(--muted)}
-.pkw-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:9px;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--rs)}
-.pkw-check-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer}
-.pkw-check-label input{accent-color:var(--cyan)}
+.pkw-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;padding:8px 12px;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--rs)}
+.fld label.pkw-check-label{display:flex;align-items:center;gap:9px;min-height:36px;margin:0;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0;line-height:1.2}
+.fld label.pkw-check-label input{width:16px;height:16px;min-width:16px;flex:0 0 16px;margin:0;padding:0;accent-color:var(--cyan);box-shadow:none}
 .pkw-log{display:grid;gap:7px;margin-top:10px}
 .pkw-log-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px;font-size:12px;color:var(--ink)}
 .pkw-log-meta{font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700}
@@ -355,7 +359,7 @@ tr:hover td{background:var(--surface2)}
 .empty{text-align:center;padding:42px 24px;color:var(--muted)}
 .ei{font-size:30px;margin-bottom:10px}
 
-@media(max-width:1500px){.operational-table{min-width:1180px;table-layout:fixed}}
+@media(max-width:1500px){.operational-table{min-width:1280px;table-layout:fixed}}
 @media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:flex;position:fixed;left:-280px;z-index:60;transition:left .2s;box-shadow:12px 0 28px rgba(11,37,71,.18)}body.mobile-nav-open .sidebar{left:0}body.mobile-nav-open:after{content:'';position:fixed;inset:0;background:rgba(11,37,71,.25);z-index:55}.mobile-nav-toggle{display:grid}.tb-l{flex-direction:row;align-items:center;gap:8px}.sg{grid-template-columns:repeat(2,1fr)}.project-head .pdesc{max-width:90vw}.project-kpis{display:grid;grid-template-columns:repeat(2,1fr)}.project-kpis .sc:nth-child(2){border-right:0}.project-kpis .sc:nth-child(-n+2){border-bottom:1px solid var(--line)}.pkw-head{grid-template-columns:1fr 1fr}.pkw-actions{justify-content:flex-start}.pkw-sub{grid-template-columns:auto 1fr auto}.pkw-sub>*:nth-child(3),.pkw-sub>*:nth-child(4){display:none}.pkw-checks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;padding:14px}.tb-r{flex-wrap:wrap;justify-content:flex-end}.chip{font-size:11px;padding:6px 9px}.pkw-head{grid-template-columns:1fr}.pkw-checks{grid-template-columns:1fr}}
 </style>
@@ -1171,7 +1175,7 @@ function operationalBoard(p,limit){
       +'<td>'+esc(pk?pkInternalOwner(t):uNm(t.owner_id))+'</td>'
       +'<td>'+alert+'</td>'
       +'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>'
-      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="'+(pk?'A.pkAdvance':'A.qe')+'(\''+t.id+'\')">'+(pk?'Registrar avance':'Actualizar')+'</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
+      +'<td><div class="operational-actions"><button class="btn btns btnc" title="'+(pk?'Registrar avance':'Actualizar')+'" onclick="'+(pk?'A.pkAdvance':'A.qe')+'(\''+t.id+'\')">'+(pk?'Avance':'Actualizar')+'</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
       +'</tr>';
   }).join('');
   return '<div class="card sticky-board" style="padding:0"><div class="tw"><table class="operational-table"><thead><tr><th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th><th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
@@ -1808,22 +1812,30 @@ var A = {
       +(crm?'':'<div class="hbar"><span class="dot dy"></span>Modo compatible: estos datos se guardarán en la descripción hasta ejecutar la migración CRM.</div>')
       +'</div>';
     var selectedCollabs=t?pkCollaborators(t):[];
-    var pkH=isPk?'<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:5px">Plan de trabajo ProKicks</h3><div style="font-size:12px;color:var(--muted);margin-bottom:11px">Asignación operativa · no otorga acceso al CRM</div>'
+    var pkH=isPk?'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:5px">Asignación y control ProKicks</h3><div style="font-size:12px;color:var(--muted);margin-bottom:12px">Los responsables son etiquetas operativas y no obtienen acceso al CRM.</div>'
       +'<div class="fr2">'+FSL('fr','Frente',PROKICKS_WORK_FRONTS.map(function(n){return[n,n];}),t?pkTaskFront(t):PROKICKS_WORK_FRONTS[0])+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
       +'<div class="fld"><label>Colaboradores internos</label><div class="pkw-checks">'+PROKICKS_INTERNAL_PEOPLE.map(function(n,i){return '<label class="pkw-check-label"><input type="checkbox" data-pk-collab value="'+esc(n)+'" '+(selectedCollabs.indexOf(n)>=0?'checked':'')+'> '+esc(n)+'</label>';}).join('')+'</div></div>'
       +'<div class="fr2">'+FLD('ob','Objetivo','text',t&&descVal(t,'Objetivo')||'')+FLD('en','Entregable','text',t&&descVal(t,'Entregable')||'')+'</div>'
+      +'<div class="fr2">'+FLD('sa','Siguiente acción','text',t&&(t.siguiente_accion||nextAction(t))||'')+FLD('ps','Próximo seguimiento','date',t&&(t.fecha_proximo_seguimiento||followDate(t))||'')+'</div>'
       +'<div class="fr3">'+FSL('kp','KPI principal',[['','Por definir'],['Avance','Avance'],['Asistencia','Asistencia'],['Registros','Registros'],['Alcance','Alcance'],['Seguidores','Seguidores'],['Tráfico','Tráfico'],['Ventas','Ventas'],['Interacciones','Interacciones']],t&&descVal(t,'KPI')||'')+FLD('mt','Meta','text',t&&descVal(t,'Meta')||'')+FLD('ct','Llamada a la acción','text',t&&descVal(t,'CTA')||'')+'</div>'
       +'</div>':'';
+    var mainFields=isPk
+      ?'<input type="hidden" id="f_pi" value="'+esc(p2)+'"><input type="hidden" id="f_oi" value="'+esc(t&&t.owner_id||SES.userId)+'">'
+        +FLD('ti','Nombre de la tarea','text',t&&t.titulo)
+        +FTA('dc','Notas / descripción',t&&stripDescFields(t.descripcion))
+        +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
+        +'<div class="fr2">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+'</div>'
+      :'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
+        +'<div class="fr2">'+FLD('ti','Registro / prospecto','text',t&&t.titulo)+FSL('gr','Grupo',gO,t?taskGroup(t):'General')+'</div>'
+        +FTA('dc','Notas / descripción libre',t&&stripDescFields(t.descripcion))
+        +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
+        +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
+        +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'');
     mOpen(t?'Editar tarea':'Nueva tarea',
       '<div class="fg">'
-      +'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
-      +'<div class="fr2">'+FLD('ti',isPk?'Nombre de la tarea':'Registro / prospecto','text',t&&t.titulo)+(isPk?'':FSL('gr','Grupo',gO,t?taskGroup(t):'General'))+'</div>'
-      +FTA('dc','Notas / descripción libre',t&&stripDescFields(t.descripcion))
-      +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
-      +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
-      +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'')
+      +mainFields
       +pkH
-      +crmH
+      +(isPk?'':crmH)
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
       +'</div>');
   },
