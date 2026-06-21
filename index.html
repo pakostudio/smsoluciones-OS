@@ -320,13 +320,44 @@ tr:hover td{background:var(--surface2)}
 .tab:hover{color:var(--ink)}
 .tab.active{color:var(--navy);border-bottom-color:var(--cyan)}
 
+/* PROKICKS WORK PLAN */
+.pkw-shell{display:grid;gap:14px}
+.pkw-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pkw-tabs{display:flex;gap:7px;flex-wrap:wrap}
+.pkw-tab{border:1px solid var(--line2);background:var(--surface);color:var(--muted);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer}
+.pkw-tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.pkw-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.pkw-card.risk{border-left:4px solid var(--red)}
+.pkw-card.warn{border-left:4px solid var(--yellow)}
+.pkw-card.ok{border-left:4px solid var(--green)}
+.pkw-head{display:grid;grid-template-columns:minmax(240px,1.5fr) minmax(170px,.8fr) minmax(170px,.8fr) auto;gap:14px;align-items:center;padding:16px}
+.pkw-title{font-size:17px;font-weight:900;color:var(--ink);margin-bottom:5px}
+.pkw-meta{font-size:12px;color:var(--muted);line-height:1.45}
+.pkw-progress{display:grid;gap:6px}
+.pkw-progress-line{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;color:var(--navy)}
+.pkw-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pkw-body{border-top:1px solid var(--line);background:var(--surface2);padding:0 16px 14px}
+.pkw-sub{display:grid;grid-template-columns:auto minmax(180px,1fr) minmax(130px,.45fr) minmax(110px,.35fr) auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.pkw-check{width:20px;height:20px;accent-color:var(--green);cursor:pointer}
+.pkw-sub-title{font-size:13px;font-weight:800;color:var(--ink)}
+.pkw-sub-meta{font-size:11px;color:var(--muted);margin-top:3px}
+.pkw-people{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.pkw-person{display:inline-flex;align-items:center;background:var(--cyan-soft);color:var(--navy);border:1px solid rgba(0,167,216,.22);border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800}
+.pkw-empty{padding:28px;text-align:center;border:1px dashed var(--line2);border-radius:var(--r);background:var(--surface2);color:var(--muted)}
+.pkw-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:9px;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--rs)}
+.pkw-check-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer}
+.pkw-check-label input{accent-color:var(--cyan)}
+.pkw-log{display:grid;gap:7px;margin-top:10px}
+.pkw-log-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px;font-size:12px;color:var(--ink)}
+.pkw-log-meta{font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700}
+
 /* EMPTY */
 .empty{text-align:center;padding:42px 24px;color:var(--muted)}
 .ei{font-size:30px;margin-bottom:10px}
 
 @media(max-width:1500px){.operational-table{min-width:1180px;table-layout:fixed}}
-@media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:flex;position:fixed;left:-280px;z-index:60;transition:left .2s;box-shadow:12px 0 28px rgba(11,37,71,.18)}body.mobile-nav-open .sidebar{left:0}body.mobile-nav-open:after{content:'';position:fixed;inset:0;background:rgba(11,37,71,.25);z-index:55}.mobile-nav-toggle{display:grid}.tb-l{flex-direction:row;align-items:center;gap:8px}.sg{grid-template-columns:repeat(2,1fr)}.project-head .pdesc{max-width:90vw}.project-kpis{display:grid;grid-template-columns:repeat(2,1fr)}.project-kpis .sc:nth-child(2){border-right:0}.project-kpis .sc:nth-child(-n+2){border-bottom:1px solid var(--line)}}
-@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;padding:14px}.tb-r{flex-wrap:wrap;justify-content:flex-end}.chip{font-size:11px;padding:6px 9px}}
+@media(max-width:900px){#app{grid-template-columns:1fr}.sidebar{display:flex;position:fixed;left:-280px;z-index:60;transition:left .2s;box-shadow:12px 0 28px rgba(11,37,71,.18)}body.mobile-nav-open .sidebar{left:0}body.mobile-nav-open:after{content:'';position:fixed;inset:0;background:rgba(11,37,71,.25);z-index:55}.mobile-nav-toggle{display:grid}.tb-l{flex-direction:row;align-items:center;gap:8px}.sg{grid-template-columns:repeat(2,1fr)}.project-head .pdesc{max-width:90vw}.project-kpis{display:grid;grid-template-columns:repeat(2,1fr)}.project-kpis .sc:nth-child(2){border-right:0}.project-kpis .sc:nth-child(-n+2){border-bottom:1px solid var(--line)}.pkw-head{grid-template-columns:1fr 1fr}.pkw-actions{justify-content:flex-start}.pkw-sub{grid-template-columns:auto 1fr auto}.pkw-sub>*:nth-child(3),.pkw-sub>*:nth-child(4){display:none}.pkw-checks{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.sg{grid-template-columns:1fr}.content{padding:16px 14px}.fr2,.fr3{grid-template-columns:1fr}.dg3,.crmgrid{grid-template-columns:1fr}.topbar{height:auto;align-items:flex-start;gap:10px;padding:14px}.tb-r{flex-wrap:wrap;justify-content:flex-end}.chip{font-size:11px;padding:6px 9px}.pkw-head{grid-template-columns:1fr}.pkw-checks{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -484,6 +515,8 @@ var FPID = '';   // filter project id
 var PTAB = 'tareas'; // project workspace tab
 var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
+var PKWORKTAB = 'todos';
+var PK_INIT_BUSY = false;
 var SESSION_KEY = 'sm_os_session_v1';
 var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
@@ -602,6 +635,30 @@ function descVal(t,key){
   return m ? m[1].trim() : '';
 }
 var GROUPS = ['Embajadas','Fundaciones','Empresas','General'];
+var PROKICKS_INTERNAL_PEOPLE = ['Billi','Juan','Pako','Jorge','Linda','Dary','Erika','Fernando','Sean','Jonathan'];
+var PROKICKS_WORK_FRONTS = ['Indoor Community','Comunidad ProKicks','Redes sociales'];
+var PROKICKS_PLAN = [
+  {title:'Indoor Community',front:'Indoor Community',subtasks:[
+    'Revisión y análisis del evento de Indoor Community',
+    'Planeación y organización de futuros torneos ProKicks',
+    'Artículos promocionales y premios para futuros torneos',
+    'Desarrollo de mercancía ProKicks: playeras, stickers y otros productos',
+    'Promocionales para activaciones, escuelas, negocios y eventos',
+    'Registros para torneos'
+  ]},
+  {title:'Comunidad ProKicks',front:'Comunidad ProKicks',subtasks:[
+    'SPOT Sur CDMX',
+    'SPOT Tlatelolco',
+    'Registros para torneos'
+  ]},
+  {title:'Redes sociales',front:'Redes sociales',subtasks:[
+    'Incrementar el reconocimiento de la marca ProKicks',
+    'Aumentar seguidores en redes sociales',
+    'Generar tráfico hacia el sitio web y la tienda en línea',
+    'Aumentar ventas e interacción con clientes',
+    'Definir objetivo y llamada a la acción de cada contenido'
+  ]}
+];
 function isOfunamProject(p){ return !!p && /ofunam/i.test(String(p.nombre||'')); }
 function isProkicksProject(p){ return !!p && /prokicks/i.test(String(p.nombre||'')); }
 function taskProject(t){ return t ? xid(DB.proyectos,t.proyecto_id) : null; }
@@ -638,27 +695,40 @@ function taskGroup(t){
   return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (isOfunamProject(p)&&/—/.test(t&&t.titulo||'')?'Embajadas':'General'), p);
 }
 function stripDescFields(desc){
-  var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado'];
+  var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado','Frente','Responsable interno','Colaboradores internos','Objetivo','Entregable','KPI','Meta','CTA'];
   var lines = String(desc||'').split(/\r?\n/);
   return lines.filter(function(line){
     return !keys.some(function(k){ return new RegExp('^'+k+'\\s*:','i').test(line); });
   }).join('\n').trim();
 }
 function buildDesc(base,fields){
+  fields = fields || {};
+  var original = {descripcion:String(base||'')};
+  function val(prop,label,aliases){
+    if(Object.prototype.hasOwnProperty.call(fields,prop)) return fields[prop];
+    var v=descVal(original,label);
+    if(!v && aliases) for(var i=0;i<aliases.length;i++){v=descVal(original,aliases[i]);if(v)break;}
+    return v;
+  }
   var lines = [];
-  if(fields.grupo) lines.push('Grupo: '+String(fields.grupo).trim());
-  if(fields.email) lines.push('Email: '+fields.email);
-  if(fields.tel) lines.push('Telefono: '+fields.tel);
-  if(fields.dir) lines.push('Direccion: '+fields.dir);
-  if(fields.gancho) lines.push('Gancho: '+fields.gancho);
-  if(fields.instrumento) lines.push('Instrumento: '+fields.instrumento);
-  if(fields.accion) lines.push('Siguiente accion: '+fields.accion);
-  if(fields.seguimiento) lines.push('Proximo seguimiento: '+fields.seguimiento);
-  if(fields.etapa) lines.push('Etapa: '+fields.etapa);
-  if(fields.probabilidad) lines.push('Probabilidad: '+fields.probabilidad);
-  if(fields.monto) lines.push('Monto estimado: '+fields.monto);
+  var specs=[
+    ['grupo','Grupo'],['frente','Frente'],['responsableInterno','Responsable interno'],['colaboradoresInternos','Colaboradores internos'],
+    ['objetivo','Objetivo'],['entregable','Entregable'],['kpi','KPI'],['meta','Meta'],['cta','CTA'],
+    ['email','Email'],['tel','Telefono',['Teléfono']],['dir','Direccion',['Dirección']],['gancho','Gancho'],['instrumento','Instrumento'],
+    ['accion','Siguiente accion',['Siguiente acción']],['seguimiento','Proximo seguimiento',['Próximo seguimiento']],
+    ['etapa','Etapa'],['probabilidad','Probabilidad'],['monto','Monto estimado']
+  ];
+  specs.forEach(function(s){var v=val(s[0],s[1],s[2]);if(v!==undefined&&v!==null&&String(v).trim())lines.push(s[1]+': '+String(v).trim());});
   var rest = stripDescFields(base);
   return lines.concat(rest?['',rest]:[]).join('\n');
+}
+function pkTaskFront(t){ return descVal(t,'Frente') || (PROKICKS_WORK_FRONTS.indexOf(String(t&&t.titulo||''))>=0?t.titulo:'Otros'); }
+function pkInternalOwner(t){ return descVal(t,'Responsable interno') || 'Por asignar'; }
+function pkCollaborators(t){ return String(descVal(t,'Colaboradores internos')||'').split('|').map(function(v){return v.trim();}).filter(Boolean); }
+function pkTaskProgress(t){
+  var subs=DB.subtareas.filter(function(s){return s.tarea_id===t.id;});
+  var done=subs.filter(function(s){return s.estado==='terminada';}).length;
+  return {subs:subs,done:done,pct:subs.length?Math.round(done/subs.length*100):(t.estado==='terminada'?100:0)};
 }
 function lastActivity(t){
   var dates = [];
@@ -1432,6 +1502,39 @@ function pkStatus(v){
   var cl=/PAGADO|CERRADA|ENTREGADO|EN USO|cerrado/i.test(s)?'bg_':(/INCOMPLETA|NO ENVIADO|perdido/i.test(s)?'br_':'by_');
   return '<span class="badge '+cl+'">'+esc(s)+'</span>';
 }
+function pkWorkPlanHtml(p){
+  var all=projectTasks(p.id);
+  var hasOthers=all.some(function(t){return PROKICKS_WORK_FRONTS.indexOf(pkTaskFront(t))<0;});
+  var fronts=['todos'].concat(PROKICKS_WORK_FRONTS).concat(hasOthers?['Otros']:[]);
+  var baseMissing=PROKICKS_PLAN.some(function(def){return !all.some(function(t){return String(t.titulo||'').trim().toLowerCase()===def.title.toLowerCase();});});
+  var tabs=fronts.map(function(f){
+    var label=f==='todos'?'Todos':f;
+    var count=f==='todos'?all.length:all.filter(function(t){return pkTaskFront(t)===f;}).length;
+    return '<button class="pkw-tab '+(PKWORKTAB===f?'active':'')+'" onclick="PKWORKTAB=\''+f+'\';render()">'+esc(label)+' <span style="opacity:.72">'+count+'</span></button>';
+  }).join('');
+  var shown=all.filter(function(t){return PKWORKTAB==='todos'||pkTaskFront(t)===PKWORKTAB;}).sort(function(a,b){var ai=PROKICKS_WORK_FRONTS.indexOf(pkTaskFront(a)),bi=PROKICKS_WORK_FRONTS.indexOf(pkTaskFront(b));return (ai<0?99:ai)-(bi<0?99:bi);});
+  var cards=shown.map(function(t){
+    var pg=pkTaskProgress(t), h=crmHealth(t), owner=pkInternalOwner(t), collabs=pkCollaborators(t);
+    var cls=h.cl==='dr'?'risk':h.cl==='dy'?'warn':'ok';
+    var people='<span class="pkw-person">'+esc(owner)+'</span>'+collabs.map(function(n){return '<span class="pkw-person">'+esc(n)+'</span>';}).join('');
+    var subs=pg.subs.map(function(s){
+      return '<div class="pkw-sub"><input class="pkw-check" type="checkbox" '+(s.estado==='terminada'?'checked':'')+' onchange="A.pkToggleSub(\''+s.id+'\')" aria-label="Marcar microtarea">'
+        +'<div><div class="pkw-sub-title">'+esc(s.titulo)+'</div><div class="pkw-sub-meta">'+(s.estado==='terminada'?'Terminada':'Pendiente')+' · Vence '+fmt(s.fecha_vencimiento)+'</div></div>'
+        +'<div>'+esc(uNm(s.owner_id))+'</div><div>'+bSt(s.estado)+'</div>'
+        +'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar</button></div>';
+    }).join('')||'<div class="pkw-empty">Todavía no hay microtareas.</div>';
+    var logs=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));}).slice(0,3);
+    var logHtml=logs.length?'<div class="pkw-log">'+logs.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+'</div>'+esc(c.texto)+'</div>';}).join('')+'</div>':'';
+    return '<section class="pkw-card '+cls+'"><div class="pkw-head">'
+      +'<div><div class="pkw-title">'+esc(t.titulo)+'</div><div class="pkw-meta">'+esc(descVal(t,'Objetivo')||nextAction(t)||'Objetivo por definir')+'</div><div class="pkw-people">'+people+'</div></div>'
+      +'<div class="pkw-progress"><div class="pkw-progress-line"><span>Avance</span><span>'+pg.pct+'%</span></div><div class="pb" style="height:8px"><div class="pf" style="width:'+pg.pct+'%"></div></div><div class="pkw-meta">'+pg.done+' de '+pg.subs.length+' microtareas</div></div>'
+      +'<div><div style="margin-bottom:6px">'+bSt(t.estado)+' '+sem(t)+'</div><div class="pkw-meta">Inicio '+fmt(t.fecha_inicio)+'<br>Vence '+fmt(t.fecha_vencimiento)+'<br>Seguimiento '+fmt(followDate(t))+'</div></div>'
+      +'<div class="pkw-actions"><button class="btn btns btnc" onclick="A.pkAdvance(\''+t.id+'\')">Registrar avance</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Abrir ficha</button><button class="btn btns btng" onclick="A._tm(\''+t.id+'\')">Editar</button></div>'
+      +'</div><div class="pkw-body">'+subs+logHtml+'</div></section>';
+  }).join('');
+  var empty=all.length?'<div class="pkw-empty">No hay tareas en este frente.</div>':'<div class="pkw-empty"><strong>Plan listo para instalar.</strong><br>Se crearán Indoor Community, Comunidad ProKicks y Redes sociales con sus microtareas acordadas.<div style="margin-top:12px"><button class="btn btnc" onclick="A.pkInitPlan()">Crear plan de trabajo ProKicks</button></div></div>';
+  return '<div class="card"><div class="pkw-toolbar"><div><h3 style="margin:0">Seguimiento CRM ProKicks</h3><div class="pkw-meta">Tareas, responsables internos, avances, alertas y evidencia en un solo lugar.</div></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btns btng" onclick="A.nt(\''+p.id+'\')">+ Nueva tarea</button>'+(baseMissing?'<button class="btn btns btnc" onclick="A.pkInitPlan()">Completar plan base</button>':'')+'</div></div><div class="pkw-tabs" style="margin:14px 0">'+tabs+'</div><div class="pkw-shell">'+(cards||empty)+'</div></div>';
+}
 function prokicksProjectOverview(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto'), clientes=pkRows('cliente'), cobranza=pkRows('cobranza');
   var vendidos=ventas.reduce(function(s,r){return s+Number(pkVal(r,'devices')||0);},0);
@@ -1451,11 +1554,8 @@ function prokicksProjectOverview(){
   ];
   var cards=cells.map(function(c){return '<button class="di" style="text-align:left;cursor:pointer;border:1px solid var(--line)" onclick="PKTAB=\''+c[2]+'\';nav(\'prokicks\')"><div class="dl">'+esc(c[0])+'</div><div class="dv">'+esc(String(c[1]))+'</div></button>';}).join('');
   var p=pkProject();
-  var follow=p?projectTasks(p.id).map(function(t){
-    return '<div style="border:1px solid var(--line);border-radius:var(--rs);padding:12px;background:var(--surface);margin-top:10px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><strong>'+esc(t.titulo)+'</strong><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">'+esc(nextAction(t)||'Sin siguiente acción')+'</div></div><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btns btnc" onclick="A.td(\''+t.id+'\')">Abrir ficha</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button></div></div></div>';
-  }).join(''):'';
   return '<div class="sg">'+cards+'</div><div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación completa</button></div><p style="font-size:13px;color:var(--muted);margin:0">La información de ProKicks está en su módulo operativo: inventario, prospectos, clientes, ventas, comodatos y cobranza.</p></div>'
-    +(follow?'<div class="card"><div class="ch"><h3>Seguimiento CRM ProKicks</h3></div>'+follow+'</div>':'');
+    +(p?pkWorkPlanHtml(p):'');
 }
 function vPK(){
   var p=pkProject();
@@ -1691,7 +1791,9 @@ var A = {
     var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
-    var gO = groupsForProject(xid(DB.proyectos,p2)).map(function(g){return [g,g];});
+    var selectedProject=xid(DB.proyectos,p2);
+    var isPk=isProkicksProject(selectedProject);
+    var gO = groupsForProject(selectedProject).map(function(g){return [g,g];});
     var crm = crmEnabled();
     var crmH = '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Contacto y control</h3>'
       +'<div class="fr2">'+FLD('emx','Email','email',t&&descVal(t,'Email')||'')+FLD('tel','Teléfono','text',t&&(descVal(t,'Telefono')||descVal(t,'Teléfono'))||'')+'</div>'
@@ -1702,14 +1804,22 @@ var A = {
       +'<div class="fr2">'+FLD('pb','Probabilidad %','number',t&&(t.probabilidad||descVal(t,'Probabilidad'))||'')+FLD('me','Monto estimado','number',t&&(t.monto_estimado||descVal(t,'Monto estimado'))||'')+'</div>'
       +(crm?'':'<div class="hbar"><span class="dot dy"></span>Modo compatible: estos datos se guardarán en la descripción hasta ejecutar la migración CRM.</div>')
       +'</div>';
-    mOpen(t?'Editar registro':'Nuevo registro',
+    var selectedCollabs=t?pkCollaborators(t):[];
+    var pkH=isPk?'<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:5px">Plan de trabajo ProKicks</h3><div style="font-size:12px;color:var(--muted);margin-bottom:11px">Asignación operativa · no otorga acceso al CRM</div>'
+      +'<div class="fr2">'+FSL('fr','Frente',PROKICKS_WORK_FRONTS.map(function(n){return[n,n];}),t?pkTaskFront(t):PROKICKS_WORK_FRONTS[0])+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
+      +'<div class="fld"><label>Colaboradores internos</label><div class="pkw-checks">'+PROKICKS_INTERNAL_PEOPLE.map(function(n,i){return '<label class="pkw-check-label"><input type="checkbox" data-pk-collab value="'+esc(n)+'" '+(selectedCollabs.indexOf(n)>=0?'checked':'')+'> '+esc(n)+'</label>';}).join('')+'</div></div>'
+      +'<div class="fr2">'+FLD('ob','Objetivo','text',t&&descVal(t,'Objetivo')||'')+FLD('en','Entregable','text',t&&descVal(t,'Entregable')||'')+'</div>'
+      +'<div class="fr3">'+FSL('kp','KPI principal',[['','Por definir'],['Avance','Avance'],['Asistencia','Asistencia'],['Registros','Registros'],['Alcance','Alcance'],['Seguidores','Seguidores'],['Tráfico','Tráfico'],['Ventas','Ventas'],['Interacciones','Interacciones']],t&&descVal(t,'KPI')||'')+FLD('mt','Meta','text',t&&descVal(t,'Meta')||'')+FLD('ct','Llamada a la acción','text',t&&descVal(t,'CTA')||'')+'</div>'
+      +'</div>':'';
+    mOpen(t?'Editar tarea':'Nueva tarea',
       '<div class="fg">'
       +'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
-      +'<div class="fr2">'+FLD('ti','Registro / prospecto','text',t&&t.titulo)+FSL('gr','Grupo',gO,t?taskGroup(t):'General')+'</div>'
+      +'<div class="fr2">'+FLD('ti',isPk?'Nombre de la tarea':'Registro / prospecto','text',t&&t.titulo)+(isPk?'':FSL('gr','Grupo',gO,t?taskGroup(t):'General'))+'</div>'
       +FTA('dc','Notas / descripción libre',t&&stripDescFields(t.descripcion))
       +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
       +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
       +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'')
+      +pkH
       +crmH
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
       +'</div>');
@@ -1718,7 +1828,10 @@ var A = {
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var old = id ? xid(DB.tareas,id) : null;
     if(id && !canEditTask(old)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
-    var desc = buildDesc(fv('dc'),{grupo:fv('gr'),email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
+    var selectedProject=xid(DB.proyectos,fv('pi'));
+    var isPk=isProkicksProject(selectedProject);
+    var collabs=isPk?Array.prototype.map.call(document.querySelectorAll('[data-pk-collab]:checked'),function(el){return el.value;}):[];
+    var desc = buildDesc(fv('dc'),{grupo:isPk?'':fv('gr'),frente:isPk?fv('fr'):'',responsableInterno:isPk?fv('ri'):'',colaboradoresInternos:isPk?collabs.join(' | '):'',objetivo:isPk?fv('ob'):'',entregable:isPk?fv('en'):'',kpi:isPk?fv('kp'):'',meta:isPk?fv('mt'):'',cta:isPk?fv('ct'):'',email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
     var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:desc,prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
     if(id && old && !adm()){
       data.proyecto_id = old.proyecto_id;
@@ -1749,7 +1862,7 @@ var A = {
   _sqe: async function(id){
     var t=xid(DB.tareas,id); if(!t) return;
     if(!canEditTask(t)){toast('Solo el responsable puede actualizar este registro','r');return;}
-    var desc=buildDesc(stripDescFields(t.descripcion),{grupo:taskGroup(t),email:descVal(t,'Email'),tel:descVal(t,'Telefono')||descVal(t,'Teléfono'),dir:descVal(t,'Direccion')||descVal(t,'Dirección'),gancho:descVal(t,'Gancho'),instrumento:descVal(t,'Instrumento'),accion:fv('sa'),seguimiento:fv('ps'),etapa:t.etapa_crm||descVal(t,'Etapa'),probabilidad:t.probabilidad||descVal(t,'Probabilidad'),monto:t.monto_estimado||descVal(t,'Monto estimado')});
+    var desc=buildDesc(t.descripcion,{grupo:taskGroup(t),email:descVal(t,'Email'),tel:descVal(t,'Telefono')||descVal(t,'Teléfono'),dir:descVal(t,'Direccion')||descVal(t,'Dirección'),gancho:descVal(t,'Gancho'),instrumento:descVal(t,'Instrumento'),accion:fv('sa'),seguimiento:fv('ps'),etapa:t.etapa_crm||descVal(t,'Etapa'),probabilidad:t.probabilidad||descVal(t,'Probabilidad'),monto:t.monto_estimado||descVal(t,'Monto estimado')});
     var data={estado:fv('es'),descripcion:desc};
     if(crmEnabled()){
       data.siguiente_accion=fv('sa')||null;
@@ -1769,7 +1882,7 @@ var A = {
       return '<button class="btn btns '+(t.estado===s?'btnc':'btng')+'" onclick="A.ss(\''+id+'\',\''+s+'\');mClose()">'+ic[s]+' '+s.replace('_',' ')+'</button>';
     }).join('');
     var subH = subs.map(function(s){
-      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;align-items:center"><div><strong>'+esc(s.titulo)+'</strong><div style="color:var(--muted);font-size:12px;margin-top:3px">'+esc(uNm(s.owner_id))+' · Término: '+fmt(s.fecha_vencimiento)+'</div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar fecha/estado</button></div></div>';
+      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;align-items:center"><div style="display:flex;gap:9px;align-items:flex-start"><input class="pkw-check" type="checkbox" '+(s.estado==='terminada'?'checked':'')+' onchange="A.pkToggleSub(\''+s.id+'\')"><div><strong>'+esc(s.titulo)+'</strong><div style="color:var(--muted);font-size:12px;margin-top:3px">'+esc(uNm(s.owner_id))+' · Término: '+fmt(s.fecha_vencimiento)+'</div></div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar fecha/estado</button></div></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin subtareas</div>';
     var comH = coms.map(function(c){
       return '<div style="padding:9px;background:var(--surface2);border-radius:var(--rs);margin-bottom:7px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><strong style="font-size:13px">'+esc(uNm(c.usuario_id))+'</strong><span style="font-size:11px;color:var(--muted)">'+fmtdt(c.created_at)+'</span></div><p style="font-size:13px;margin:0">'+esc(c.texto)+'</p></div>';
@@ -1778,6 +1891,17 @@ var A = {
       return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center"><div><strong>'+esc(f.nombre)+'</strong><span style="color:var(--muted);margin-left:7px">v'+esc(f.version)+'</span></div><a href="'+esc(f.url)+'" target="_blank" class="btn btns btng">🔗 Abrir</a></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin entregables</div>';
     var ef = t.horas_estimadas ? Math.round(t.horas_reales/t.horas_estimadas*100) : 0;
+    var pkTask=isProkicksProject(taskProject(t)), pkPg=pkTask?pkTaskProgress(t):null;
+    var pkDetail=pkTask?'<div class="card" style="margin:0;padding:14px"><div class="ch"><h3>Control ProKicks</h3><button class="btn btns btnc" onclick="mClose();A.pkAdvance(\''+id+'\')">Registrar avance</button></div><div class="crmgrid">'
+      +'<div class="crmcell"><div class="dl">Frente</div><div class="dv">'+esc(pkTaskFront(t))+'</div></div>'
+      +'<div class="crmcell"><div class="dl">Responsable interno</div><div class="dv">'+esc(pkInternalOwner(t))+'</div></div>'
+      +'<div class="crmcell"><div class="dl">Colaboradores</div><div class="dv">'+esc(pkCollaborators(t).join(', ')||'—')+'</div></div>'
+      +'<div class="crmcell"><div class="dl">Avance</div><div class="dv">'+pkPg.pct+'% · '+pkPg.done+'/'+pkPg.subs.length+'</div><div class="pb" style="height:7px;margin-top:7px"><div class="pf" style="width:'+pkPg.pct+'%"></div></div></div>'
+      +'<div class="crmcell"><div class="dl">Objetivo</div><div class="dv">'+esc(descVal(t,'Objetivo')||'Por definir')+'</div></div>'
+      +'<div class="crmcell"><div class="dl">Entregable</div><div class="dv">'+esc(descVal(t,'Entregable')||'Por definir')+'</div></div>'
+      +'<div class="crmcell"><div class="dl">KPI / Meta</div><div class="dv">'+esc(descVal(t,'KPI')||'—')+' · '+esc(descVal(t,'Meta')||'—')+'</div></div>'
+      +'<div class="crmcell"><div class="dl">CTA</div><div class="dv">'+esc(descVal(t,'CTA')||'—')+'</div></div>'
+      +'</div></div>':'';
     var editActions = canEditTask(t) ? '<button class="btn btns btnc" onclick="mClose();A._tm(\''+id+'\')">Editar información</button>'+(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+id+'\')">Eliminar</button>':'') : '';
     var quickActions = '<div class="task-actions-sticky"><div class="task-actions-title">Acciones de esta ficha</div><div class="task-actions-row">'
       +editActions
@@ -1793,8 +1917,9 @@ var A = {
       +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+bPr(t.prioridad)+' '+bSt(t.estado)+' '+sem(t)+'</div>'
       +quickActions
       +taskAlertsHtml(t)
+      +pkDetail
       +'<div class="dg3"><div class="di"><div class="dl">Proyecto</div><div class="dv">'+esc(pNm(t.proyecto_id))+'</div></div><div class="di"><div class="dl">Responsable</div><div class="dv">'+esc(uNm(t.owner_id))+'</div></div><div class="di"><div class="dl">Inicio</div><div class="dv">'+fmt(t.fecha_inicio)+'</div></div><div class="di"><div class="dl">Término</div><div class="dv">'+fmt(t.fecha_vencimiento)+'</div></div><div class="di"><div class="dl">Horas Est.</div><div class="dv">'+t.horas_estimadas+'h</div></div><div class="di"><div class="dl">Horas Reales</div><div class="dv">'+t.horas_reales+'h</div></div><div class="di"><div class="dl">Eficiencia</div><div class="dv">'+ef+'%</div></div></div>'
-      +'<p style="color:var(--muted);font-size:14px;margin:0">'+esc(t.descripcion||'Sin descripción.')+'</p>'
+      +'<p style="color:var(--muted);font-size:14px;margin:0;white-space:pre-line">'+esc(stripDescFields(t.descripcion)||'Sin descripción.')+'</p>'
       +pkAccess
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+stBtns+'</div>'
       +crmPanel(t)
@@ -1893,6 +2018,68 @@ var A = {
   },
 
   /* PROKICKS */
+  pkInitPlan: async function(){
+    var p=pkProject();
+    if(!p||!canUseProkicks()){toast('Sin permiso para preparar el plan ProKicks','r');return;}
+    if(PK_INIT_BUSY){toast('El plan se está preparando…');return;}
+    PK_INIT_BUSY=true;
+    var created=0, added=0;
+    for(var i=0;i<PROKICKS_PLAN.length;i++){
+      var def=PROKICKS_PLAN[i];
+      var parent=DB.tareas.find(function(t){return t.proyecto_id===p.id&&String(t.titulo||'').trim().toLowerCase()===def.title.toLowerCase();});
+      if(!parent){
+        var desc=buildDesc('Plan de trabajo operativo ProKicks.',{frente:def.front,objetivo:'Definir, ejecutar y documentar resultados',entregable:'Resultado documentado y aprobado',accion:'Asignar responsable interno y calendarizar microtareas',kpi:'Avance',meta:'100'});
+        var data={proyecto_id:p.id,owner_id:SES.userId,titulo:def.title,descripcion:desc,prioridad:'alta',estado:'pendiente',fecha_inicio:today(),fecha_vencimiento:pd(30),horas_estimadas:8,horas_reales:0};
+        if(crmEnabled()){data.etapa_crm='por_contactar';data.siguiente_accion='Asignar responsable interno y calendarizar microtareas';data.fecha_proximo_seguimiento=pd(7);data.ultima_actividad=new Date().toISOString();}
+        parent=await ins('tareas',data);
+        if(!parent) continue;
+        created++;
+      }
+      var known=DB.subtareas.filter(function(s){return s.tarea_id===parent.id;}).map(function(s){return String(s.titulo||'').trim().toLowerCase();});
+      for(var j=0;j<def.subtasks.length;j++){
+        if(known.indexOf(def.subtasks[j].toLowerCase())>=0) continue;
+        var sub=await ins('subtareas',{tarea_id:parent.id,owner_id:SES.userId,titulo:def.subtasks[j],estado:'pendiente',fecha_vencimiento:parent.fecha_vencimiento||pd(30)});
+        if(sub) added++;
+      }
+    }
+    await refresh();
+    PKWORKTAB='todos';
+    PK_INIT_BUSY=false;
+    toast('Plan ProKicks listo: '+created+' tareas y '+added+' microtareas creadas ✓','g');
+  },
+  pkToggleSub: async function(id){
+    var s=xid(DB.subtareas,id); if(!s)return;
+    var t=xid(DB.tareas,s.tarea_id); if(!t||!canEditTask(t)){toast('Solo tú puedes actualizar esta microtarea','r');return;}
+    var next=s.estado==='terminada'?'pendiente':'terminada';
+    var saved=await upd('subtareas',id,{estado:next}); if(!saved)return;
+    var siblings=DB.subtareas.filter(function(x){return x.tarea_id===t.id;}).map(function(x){return x.id===id?Object.assign({},x,{estado:next}):x;});
+    var done=siblings.filter(function(x){return x.estado==='terminada';}).length;
+    var parentState=siblings.length&&done===siblings.length?'terminada':done>0?'en_proceso':(t.estado==='terminada'?'pendiente':t.estado);
+    var up={estado:parentState}; if(crmEnabled())up.ultima_actividad=new Date().toISOString();
+    await upd('tareas',t.id,up); await refresh();
+    toast(next==='terminada'?'Microtarea completada ✓':'Microtarea reabierta','g');
+  },
+  pkAdvance: function(id){
+    var t=xid(DB.tareas,id); if(!t||!canEditTask(t)){toast('Solo tú puedes registrar avances','r');return;}
+    var pg=pkTaskProgress(t);
+    mOpen('Registrar avance · '+t.titulo,
+      '<div class="fg"><div class="hbar"><span class="dot dg"></span>Avance actual: <strong>'+pg.pct+'%</strong> · '+pg.done+' de '+pg.subs.length+' microtareas</div>'
+      +FSL('ar','Avance reportado por',[['Pako','Pako']].concat(PROKICKS_INTERNAL_PEOPLE.filter(function(n){return n!=='Pako';}).map(function(n){return[n,n];})),pkInternalOwner(t)==='Por asignar'?'Pako':pkInternalOwner(t))
+      +FTA('av','Comentario de avance','')
+      +'<div class="fr2">'+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t.estado||'pendiente')+FLD('ps','Próximo seguimiento','date',followDate(t)||pd(7))+'</div>'
+      +FLD('sa','Siguiente acción','text',nextAction(t)||'')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkSaveAdvance(\''+id+'\')">Guardar avance</button></div></div>');
+  },
+  pkSaveAdvance: async function(id){
+    var t=xid(DB.tareas,id); if(!t||!canEditTask(t))return;
+    var note=fv('av').trim(), reporter=fv('ar')||'Pako';
+    if(!note){toast('Escribe el avance realizado','r');return;}
+    var comment=await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:'Avance reportado por '+reporter+': '+note});
+    if(!comment)return;
+    var data={estado:fv('es'),descripcion:buildDesc(t.descripcion,{accion:fv('sa'),seguimiento:fv('ps')})};
+    if(crmEnabled()){data.siguiente_accion=fv('sa')||null;data.fecha_proximo_seguimiento=fv('ps')||null;data.ultima_actividad=new Date().toISOString();}
+    await upd('tareas',id,data);mClose();await refresh();toast('Avance registrado ✓','g');
+  },
   pkNew: function(){ A.pkForm(null, PKTAB); },
   pkSettings: function(){
     if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }

@@ -51,6 +51,16 @@ El correo automático vive en `supabase/functions/process-alerts/index.ts`. Para
 
 Sentry está integrado sin grabación de sesiones y con filtrado de datos sensibles. Se activa mediante `window.SM_CONFIG.sentryDsn` en el despliegue; Mixpanel queda preparado pero inactivo hasta definir `window.SM_CONFIG.mixpanelToken`.
 
+## Plan de trabajo ProKicks
+
+El proyecto ProKicks incluye un tablero operativo con tres frentes: Indoor Community, Comunidad ProKicks y Redes sociales. Cada tarea permite asignar un responsable interno y colaboradores sin crear cuentas de acceso, registrar avances, administrar microtareas y calcular automáticamente el porcentaje completado.
+
+El semáforo utiliza vencimientos, próximo seguimiento, siguiente acción y días sin actividad. El botón **Crear plan de trabajo ProKicks** instala las tareas y microtareas base de forma idempotente desde la interfaz.
+
+Prueba estructural:
+
+`node tests/prokicks-plan.test.mjs`
+
 ## Login
 
 El login actual usa usuarios y PIN dentro de la tabla `usuarios`. Sirve para operación interna controlada, pero antes de producción conviene migrar a Supabase Auth y políticas RLS estrictas.
