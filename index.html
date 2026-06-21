@@ -669,6 +669,7 @@ function configuredProjectGroups(p){
 }
 function groupsForProject(p){
   if(isOfunamProject(p)) return ['Embajadas','Fundaciones','Empresas','General'];
+  if(isProkicksProject(p)) return PROKICKS_WORK_FRONTS.slice();
   var configured = configuredProjectGroups(p);
   return configured.length ? configured : ['General'];
 }
@@ -679,8 +680,10 @@ function cleanGroupName(v,p){
   return hit || 'General';
 }
 function isGroupHeader(t){
-  if(!isOfunamProject(taskProject(t))) return false;
+  var p=taskProject(t);
   var title = String(t&&t.titulo||'').trim();
+  if(isProkicksProject(p)) return PROKICKS_WORK_FRONTS.some(function(g){return g.toLowerCase()===title.toLowerCase();}) || /^CRM Prokicks$/i.test(title);
+  if(!isOfunamProject(p)) return false;
   return /^(empresas|fundaciones)$/i.test(title) || (/^embajadas/i.test(title) && !/—/.test(title));
 }
 function groupFromHeader(t){
@@ -692,6 +695,7 @@ function groupFromHeader(t){
 }
 function taskGroup(t){
   var p = taskProject(t);
+  if(isProkicksProject(p)) return cleanGroupName(descVal(t,'Frente'),p);
   return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (isOfunamProject(p)&&/—/.test(t&&t.titulo||'')?'Embajadas':'General'), p);
 }
 function stripDescFields(desc){
@@ -1105,7 +1109,6 @@ function projectStats(p){
   return {tasks:tasks,done:done,progress:progress,overdue:overdue,noNext:noNext,next:next};
 }
 function projectTree(p,limit){
-  if(isProkicksProject(p)) return prokicksProjectOverview();
   var tasks = projectTasks(p.id).sort(function(a,b){
     return dayDiff(a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_vencimiento||pd(999));
   });
@@ -1148,7 +1151,6 @@ function lastComment(t){
   return DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));})[0] || null;
 }
 function operationalBoard(p,limit){
-  if(isProkicksProject(p)) return prokicksProjectOverview();
   var tasks = projectTasks(p.id).sort(function(a,b){
     var ga = taskGroup(a), gb = taskGroup(b);
     if(ga!==gb) return groupsForProject(p).indexOf(ga)-groupsForProject(p).indexOf(gb);
@@ -1158,6 +1160,7 @@ function operationalBoard(p,limit){
   if(!tasks.length) return '<div class="empty"><p>Sin registros en este proyecto</p></div>';
   var rows = tasks.map(function(t){
     var h=crmHealth(t), lc=lastComment(t), cCount=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).length;
+    var pk=isProkicksProject(p);
     var alert = '<span class="sem"><span class="dot '+h.cl+'"></span>'+esc(h.txt)+'</span>';
     return '<tr>'
       +'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>'
@@ -1165,13 +1168,13 @@ function operationalBoard(p,limit){
       +'<td>'+bSt(t.estado)+'</td>'
       +'<td style="min-width:220px">'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
       +'<td>'+fmt(followDate(t)||t.fecha_proximo_seguimiento)+'</td>'
-      +'<td>'+esc(uNm(t.owner_id))+'</td>'
+      +'<td>'+esc(pk?pkInternalOwner(t):uNm(t.owner_id))+'</td>'
       +'<td>'+alert+'</td>'
       +'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>'
-      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.qe(\''+t.id+'\')">Actualizar</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
+      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="'+(pk?'A.pkAdvance':'A.qe')+'(\''+t.id+'\')">'+(pk?'Registrar avance':'Actualizar')+'</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
       +'</tr>';
   }).join('');
-  return '<div class="card sticky-board" style="padding:0"><div class="tw"><table class="operational-table"><thead><tr><th>Grupo</th><th>Registro</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  return '<div class="card sticky-board" style="padding:0"><div class="tw"><table class="operational-table"><thead><tr><th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th><th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
@@ -1184,11 +1187,11 @@ function projectReportHtml(pid){
   var paid=pays.filter(function(pay){return pay.estado==='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
   var pending=pays.filter(function(pay){return pay.estado!=='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
   return '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
-    +'<div class="card"><div class="ch"><h3>Grupos, registros y seguimiento</h3></div>'+projectTree(p)+'</div>';
+    +'<div class="card"><div class="ch"><h3>'+(isProkicksProject(p)?'Frentes, tareas y seguimiento':'Grupos, registros y seguimiento')+'</h3></div>'+projectTree(p)+'</div>';
 }
 function projectTabs(p){
-  var mainLabel = isProkicksProject(p) ? 'Operación ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
-  var tabs=[['tareas',isProkicksProject(p)?mainLabel:'Tablero operativo'],['reporte','Reporte'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
+  var tabs=[['tareas',mainLabel],['reporte','Reporte'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -1196,7 +1199,7 @@ function projectKanbanHtml(p){
   var cols=[['pendiente','📋 Pendiente'],['en_proceso','⚙️ En proceso'],['en_revision','🔍 En revisión'],['aprobada','✅ Aprobada'],['terminada','🏁 Terminada']];
   return '<div class="kanban">'+cols.map(function(col){
     var ct=tasks.filter(function(t){return t.estado===col[0];});
-    var cards=ct.map(function(t){return '<div class="kcard" onclick="A.td(\''+t.id+'\')"><div class="kct2">'+esc(t.titulo)+'</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin:7px 0">'+bPr(t.prioridad)+' '+sem(t)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(nextAction(t)||'Sin siguiente acción')+'</div><div class="kmeta"><span class="kdue">'+fmt(t.fecha_vencimiento)+'</span><span class="kown">'+ini(uNm(t.owner_id))+'</span></div></div>';}).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">Sin tareas</div>';
+    var cards=ct.map(function(t){var owner=isProkicksProject(p)?pkInternalOwner(t):uNm(t.owner_id);return '<div class="kcard" onclick="A.td(\''+t.id+'\')"><div class="kct2">'+esc(t.titulo)+'</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin:7px 0">'+bPr(t.prioridad)+' '+sem(t)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(nextAction(t)||'Sin siguiente acción')+'</div><div class="kmeta"><span class="kdue">'+fmt(t.fecha_vencimiento)+'</span><span class="kown">'+ini(owner)+'</span></div></div>';}).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">Sin tareas</div>';
     return '<div class="kcol"><div class="kch"><span class="kct">'+col[1]+'</span><span class="kcc">'+ct.length+'</span></div>'+cards+'</div>';
   }).join('')+'</div>';
 }
@@ -1244,8 +1247,8 @@ function projectCard(p,compact){
 function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
-  var mainTitle = isProkicksProject(p) ? 'Operación ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
-  var mainButton = isProkicksProject(p) ? '<button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación</button>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
+  var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
+  var mainButton = isProkicksProject(p) ? '<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btng" onclick="A.nt(\''+p.id+'\')">+ Tarea</button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación ProKicks</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
   var board = '<div class="sg project-kpis"><div class="sc"><div class="sl">Registros</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>'
     +operationalBoard(p);
