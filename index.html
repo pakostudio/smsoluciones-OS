@@ -552,7 +552,7 @@ function canEditTask(t){ return !!(t && SES && (adm() || t.owner_id===SES.userId
 function iconHtml(name){ return '<i data-lucide="'+esc(name||'folder')+'"></i>'; }
 function hydrateIcons(){ try{ if(window.lucide) window.lucide.createIcons(); }catch(e){} }
 function projectMetaLine(desc,key){ var m=String(desc||'').match(new RegExp('^\\s*'+key+'\\s*:\\s*(.+)$','im')); return m?m[1].trim():''; }
-function stripProjectMeta(desc){ return String(desc||'').split(/\r?\n/).filter(function(line){return !/^\s*(Categoria|Categoría|Icono|Color)\s*:/i.test(line);}).join('\n').trim(); }
+function stripProjectMeta(desc){ return String(desc||'').split(/\r?\n/).filter(function(line){return !/^\s*(Categoria|Categoría|Icono|Color|Frentes)\s*:/i.test(line);}).join('\n').trim(); }
 function suggestProjectVisual(name,desc){
   var s=(String(name||'')+' '+String(desc||'')).toLowerCase();
   if(/wings|restaurante|parrilla|comida/.test(s)) return {category:'Restaurante',icon:'utensils',color:'#D97706'};
@@ -673,7 +673,9 @@ function configuredProjectGroups(p){
 }
 function groupsForProject(p){
   if(isOfunamProject(p)) return ['Embajadas','Fundaciones','Empresas','General'];
-  if(isProkicksProject(p)) return PROKICKS_WORK_FRONTS.slice();
+  if(isProkicksProject(p)){
+    return PROKICKS_WORK_FRONTS.concat(configuredProjectGroups(p)).filter(function(g,i,a){return a.findIndex(function(x){return x.toLowerCase()===g.toLowerCase();})===i;});
+  }
   var configured = configuredProjectGroups(p);
   return configured.length ? configured : ['General'];
 }
@@ -1252,7 +1254,7 @@ function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
   var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
-  var mainButton = isProkicksProject(p) ? '<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btng" onclick="A.nt(\''+p.id+'\')">+ Tarea</button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación ProKicks</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
+  var mainButton = isProkicksProject(p) ? '<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">+ Frente</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">+ Tarea</button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación ProKicks</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
   var board = '<div class="sg project-kpis"><div class="sc"><div class="sl">Registros</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>'
     +operationalBoard(p);
@@ -1719,6 +1721,40 @@ function vRE(){
 var A = {
 
   /* PROYECTO */
+  pkManageFronts: function(pid){
+    var p=xid(DB.proyectos,pid); if(!p||!isProkicksProject(p))return;
+    var custom=configuredProjectGroups(p);
+    var base=PROKICKS_WORK_FRONTS.map(function(n){return '<div class="hbar" style="justify-content:space-between"><strong>'+esc(n)+'</strong><span class="badge bx_">Base</span></div>';}).join('');
+    var extra=custom.map(function(n,i){return '<div class="hbar" style="justify-content:space-between"><strong>'+esc(n)+'</strong><button class="btn btns btnd" onclick="A.pkRemoveFront(\''+pid+'\','+i+')">Eliminar</button></div>';}).join('');
+    mOpen('Administrar frentes ProKicks','<div class="fg">'
+      +'<div class="fr2">'+FLD('nf','Nuevo frente','text','')+'<div class="fld"><label>&nbsp;</label><button class="btn btnc" style="width:100%;min-height:42px" onclick="A.pkAddFront(\''+pid+'\')">Agregar frente</button></div></div>'
+      +'<div style="display:grid;gap:7px"><strong>Frentes actuales</strong>'+base+extra+'</div>'
+      +'<div class="hbar"><span class="dot dg"></span>Los nuevos frentes aparecerán en tareas, reporte, Kanban, calendario y Gantt.</div>'
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button></div></div>');
+  },
+  pkAddFront: async function(pid){
+    var p=xid(DB.proyectos,pid); if(!p)return;
+    var name=fv('nf').replace(/\s+/g,' ').trim();
+    if(!name){toast('Escribe el nombre del frente','r');return;}
+    if(name.length>60||/[|\r\n]/.test(name)){toast('Usa un nombre de máximo 60 caracteres','r');return;}
+    if(groupsForProject(p).some(function(g){return g.toLowerCase()===name.toLowerCase();})){toast('Ese frente ya existe','r');return;}
+    var custom=configuredProjectGroups(p).concat(name);
+    var lines=String(p.descripcion||'').split(/\r?\n/).filter(function(line){return !/^\s*Frentes\s*:/i.test(line);});
+    lines.push('Frentes: '+custom.join(' | '));
+    var saved=await upd('proyectos',pid,{descripcion:lines.join('\n').trim()});
+    if(saved){await refresh();A.pkManageFronts(pid);toast('Frente agregado ✓','g');}
+  },
+  pkRemoveFront: async function(pid,index){
+    var p=xid(DB.proyectos,pid); if(!p)return;
+    var custom=configuredProjectGroups(p), name=custom[index]; if(!name)return;
+    var used=DB.tareas.some(function(t){return t.proyecto_id===pid&&!isGroupHeader(t)&&taskGroup(t).toLowerCase()===name.toLowerCase();});
+    if(used){toast('No se puede eliminar: el frente tiene tareas','r');return;}
+    custom.splice(index,1);
+    var lines=String(p.descripcion||'').split(/\r?\n/).filter(function(line){return !/^\s*Frentes\s*:/i.test(line);});
+    if(custom.length)lines.push('Frentes: '+custom.join(' | '));
+    var saved=await upd('proyectos',pid,{descripcion:lines.join('\n').trim()});
+    if(saved){await refresh();A.pkManageFronts(pid);toast('Frente eliminado','g');}
+  },
   openProject: function(id,tab){
     var was = FPID;
     FPID = id;
@@ -1750,7 +1786,10 @@ var A = {
     var nm = fv('nm'); if(!nm){toast('Nombre requerido','r');return;}
     var visual={category:fv('cat')||'Servicios profesionales',icon:fv('ico')||'briefcase-business',color:fv('clr')||'#2563EB'};
     if(!id && visual.category==='Servicios profesionales' && visual.icon==='briefcase-business') visual=suggestProjectVisual(nm,fv('dc'));
-    var data = {cliente_id:fv('ci'),owner_id:fv('oi'),nombre:nm,descripcion:buildProjectDescription(fv('dc'),visual.category,visual.icon,visual.color),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,presupuesto:Number(fv('bud'))||0,pipeline:fv('pi'),estado:fv('es'),drive_url:fv('dr')||null};
+    var projectDesc=buildProjectDescription(fv('dc'),visual.category,visual.icon,visual.color);
+    var savedFronts=id?configuredProjectGroups(xid(DB.proyectos,id)):[];
+    if(savedFronts.length)projectDesc+='\nFrentes: '+savedFronts.join(' | ');
+    var data = {cliente_id:fv('ci'),owner_id:fv('oi'),nombre:nm,descripcion:projectDesc,fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,presupuesto:Number(fv('bud'))||0,pipeline:fv('pi'),estado:fv('es'),drive_url:fv('dr')||null};
     var r = id ? await upd('proyectos',id,data) : await ins('proyectos',data);
     if(r){mClose();await refresh();trackEvent(id?'project_updated':'project_created',{project_id:r.id});toast(id?'Proyecto actualizado':'Proyecto creado ✓','g');}
   },
@@ -1813,7 +1852,7 @@ var A = {
       +'</div>';
     var selectedCollabs=t?pkCollaborators(t):[];
     var pkH=isPk?'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:5px">Asignación y control ProKicks</h3><div style="font-size:12px;color:var(--muted);margin-bottom:12px">Los responsables son etiquetas operativas y no obtienen acceso al CRM.</div>'
-      +'<div class="fr2">'+FSL('fr','Frente',PROKICKS_WORK_FRONTS.map(function(n){return[n,n];}),t?pkTaskFront(t):PROKICKS_WORK_FRONTS[0])+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
+      +'<div class="fr2">'+FSL('fr','Frente',groupsForProject(selectedProject).map(function(n){return[n,n];}),t?pkTaskFront(t):PROKICKS_WORK_FRONTS[0])+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
       +'<div class="fld"><label>Colaboradores internos</label><div class="pkw-checks">'+PROKICKS_INTERNAL_PEOPLE.map(function(n,i){return '<label class="pkw-check-label"><input type="checkbox" data-pk-collab value="'+esc(n)+'" '+(selectedCollabs.indexOf(n)>=0?'checked':'')+'> '+esc(n)+'</label>';}).join('')+'</div></div>'
       +'<div class="fr2">'+FLD('ob','Objetivo','text',t&&descVal(t,'Objetivo')||'')+FLD('en','Entregable','text',t&&descVal(t,'Entregable')||'')+'</div>'
       +'<div class="fr2">'+FLD('sa','Siguiente acción','text',t&&(t.siguiente_accion||nextAction(t))||'')+FLD('ps','Próximo seguimiento','date',t&&(t.fecha_proximo_seguimiento||followDate(t))||'')+'</div>'
