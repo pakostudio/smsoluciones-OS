@@ -1182,7 +1182,7 @@ function operationalBoard(p,limit){
       +'<td>'+esc(pk?pkInternalOwner(t):uNm(t.owner_id))+'</td>'
       +'<td>'+alert+'</td>'
       +'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>'
-      +'<td><div class="operational-actions"><button class="btn btns btnc" title="'+(pk?'Registrar avance':'Actualizar')+'" onclick="'+(pk?'A.pkAdvance':'A.qe')+'(\''+t.id+'\')">'+(pk?'Avance':'Actualizar')+'</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
+      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
       +'</tr>';
   }).join('');
   var frontStrip=isProkicksProject(p)?'<div class="front-strip">'+groupsForProject(p).map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div>':'';
@@ -1937,6 +1937,44 @@ var A = {
     }
     var r=await upd('tareas',id,data);
     if(r){mClose();await refresh();toast('Registro actualizado ✓','g');}
+  },
+  manageTask: function(id){
+    var t=xid(DB.tareas,id); if(!t)return;
+    var p=taskProject(t), comments=DB.comentarios.filter(function(c){return c.tarea_id===id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
+    var contactFields=[
+      ['Responsable',descVal(t,'Responsable contacto')],['Cargo',descVal(t,'Cargo')||descVal(t,'Cargo institucional')],
+      ['Email',descVal(t,'Email')],['Teléfono',descVal(t,'Telefono')||descVal(t,'Teléfono')],
+      ['Correos de respaldo',descVal(t,'Correos de respaldo')||descVal(t,'Correo de respaldo')||descVal(t,'Correo de respaldo Embajada')],
+      ['Correo institucional',descVal(t,'Correo institucional')],['Correo OFUNAM',descVal(t,'Correo OFUNAM en copia')],
+      ['Uso recomendado',descVal(t,'Uso recomendado')]
+    ].filter(function(x){return x[1];});
+    var contacts=contactFields.length?'<div class="crmgrid">'+contactFields.map(function(x){return '<div class="crmcell"><div class="dl">'+esc(x[0])+'</div><div class="dv">'+esc(x[1])+'</div></div>';}).join('')+'</div>':'<div class="hbar">Sin datos de contacto adicionales.</div>';
+    var timeline=comments.length?comments.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+' · '+esc(uNm(c.usuario_id))+'</div>'+esc(c.texto)+'</div>';}).join(''):'<div class="hbar">Todavía no hay actividades registradas.</div>';
+    var owner=isProkicksProject(p)?pkInternalOwner(t):uNm(t.owner_id);
+    mOpen('Gestionar · '+t.titulo,
+      '<div class="fg">'
+      +'<div class="hbar" style="justify-content:space-between;flex-wrap:wrap"><span>'+bSt(t.estado)+' '+sem(t)+'</span><span>'+esc(pNm(t.proyecto_id))+' · '+esc(owner)+'</span></div>'
+      +'<div class="fr2">'+FSL('mg_es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t.estado||'pendiente')+FLD('mg_ps','Próximo seguimiento','date',followDate(t)||'')+'</div>'
+      +'<div class="fr2">'+FLD('mg_fi','Fecha de inicio','date',t.fecha_inicio||'')+FLD('mg_fv','Fecha de término','date',t.fecha_vencimiento||'')+'</div>'
+      +FLD('mg_sa','Siguiente acción','text',nextAction(t)||'')
+      +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Contacto</h3>'+contacts+'</div>'
+      +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Registrar actividad</h3>'+FTA('mg_note','Comentario / avance','')+'</div>'
+      +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Historial ('+comments.length+')</h3><div class="pkw-log">'+timeline+'</div></div>'
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveManagedTask(\''+id+'\')">Guardar actualización</button></div>'
+      +'</div>',true);
+  },
+  saveManagedTask: async function(id){
+    var t=xid(DB.tareas,id); if(!t)return;
+    var action=fv('mg_sa'), follow=fv('mg_ps'), note=fv('mg_note').trim();
+    var description=buildDesc(t.descripcion,{accion:action,seguimiento:follow});
+    var data={estado:fv('mg_es'),fecha_inicio:fv('mg_fi')||null,fecha_vencimiento:fv('mg_fv')||null,descripcion:description};
+    if(crmEnabled()){data.siguiente_accion=action||null;data.fecha_proximo_seguimiento=follow||null;data.ultima_actividad=new Date().toISOString();}
+    var saved=await upd('tareas',id,data); if(!saved)return;
+    if(note){
+      var comment=await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:note});
+      if(!comment)return;
+    }
+    mClose();await refresh();toast('Tarea actualizada ✓','g');
   },
   td: function(id){
     var t = xid(DB.tareas,id); if(!t) return;
