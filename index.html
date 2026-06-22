@@ -354,6 +354,10 @@ tr:hover td{background:var(--surface2)}
 .pkw-log{display:grid;gap:7px;margin-top:10px}
 .pkw-log-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px;font-size:12px;color:var(--ink)}
 .pkw-log-meta{font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700}
+.front-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.front-summary{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 12px;font-size:12px;color:var(--ink)}
+.front-summary strong{white-space:nowrap}
+.front-summary .btn{padding:3px 8px;font-size:10px}
 
 /* EMPTY */
 .empty{text-align:center;padding:42px 24px;color:var(--muted)}
@@ -521,6 +525,7 @@ var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
 var PKWORKTAB = 'todos';
 var PK_INIT_BUSY = false;
+var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
 var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
@@ -1180,7 +1185,8 @@ function operationalBoard(p,limit){
       +'<td><div class="operational-actions"><button class="btn btns btnc" title="'+(pk?'Registrar avance':'Actualizar')+'" onclick="'+(pk?'A.pkAdvance':'A.qe')+'(\''+t.id+'\')">'+(pk?'Avance':'Actualizar')+'</button><button class="btn btns btng" onclick="A.ncom(\''+t.id+'\')">Comentar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ficha</button></div></td>'
       +'</tr>';
   }).join('');
-  return '<div class="card sticky-board" style="padding:0"><div class="tw"><table class="operational-table"><thead><tr><th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th><th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  var frontStrip=isProkicksProject(p)?'<div class="front-strip">'+groupsForProject(p).map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div>':'';
+  return frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="operational-table"><thead><tr><th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th><th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th><th>Último comentario</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
@@ -1742,7 +1748,7 @@ var A = {
     var lines=String(p.descripcion||'').split(/\r?\n/).filter(function(line){return !/^\s*Frentes\s*:/i.test(line);});
     lines.push('Frentes: '+custom.join(' | '));
     var saved=await upd('proyectos',pid,{descripcion:lines.join('\n').trim()});
-    if(saved){await refresh();A.pkManageFronts(pid);toast('Frente agregado ✓','g');}
+    if(saved){await refresh();mClose();PK_NEW_FRONT=name;A.nt(pid);toast('Frente agregado · crea su primera tarea ✓','g');}
   },
   pkRemoveFront: async function(pid,index){
     var p=xid(DB.proyectos,pid); if(!p)return;
@@ -1754,6 +1760,11 @@ var A = {
     if(custom.length)lines.push('Frentes: '+custom.join(' | '));
     var saved=await upd('proyectos',pid,{descripcion:lines.join('\n').trim()});
     if(saved){await refresh();A.pkManageFronts(pid);toast('Frente eliminado','g');}
+  },
+  pkTaskForFront: function(pid,index){
+    var p=xid(DB.proyectos,pid); if(!p)return;
+    PK_NEW_FRONT=groupsForProject(p)[index]||'';
+    A.nt(pid);
   },
   openProject: function(id,tab){
     var was = FPID;
@@ -1852,7 +1863,7 @@ var A = {
       +'</div>';
     var selectedCollabs=t?pkCollaborators(t):[];
     var pkH=isPk?'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:5px">Asignación y control ProKicks</h3><div style="font-size:12px;color:var(--muted);margin-bottom:12px">Los responsables son etiquetas operativas y no obtienen acceso al CRM.</div>'
-      +'<div class="fr2">'+FSL('fr','Frente',groupsForProject(selectedProject).map(function(n){return[n,n];}),t?pkTaskFront(t):PROKICKS_WORK_FRONTS[0])+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
+      +'<div class="fr2">'+FSL('fr','Frente',groupsForProject(selectedProject).map(function(n){return[n,n];}),t?pkTaskFront(t):(PK_NEW_FRONT||PROKICKS_WORK_FRONTS[0]))+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
       +'<div class="fld"><label>Colaboradores internos</label><div class="pkw-checks">'+PROKICKS_INTERNAL_PEOPLE.map(function(n,i){return '<label class="pkw-check-label"><input type="checkbox" data-pk-collab value="'+esc(n)+'" '+(selectedCollabs.indexOf(n)>=0?'checked':'')+'> '+esc(n)+'</label>';}).join('')+'</div></div>'
       +'<div class="fr2">'+FLD('ob','Objetivo','text',t&&descVal(t,'Objetivo')||'')+FLD('en','Entregable','text',t&&descVal(t,'Entregable')||'')+'</div>'
       +'<div class="fr2">'+FLD('sa','Siguiente acción','text',t&&(t.siguiente_accion||nextAction(t))||'')+FLD('ps','Próximo seguimiento','date',t&&(t.fecha_proximo_seguimiento||followDate(t))||'')+'</div>'
@@ -1877,6 +1888,7 @@ var A = {
       +(isPk?'':crmH)
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
       +'</div>');
+    PK_NEW_FRONT='';
   },
   _st: async function(id){
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
