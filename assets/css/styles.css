@@ -1,6 +1,6 @@
 :root {
-  --bg:#F2F0EC; --bg2:#EAE8E3; --surface:#FFFFFF;
-  --surface2:#F7F5F1; --surface3:#EDEAE4;
+  --bg:#F6F8FB; --bg2:#EEF3F8; --surface:#FFFFFF;
+  --surface2:#F8FAFC; --surface3:#E6ECF3;
   --navy:#0B2547; --cyan:#00AADD;
   --cyan-soft:rgba(0,170,221,0.10);
   --ink:#1A2535; --text:#2E3D52; --muted:#6B7A8D;
@@ -21,7 +21,7 @@ h3{font-size:16px;font-weight:700;color:var(--ink)}
 ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:99px}
 
 /* LOGIN */
-#login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(145deg,#F7F5F0,#EDEAE3);padding:20px}
+#login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(145deg,#F8FAFC,#EEF3F8);padding:20px}
 #app{display:none;min-height:100vh;grid-template-columns:var(--sidebar) 1fr}
 body.logged #login{display:none}
 body.logged #app{display:grid}

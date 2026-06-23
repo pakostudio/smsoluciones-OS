@@ -71,3 +71,7 @@ El login actual usa usuarios y PIN dentro de la tabla `usuarios`. Sirve para ope
 ## SM OS 1.5
 
 La app fue refactorizada para GitHub Pages: `index.html` quedó como estructura base, los estilos viven en `assets/css/styles.css` y la lógica principal en `assets/js/app.js`. Esto permite seguir creciendo sin saturar un solo archivo.
+
+
+## SM OS 2.3.2
+Ajuste visual premium: reemplazo de fondo beige por gris-azul claro y mejora de contraste general.
