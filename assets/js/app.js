@@ -599,7 +599,9 @@ function myTasks(){
 }
 function activeClientProjectId(){
   if(!CLIENT_PROJECT_FOCUS) return '';
-  if(VIEW==='proyectos' && FPID) return FPID;
+  // Modo cliente reforzado: si hay proyecto activo, solo se muestra ese proyecto,
+  // sin importar la vista o pestaña donde esté parado el usuario.
+  if(FPID) return FPID;
   if(VIEW==='prokicks'){ var p=pkProject && pkProject(); return p&&p.id ? p.id : ''; }
   return '';
 }
