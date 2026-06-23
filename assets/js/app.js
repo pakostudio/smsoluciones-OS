@@ -636,7 +636,7 @@ function updateProjectNavActive(){
 /* ── RENDER ENGINE ── */
 function render(){
   var vc = document.getElementById('vc');
-  var map = {dashboard:vDB,alertas:vAL,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,clientes:vCL,usuarios:vUS,reportes:vRE};
+  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,clientes:vCL,usuarios:vUS,reportes:vRE};
   vc.innerHTML = (map[VIEW]||vDB)();
   // Privacidad cliente 2.2.3: reconstruir el sidebar después de cualquier cambio de proyecto activo.
   // Antes solo se marcaba el activo; por eso podían quedar visibles proyectos cargados previamente.
@@ -648,8 +648,8 @@ function render(){
   setTimeout(maybeNotifyBrowser,50);
 }
 function updTopbar(){
-  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
-  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
+  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
+  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
   updClock();
@@ -995,6 +995,34 @@ function projectWorkspace(p){
 }
 
 /* DASHBOARD */
+
+function helpFaqs(){
+  return [
+    {cat:'Primeros pasos',q:'¿Cómo entro a un proyecto?',a:'Desde Mis proyectos selecciona el proyecto. Cuando estés dentro, SM OS activa el modo cliente y solo muestra el proyecto activo en el sidebar.'},
+    {cat:'Primeros pasos',q:'¿Qué es el modo cliente?',a:'Es una vista de privacidad para reuniones o Zoom. Al entrar a un proyecto, el sidebar oculta otros clientes y solo muestra el proyecto activo.'},
+    {cat:'Centro de mando',q:'¿Qué significa En control, Vigilancia o Atención requerida?',a:'En control indica operación sin alertas críticas. Vigilancia indica pendientes próximos o puntos que requieren seguimiento. Atención requerida indica riesgos, tareas vencidas o tareas sin acción/dueño.'},
+    {cat:'Centro de mando',q:'¿Cómo veo tareas vencidas o sin acción?',a:'Entra a Centro de mando y usa los filtros ejecutivos: Vencidas, Próx. 7 días, Sin acción, Sin dueño, En revisión, Riesgos o Mis críticos.'},
+    {cat:'Centro de mando',q:'¿Cómo genero un reporte ejecutivo?',a:'Dentro del proyecto entra a Centro de mando y presiona Generar reporte ejecutivo. Puedes copiarlo para enviarlo por correo, WhatsApp o minuta.'},
+    {cat:'Plan de trabajo',q:'¿Cómo cambio responsable, fecha o siguiente acción?',a:'En Plan de trabajo presiona Editar rápido en la tarea, actualiza el campo necesario y guarda. El cambio queda registrado en Historial.'},
+    {cat:'Plan de trabajo',q:'¿Qué debo llenar siempre en una tarea?',a:'Responsable, estado, fecha de seguimiento y siguiente acción. Eso evita que el sistema la marque como riesgo o sin acción.'},
+    {cat:'Acciones masivas',q:'¿Cómo actualizo varias tareas al mismo tiempo?',a:'Desde un filtro del Centro de mando selecciona una o varias tareas, llena responsable, estado, fecha, siguiente acción o comentario, y presiona Aplicar cambios.'},
+    {cat:'Historial',q:'¿Dónde veo quién cambió algo?',a:'Dentro del proyecto entra a Historial. Ahí se muestra la bitácora del proyecto, últimos movimientos y actividad por usuario.'},
+    {cat:'Reportes',q:'¿El reporte considera los filtros activos?',a:'Sí. Desde una vista filtrada puedes generar un reporte enfocado en ese filtro, por ejemplo solo riesgos o solo tareas sin acción.'},
+    {cat:'Buenas prácticas',q:'¿Qué hago antes de presentar en Zoom?',a:'Abre primero el proyecto del cliente y confirma que el sidebar muestre solo ese proyecto. Así evitas exponer otros clientes.'},
+    {cat:'Buenas prácticas',q:'¿Qué hago si algo no se actualiza?',a:'Presiona Recargar app o usa Cmd + Shift + R para forzar la última versión publicada.'}
+  ];
+}
+function vAY(){
+  var qs=helpFaqs();
+  var groups={}; qs.forEach(function(x){(groups[x.cat]=groups[x.cat]||[]).push(x);});
+  var chips=Object.keys(groups).map(function(k){return '<button class="help-chip" onclick="A.helpCat(this.textContent)">'+esc(k)+'</button>';}).join('');
+  var items=qs.map(function(x,i){return '<details class="faq-item" data-cat="'+esc(x.cat)+'" data-q="'+esc((x.q+' '+x.a+' '+x.cat).toLowerCase())+'"><summary><span>'+esc(x.q)+'</span><small>'+esc(x.cat)+'</small></summary><p>'+esc(x.a)+'</p></details>';}).join('');
+  return '<div class="sh"><div><h2>Centro de Soporte SM OS</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">FAQ operativo, buenas prácticas y manual descargable. Sin IA, sin costo y sin respuestas improvisadas.</div></div><a class="btn btnc" href="docs/Manual_SM_OS.pdf" download>Descargar manual PDF</a></div>'
+    +'<div class="help-hero card"><div><div class="help-eyebrow">Guía rápida</div><h3>Resuelve dudas de operación sin depender de soporte.</h3><p>Usa el buscador para encontrar instrucciones sobre Centro de mando, tareas, historial, reportes, acciones masivas y modo cliente.</p></div><div class="help-kpis"><span>FAQ interno</span><strong>'+qs.length+'</strong><small>respuestas listas</small></div></div>'
+    +'<div class="card help-card"><div class="help-search"><i data-lucide="search"></i><input id="help-search" type="search" placeholder="¿Qué necesitas hacer? Ej. cambiar responsable, reporte, modo cliente" oninput="A.helpSearch(this.value)"></div><div class="help-chips"><button class="help-chip active" onclick="A.helpCat(\'\')">Todo</button>'+chips+'</div><div id="help-empty" class="empty" style="display:none">No encontré una respuesta con ese término. Prueba con: reporte, responsable, historial, vencidas, modo cliente.</div><div class="faq-list" id="faq-list">'+items+'</div></div>'
+    +'<div class="card help-card"><div class="ch"><h3>Manual descargable</h3><span class="chip">PDF</span></div><p class="muted-copy">El manual incluye primeros pasos, Centro de mando, plan de trabajo, historial, reportes, acciones masivas, modo cliente y buenas prácticas para reuniones.</p><a class="btn btng" href="docs/Manual_SM_OS.pdf" download>Descargar Manual_SM_OS.pdf</a></div>';
+}
+
 function vDB(){
   var projs = myProjs().filter(function(p){return p.estado!=='cerrado';});
   var tasks = myTasks();
@@ -1570,6 +1598,26 @@ var A = {
     var p=xid(DB.proyectos,pid); if(!p)return;
     PK_NEW_FRONT=groupsForProject(p)[index]||'';
     A.nt(pid);
+  },
+  helpSearch: function(q){
+    q=String(q||'').toLowerCase().trim();
+    var any=false;
+    document.querySelectorAll('.faq-item').forEach(function(el){
+      var ok=!q || (el.getAttribute('data-q')||'').indexOf(q)>=0;
+      el.style.display=ok?'block':'none'; if(ok) any=true;
+    });
+    var empty=document.getElementById('help-empty'); if(empty) empty.style.display=any?'none':'block';
+  },
+  helpCat: function(cat){
+    document.querySelectorAll('.help-chip').forEach(function(b){b.classList.remove('active');});
+    document.querySelectorAll('.help-chip').forEach(function(b){ if(b.textContent===cat || (!cat && b.textContent==='Todo')) b.classList.add('active'); });
+    var any=false;
+    document.querySelectorAll('.faq-item').forEach(function(el){
+      var ok=!cat || el.getAttribute('data-cat')===cat;
+      el.style.display=ok?'block':'none'; if(ok) any=true;
+    });
+    var inp=document.getElementById('help-search'); if(inp) inp.value='';
+    var empty=document.getElementById('help-empty'); if(empty) empty.style.display=any?'none':'block';
   },
   openProject: function(id,tab){
     var was = FPID;

@@ -445,3 +445,36 @@ tr:hover td{background:var(--surface2)}
 .filter-card:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(11,37,71,.10);border-color:rgba(0,174,239,.45)}
 @media(max-width:900px){.bulk-grid{grid-template-columns:1fr 1fr}.bulk-actions{justify-content:flex-start}}
 @media(max-width:620px){.bulk-grid{grid-template-columns:1fr}.bulk-table-wrap{max-height:56vh}}
+
+/* SM OS 2.3.3 - Centro de Soporte / Manual */
+.help-hero{
+  display:grid;
+  grid-template-columns:1fr 180px;
+  gap:18px;
+  align-items:center;
+  padding:24px;
+  background:linear-gradient(135deg,rgba(11,37,71,.96),rgba(16,78,116,.88));
+  color:#fff;
+  border:1px solid rgba(255,255,255,.16);
+}
+.help-hero h3{margin:4px 0 8px;font-size:25px;letter-spacing:-.03em;color:#fff}
+.help-hero p{margin:0;color:rgba(255,255,255,.78);max-width:760px;line-height:1.55}
+.help-eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:#8EEBFF;font-weight:900}
+.help-kpis{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:18px;text-align:center;backdrop-filter:blur(10px)}
+.help-kpis span,.help-kpis small{display:block;color:rgba(255,255,255,.72);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.help-kpis strong{display:block;font-size:42px;line-height:1;margin:8px 0;color:#fff}
+.help-card{padding:20px;margin-top:16px}
+.help-search{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:#fff;border-radius:16px;padding:0 14px;margin-bottom:14px;box-shadow:0 10px 26px rgba(15,35,60,.06)}
+.help-search svg{width:18px;height:18px;color:var(--muted)}
+.help-search input{border:0;outline:0;width:100%;font-size:14px;padding:14px 0;background:transparent;color:var(--ink)}
+.help-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.help-chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900;cursor:pointer;transition:.15s}
+.help-chip:hover,.help-chip.active{border-color:rgba(8,145,178,.35);background:rgba(8,145,178,.08);color:#075985}
+.faq-list{display:grid;gap:10px}
+.faq-item{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;box-shadow:0 8px 22px rgba(15,35,60,.045)}
+.faq-item summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:900;color:var(--ink)}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary small{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:var(--soft);padding:5px 8px;border-radius:999px;white-space:nowrap}
+.faq-item p{margin:0;padding:0 16px 15px;color:var(--muted);line-height:1.55;font-size:14px}
+.muted-copy{color:var(--muted);line-height:1.55;margin:0 0 14px}
+@media(max-width:760px){.help-hero{grid-template-columns:1fr}.help-kpis{text-align:left}.faq-item summary{align-items:flex-start;flex-direction:column}}
