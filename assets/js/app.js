@@ -638,6 +638,9 @@ function render(){
   var vc = document.getElementById('vc');
   var map = {dashboard:vDB,alertas:vAL,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,clientes:vCL,usuarios:vUS,reportes:vRE};
   vc.innerHTML = (map[VIEW]||vDB)();
+  // Privacidad cliente 2.2.3: reconstruir el sidebar después de cualquier cambio de proyecto activo.
+  // Antes solo se marcaba el activo; por eso podían quedar visibles proyectos cargados previamente.
+  buildProjectNav();
   updTopbar();
   updateProjectNavActive();
   saveSession();
