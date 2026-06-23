@@ -96,7 +96,15 @@ function pNm(id){ var p=xid(DB.proyectos,id); return p?p.nombre:'?'; }
 function ini(s){ var parts=(s||'?').split(' ').filter(function(w){return w.length>0;}); return (parts.length>=2?parts[0][0]+parts[1][0]:parts[0].slice(0,2)).toUpperCase(); }
 function me(){ return SES ? xid(DB.usuarios,SES.userId) : null; }
 function adm(){ var u=me(); return u && u.rol==='admin'; }
-function canEditTask(t){ return !!(t && SES && (adm() || t.owner_id===SES.userId)); }
+function canEditTask(t){
+  if(!t || !SES) return false;
+  if(adm() || t.owner_id===SES.userId) return true;
+  var p = xid(DB.proyectos, t.proyecto_id);
+  if(p && p.owner_id===SES.userId) return true;
+  // En modo operativo, cualquier usuario con acceso al proyecto puede actualizar tareas.
+  // Evita bloquear a coordinadores como Pako cuando gestionan frentes de trabajo compartidos.
+  return !!(p && canSeeProject(p));
+}
 function iconHtml(name){ return '<i data-lucide="'+esc(name||'folder')+'"></i>'; }
 function hydrateIcons(){ try{ if(window.lucide) window.lucide.createIcons(); }catch(e){} }
 function projectMetaLine(desc,key){ var m=String(desc||'').match(new RegExp('^\\s*'+key+'\\s*:\\s*(.+)$','im')); return m?m[1].trim():''; }
@@ -1439,7 +1447,7 @@ var A = {
   nt: function(pid){ if(!DB.proyectos.length){toast('Primero crea un proyecto','r');return;} A._tm(null,pid||''); },
   _tm: function(id,pid){
     var t = id ? xid(DB.tareas,id) : null;
-    if(id && !canEditTask(t)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
+    if(id && !canEditTask(t)){ toast('No tienes permisos para editar esta tarea','r'); return; }
     var p2 = pid || (t&&t.proyecto_id) || (DB.proyectos[0]&&DB.proyectos[0].id) || '';
     var pO = DB.proyectos.map(function(p){return [p.id,p.nombre];});
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
@@ -1488,7 +1496,7 @@ var A = {
   _st: async function(id){
     var ti = fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var old = id ? xid(DB.tareas,id) : null;
-    if(id && !canEditTask(old)){ toast('Solo el responsable puede editar esta tarea','r'); return; }
+    if(id && !canEditTask(old)){ toast('No tienes permisos para editar esta tarea','r'); return; }
     var selectedProject=xid(DB.proyectos,fv('pi'));
     var isPk=isProkicksProject(selectedProject);
     var collabs=isPk?Array.prototype.map.call(document.querySelectorAll('[data-pk-collab]:checked'),function(el){return el.value;}):[];
@@ -1511,7 +1519,7 @@ var A = {
   },
   qe: function(id){
     var t=xid(DB.tareas,id); if(!t) return;
-    if(!canEditTask(t)){toast('Solo el responsable puede actualizar este registro','r');return;}
+    if(!canEditTask(t)){toast('No tienes permisos para actualizar este registro','r');return;}
     mOpen('Actualizar · '+t.titulo,
       '<div class="fg">'
       +FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t.estado||'pendiente')
@@ -1522,7 +1530,7 @@ var A = {
   },
   _sqe: async function(id){
     var t=xid(DB.tareas,id); if(!t) return;
-    if(!canEditTask(t)){toast('Solo el responsable puede actualizar este registro','r');return;}
+    if(!canEditTask(t)){toast('No tienes permisos para actualizar este registro','r');return;}
     var desc=buildDesc(t.descripcion,{grupo:taskGroup(t),email:descVal(t,'Email'),tel:descVal(t,'Telefono')||descVal(t,'Teléfono'),dir:descVal(t,'Direccion')||descVal(t,'Dirección'),gancho:descVal(t,'Gancho'),instrumento:descVal(t,'Instrumento'),accion:fv('sa'),seguimiento:fv('ps'),etapa:t.etapa_crm||descVal(t,'Etapa'),probabilidad:t.probabilidad||descVal(t,'Probabilidad'),monto:t.monto_estimado||descVal(t,'Monto estimado')});
     var data={estado:fv('es'),descripcion:desc};
     if(crmEnabled()){
@@ -1535,7 +1543,7 @@ var A = {
   },
   quickEdit: function(id){
     var t=xid(DB.tareas,id); if(!t)return;
-    if(!canEditTask(t)){toast('Solo el responsable puede editar esta tarea','r');return;}
+    if(!canEditTask(t)){toast('No tienes permisos para editar esta tarea','r');return;}
     var uO=DB.usuarios.map(function(u){return [u.id,u.nombre];});
     mOpen('Edición rápida · '+t.titulo,
       '<div class="fg">'
@@ -1548,7 +1556,7 @@ var A = {
   },
   saveQuickEdit: async function(id){
     var t=xid(DB.tareas,id); if(!t)return;
-    if(!canEditTask(t)){toast('Solo el responsable puede editar esta tarea','r');return;}
+    if(!canEditTask(t)){toast('No tienes permisos para editar esta tarea','r');return;}
     var action=fv('qe_sa'), follow=fv('qe_ps');
     var data={estado:fv('qe_es'),prioridad:fv('qe_pr'),owner_id:fv('qe_oi'),fecha_vencimiento:fv('qe_fv')||null,descripcion:buildDesc(t.descripcion,{accion:action,seguimiento:follow})};
     if(crmEnabled()){data.siguiente_accion=action||null;data.fecha_proximo_seguimiento=follow||null;data.ultima_actividad=new Date().toISOString();}
@@ -1691,7 +1699,7 @@ var A = {
   esub: function(id){
     var s=xid(DB.subtareas,id); if(!s) return;
     var t=xid(DB.tareas,s.tarea_id);
-    if(t && !canEditTask(t)){ toast('Solo el responsable puede editar esta subtarea','r'); return; }
+    if(t && !canEditTask(t)){ toast('No tienes permisos para editar esta subtarea','r'); return; }
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
     mOpen('Editar microtarea',
       '<div class="fg">'
@@ -1704,7 +1712,7 @@ var A = {
   _usub: async function(id){
     var s=xid(DB.subtareas,id); if(!s) return;
     var t=xid(DB.tareas,s.tarea_id);
-    if(t && !canEditTask(t)){ toast('Solo el responsable puede editar esta subtarea','r'); return; }
+    if(t && !canEditTask(t)){ toast('No tienes permisos para editar esta subtarea','r'); return; }
     var ti=fv('ti'); if(!ti){toast('Título requerido','r');return;}
     var r=await upd('subtareas',id,{titulo:ti,owner_id:fv('oi'),estado:fv('es'),fecha_vencimiento:fv('fv')||null});
     if(r){
@@ -1778,7 +1786,7 @@ var A = {
   },
   pkToggleSub: async function(id){
     var s=xid(DB.subtareas,id); if(!s)return;
-    var t=xid(DB.tareas,s.tarea_id); if(!t||!canEditTask(t)){toast('Solo tú puedes actualizar esta microtarea','r');return;}
+    var t=xid(DB.tareas,s.tarea_id); if(!t||!canEditTask(t)){toast('No tienes permisos para actualizar esta microtarea','r');return;}
     var next=s.estado==='terminada'?'pendiente':'terminada';
     var saved=await upd('subtareas',id,{estado:next}); if(!saved)return;
     var siblings=DB.subtareas.filter(function(x){return x.tarea_id===t.id;}).map(function(x){return x.id===id?Object.assign({},x,{estado:next}):x;});
@@ -1789,7 +1797,7 @@ var A = {
     toast(next==='terminada'?'Microtarea completada ✓':'Microtarea reabierta','g');
   },
   pkAdvance: function(id){
-    var t=xid(DB.tareas,id); if(!t||!canEditTask(t)){toast('Solo tú puedes registrar avances','r');return;}
+    var t=xid(DB.tareas,id); if(!t||!canEditTask(t)){toast('No tienes permisos para registrar avances','r');return;}
     var pg=pkTaskProgress(t);
     mOpen('Registrar avance · '+t.titulo,
       '<div class="fg"><div class="hbar"><span class="dot dg"></span>Avance actual: <strong>'+pg.pct+'%</strong> · '+pg.done+' de '+pg.subs.length+' microtareas</div>'

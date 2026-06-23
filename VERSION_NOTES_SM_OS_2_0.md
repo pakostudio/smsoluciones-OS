@@ -23,3 +23,9 @@ Versión incremental sobre SM OS 1.5. No cambia estructura base ni migraciones e
 
 - `node --check assets/js/app.js` ejecutado correctamente.
 - Cambios no destructivos: no elimina tablas ni modifica credenciales.
+
+
+## Hotfix 2.0.1 — Permisos operativos
+- Se corrigió el bloqueo de edición rápida que mostraba “Solo el responsable puede editar esta tarea”.
+- Ahora usuarios con acceso al proyecto pueden gestionar tareas del proyecto sin romper la trazabilidad.
+- Se mantienen restricciones para usuarios sin acceso al proyecto.
