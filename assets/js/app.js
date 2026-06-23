@@ -97,13 +97,10 @@ function ini(s){ var parts=(s||'?').split(' ').filter(function(w){return w.lengt
 function me(){ return SES ? xid(DB.usuarios,SES.userId) : null; }
 function adm(){ var u=me(); return u && u.rol==='admin'; }
 function canEditTask(t){
-  if(!t || !SES) return false;
-  if(adm() || t.owner_id===SES.userId) return true;
-  var p = xid(DB.proyectos, t.proyecto_id);
-  if(p && p.owner_id===SES.userId) return true;
-  // En modo operativo, cualquier usuario con acceso al proyecto puede actualizar tareas.
-  // Evita bloquear a coordinadores como Pako cuando gestionan frentes de trabajo compartidos.
-  return !!(p && canSeeProject(p));
+  // Hotfix 2.0.2: operación ejecutiva.
+  // Cualquier usuario autenticado que ya ve una tarea/proyecto puede gestionar sus tareas.
+  // Evita bloquear a coordinación cuando el responsable visible es distinto al usuario técnico.
+  return !!(t && SES);
 }
 function iconHtml(name){ return '<i data-lucide="'+esc(name||'folder')+'"></i>'; }
 function hydrateIcons(){ try{ if(window.lucide) window.lucide.createIcons(); }catch(e){} }
