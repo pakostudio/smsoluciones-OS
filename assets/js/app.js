@@ -864,12 +864,12 @@ function projectCommandCenterHtml(p){
   var byOwner=DB.usuarios.map(function(u){var a=open.filter(function(t){return t.owner_id===u.id;}); return {u:u,n:a.length,late:a.filter(function(t){return t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length,soon:a.filter(function(t){var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;return d>=0&&d<=7;}).length};}).filter(function(x){return x.n>0;}).sort(function(a,b){return b.n-a.n;});
   var ownerRows=byOwner.map(function(x){var load=x.n>=8?'Alta':(x.n>=4?'Media':'Ligera'); return '<tr><td>'+esc(x.u.nombre)+'</td><td>'+x.n+'</td><td>'+x.soon+'</td><td>'+x.late+'</td><td><span class="badge '+(x.n>=8?'br':x.n>=4?'by_':'bg_')+'">'+load+'</span></td></tr>';}).join('') || '<tr><td colspan="5">Sin carga activa</td></tr>';
   var groups=groupsForProject(p).map(function(g){var arr=tasks.filter(function(t){return taskGroup(t)===g;}); var fin=arr.filter(function(t){return t.estado==='terminada';}).length; var pct=arr.length?Math.round(fin/arr.length*100):0; var risks=arr.filter(function(t){return t.estado!=='terminada'&&crmHealth(t).cl==='dr';}).length; return '<div class="front-card"><div class="front-card-head"><strong>'+esc(g)+'</strong><span class="badge '+(risks?'br':'bg_')+'">'+(risks?risks+' riesgo(s)':'OK')+'</span></div><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div><div class="front-card-meta">'+fin+'/'+arr.length+' cerradas · '+pct+'%</div></div>';}).join('');
-  var filterCards=[['vencidas','Vencidas',overdue.length,'Riesgo rojo'],['proximos_7','Próx. 7 días',due7.length,'Seguimiento'],['sin_accion','Sin acción',noAction.length,'Definir paso'],['sin_dueno','Sin dueño',noOwner.length,'Asignar resp.'],['revision','En revisión',review.length,'Desbloquear'],['riesgos','Riesgos',blocked.length,'Atención']].map(function(f){return '<button class="filter-card" onclick="A.commandFilter(\''+p.id+'\',\''+f[0]+'\')"><span>'+esc(f[1])+'</span><strong>'+f[2]+'</strong><small>'+esc(f[3])+'</small></button>';}).join('');
+  var filterCards=[['vencidas','Vencidas',overdue.length,'Riesgo rojo'],['proximos_7','Próx. 7 días',due7.length,'Seguimiento'],['sin_accion','Sin acción',noAction.length,'Definir paso'],['sin_dueno','Sin dueño',noOwner.length,'Asignar resp.'],['revision','En revisión',review.length,'Desbloquear'],['riesgos','Riesgos',blocked.length,'Atención'],['mis_criticos','Mis críticos',open.filter(function(t){return t.owner_id===SES.userId && (crmHealth(t).cl==='dr' || (t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<=7) || !nextAction(t));}).length,'Mi foco']].map(function(f){return '<button class="filter-card" onclick="A.commandFilter(\''+p.id+'\',\''+f[0]+'\')"><span>'+esc(f[1])+'</span><strong>'+f[2]+'</strong><small>'+esc(f[3])+'</small></button>';}).join('');
   var automationRows=blocked.concat(due7).filter(function(t,i,arr){return arr.findIndex(function(x){return x.id===t.id;})===i;}).slice(0,7).map(function(t){return '<tr><td><button class="linkbtn" onclick="A.quickEdit(\''+t.id+'\')">'+esc(t.titulo)+'</button><div class="muted-mini">'+esc(taskGroup(t))+'</div></td><td>'+esc(automationReason(t))+'</td><td>'+esc(uNm(t.owner_id))+'</td><td>'+fmt(followDate(t)||t.fecha_vencimiento)+'</td></tr>';}).join('') || '<tr><td colspan="4">Sin reglas activas de alerta</td></tr>';
   return '<div class="command-hero"><div><div class="sl">Estado general</div><h2><span class="dot '+status.cl+'"></span> '+status.label+'</h2><p>'+esc(status.copy)+'</p></div><button class="btn btnc" onclick="A.execReport(\''+p.id+'\')">Generar reporte ejecutivo</button></div>'
     +'<div class="sg command-kpis"><div class="sc"><div class="sl">Avance</div><div class="sn">'+progress+'%</div><div class="ss">'+done+'/'+tasks.length+' cerradas</div></div><div class="sc r"><div class="sl">Riesgos críticos</div><div class="sn">'+blocked.length+'</div><div class="ss">'+overdue.length+' vencidas</div></div><div class="sc y"><div class="sl">Próximos 7 días</div><div class="sn">'+due7.length+'</div><div class="ss">requieren seguimiento</div></div><div class="sc"><div class="sl">Sin acción / dueño</div><div class="sn">'+(noAction.length+noOwner.length)+'</div><div class="ss">'+noAction.length+' sin acción · '+noOwner.length+' sin dueño</div></div></div>'
     +'<div class="automation-strip"><div><div class="sl">Filtros ejecutivos</div><h3>Automatizaciones operativas</h3></div><div class="filter-grid">'+filterCards+'</div></div>'
-    +'<div class="command-layout"><div class="command-left"><div class="card"><div class="ch"><h3>Riesgos críticos</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Alertas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Riesgo</th><th>Fecha</th></tr></thead><tbody>'+riskRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Reglas activas</h3><span class="chip">SM OS 2.2</span></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Acción sugerida</th><th>Resp.</th><th>Fecha</th></tr></thead><tbody>'+automationRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Sin siguiente acción</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Frente</th><th>Resp.</th><th>Acción</th></tr></thead><tbody>'+noActionRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Próximos vencimientos</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Vence</th><th>Control</th></tr></thead><tbody>'+nextRows+'</tbody></table></div></div></div><div class="command-right"><div class="card"><div class="ch"><h3>Carga por responsable</h3></div><div class="tw"><table><thead><tr><th>Usuario</th><th>Activas</th><th>7 días</th><th>Venc.</th><th>Carga</th></tr></thead><tbody>'+ownerRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Avance por frente</h3></div><div class="front-cards">'+groups+'</div></div></div></div>';
+    +'<div class="command-layout"><div class="command-left"><div class="card"><div class="ch"><h3>Riesgos críticos</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Alertas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Riesgo</th><th>Fecha</th></tr></thead><tbody>'+riskRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Reglas activas</h3><span class="chip">SM OS 2.3</span></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Acción sugerida</th><th>Resp.</th><th>Fecha</th></tr></thead><tbody>'+automationRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Sin siguiente acción</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Frente</th><th>Resp.</th><th>Acción</th></tr></thead><tbody>'+noActionRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Próximos vencimientos</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Vence</th><th>Control</th></tr></thead><tbody>'+nextRows+'</tbody></table></div></div></div><div class="command-right"><div class="card"><div class="ch"><h3>Carga por responsable</h3></div><div class="tw"><table><thead><tr><th>Usuario</th><th>Activas</th><th>7 días</th><th>Venc.</th><th>Carga</th></tr></thead><tbody>'+ownerRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Avance por frente</h3></div><div class="front-cards">'+groups+'</div></div></div></div>';
 }
 
 function executiveReportText(pid){
@@ -1453,11 +1453,9 @@ var A = {
     mOpen('Reporte ejecutivo · '+p.nombre, '<div class="report-box"><textarea id="exec-report-text" readonly>'+esc(txt)+'</textarea></div><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'exec-report-text\').value);toast(\'Reporte copiado ✓\',\'g\')">Copiar reporte</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>', true);
   },
 
-  commandFilter: function(pid,type){
-    var p=xid(DB.proyectos,pid); if(!p)return;
+  commandFilterRows: function(pid,type){
     var open=projectTasks(pid).filter(function(t){return t.estado!=='terminada';});
-    var labels={vencidas:'Tareas vencidas',proximos_7:'Vencimientos próximos 7 días',sin_accion:'Sin siguiente acción',sin_dueno:'Sin responsable',revision:'En revisión',riesgos:'Riesgos críticos'};
-    var rows=open.filter(function(t){
+    return open.filter(function(t){
       var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;
       if(type==='vencidas') return d<0;
       if(type==='proximos_7') return d>=0&&d<=7;
@@ -1465,10 +1463,67 @@ var A = {
       if(type==='sin_dueno') return !t.owner_id;
       if(type==='revision') return t.estado==='en_revision';
       if(type==='riesgos') return crmHealth(t).cl==='dr';
+      if(type==='mis_criticos') return t.owner_id===SES.userId && (crmHealth(t).cl==='dr' || (t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<=7) || !nextAction(t));
       return false;
     }).sort(function(a,b){return dayDiff((followDate(a)||a.fecha_vencimiento||pd(999)))-dayDiff((followDate(b)||b.fecha_vencimiento||pd(999)));});
-    var body=rows.map(function(t){return '<tr><td><button class="linkbtn" onclick="mClose();A.quickEdit(\''+t.id+'\')">'+esc(t.titulo)+'</button><div class="muted-mini">'+esc(taskGroup(t))+'</div></td><td>'+esc(uNm(t.owner_id))+'</td><td>'+esc(automationReason(t))+'</td><td>'+fmt(followDate(t)||t.fecha_vencimiento)+'</td><td><button class="btn btns btnc" onclick="mClose();A.quickEdit(\''+t.id+'\')">Editar</button></td></tr>';}).join('') || '<tr><td colspan="5">Sin registros para este filtro.</td></tr>';
-    mOpen((labels[type]||'Filtro ejecutivo')+' · '+p.nombre,'<div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Acción sugerida</th><th>Fecha</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div><div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button></div>',true);
+  },
+  commandFilter: function(pid,type){
+    var p=xid(DB.proyectos,pid); if(!p)return;
+    var labels={vencidas:'Tareas vencidas',proximos_7:'Vencimientos próximos 7 días',sin_accion:'Sin siguiente acción',sin_dueno:'Sin responsable',revision:'En revisión',riesgos:'Riesgos críticos',mis_criticos:'Mis pendientes críticos'};
+    var rows=A.commandFilterRows(pid,type);
+    var users=DB.usuarios.map(function(u){return '<option value="'+esc(u.id)+'">'+esc(u.nombre)+'</option>';}).join('');
+    var body=rows.map(function(t){return '<tr>'
+      +'<td><input class="bulk-check" type="checkbox" value="'+esc(t.id)+'"></td>'
+      +'<td><button class="linkbtn" onclick="mClose();A.quickEdit(\''+t.id+'\')">'+esc(t.titulo)+'</button><div class="muted-mini">'+esc(taskGroup(t))+'</div></td>'
+      +'<td>'+esc(uNm(t.owner_id))+'</td><td>'+esc(automationReason(t))+'</td><td>'+fmt(followDate(t)||t.fecha_vencimiento)+'</td>'
+      +'<td><button class="btn btns btnc" onclick="mClose();A.quickEdit(\''+t.id+'\')">Editar</button></td>'
+      +'</tr>';}).join('') || '<tr><td colspan="6">Sin registros para este filtro.</td></tr>';
+    var controls = rows.length ? '<div class="bulk-panel"><div class="bulk-head"><strong>Acciones masivas</strong><span class="muted-mini">Selecciona tareas y aplica cambios en lote.</span></div>'
+      +'<div class="bulk-grid"><label><span>Responsable</span><select id="bulk_owner"><option value="">Sin cambio</option>'+users+'</select></label>'
+      +'<label><span>Estado</span><select id="bulk_status"><option value="">Sin cambio</option><option value="pendiente">Pendiente</option><option value="en_proceso">En proceso</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="terminada">Terminada</option></select></label>'
+      +'<label><span>Seguimiento</span><input id="bulk_follow" type="date"></label>'
+      +'<label><span>Siguiente acción</span><input id="bulk_action" type="text" placeholder="Sin cambio"></label></div>'
+      +'<textarea id="bulk_note" placeholder="Comentario masivo / avance ejecutivo"></textarea>'
+      +'<div class="bulk-actions"><button class="btn btng" onclick="A.toggleBulkChecks(true)">Seleccionar todo</button><button class="btn btng" onclick="A.toggleBulkChecks(false)">Limpiar selección</button><button class="btn btnc" onclick="A.applyBulkFilter(\''+pid+'\',\''+type+'\')">Aplicar cambios</button><button class="btn btnc" onclick="A.filteredReport(\''+pid+'\',\''+type+'\')">Reporte filtrado</button></div></div>' : '';
+    mOpen((labels[type]||'Filtro ejecutivo')+' · '+p.nombre, controls+'<div class="tw bulk-table-wrap"><table class="bulk-table"><thead><tr><th><input type="checkbox" onchange="A.toggleBulkChecks(this.checked)"></th><th>Tarea</th><th>Resp.</th><th>Acción sugerida</th><th>Fecha</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div><div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button></div>',true);
+  },
+  toggleBulkChecks: function(flag){
+    document.querySelectorAll('.bulk-check').forEach(function(ch){ch.checked=!!flag;});
+  },
+  selectedBulkIds: function(){
+    return Array.prototype.slice.call(document.querySelectorAll('.bulk-check:checked')).map(function(ch){return ch.value;});
+  },
+  applyBulkFilter: async function(pid,type){
+    var ids=A.selectedBulkIds();
+    if(!ids.length){toast('Selecciona al menos una tarea','r');return;}
+    var owner=fv('bulk_owner'), status=fv('bulk_status'), follow=fv('bulk_follow'), action=fv('bulk_action').trim(), note=fv('bulk_note').trim();
+    if(!owner&&!status&&!follow&&!action&&!note){toast('No hay cambios por aplicar','r');return;}
+    for(var i=0;i<ids.length;i++){
+      var t=xid(DB.tareas,ids[i]); if(!t||!canEditTask(t)) continue;
+      var data={};
+      if(owner) data.owner_id=owner;
+      if(status) data.estado=status;
+      if(follow||action){
+        data.descripcion=buildDesc(t.descripcion,{accion:action||nextAction(t),seguimiento:follow||followDate(t)});
+        if(crmEnabled()){ data.siguiente_accion=action||nextAction(t)||null; data.fecha_proximo_seguimiento=follow||followDate(t)||null; data.ultima_actividad=new Date().toISOString(); }
+      }
+      var diff=Object.keys(data).length?taskDiffText(t,Object.assign({},t,data)):'';
+      if(Object.keys(data).length) await upd('tareas',ids[i],data);
+      if(diff) await logTaskActivity(ids[i],'Acción masiva: '+diff);
+      if(note) await ins('comentarios',{tarea_id:ids[i],usuario_id:SES.userId,texto:note});
+    }
+    await refresh();
+    A.commandFilter(pid,type);
+    toast('Acción masiva aplicada ✓','g');
+  },
+  filteredReport: function(pid,type){
+    var p=xid(DB.proyectos,pid); if(!p)return;
+    var labels={vencidas:'tareas vencidas',proximos_7:'próximos 7 días',sin_accion:'tareas sin acción',sin_dueno:'tareas sin dueño',revision:'tareas en revisión',riesgos:'riesgos críticos',mis_criticos:'mis pendientes críticos'};
+    var rows=A.commandFilterRows(pid,type);
+    var lines=['REPORTE FILTRADO — '+p.nombre,'Filtro: '+(labels[type]||'filtro ejecutivo'),'Fecha: '+fmtNow(),'','Total de registros: '+rows.length,''];
+    rows.slice(0,25).forEach(function(t,i){lines.push((i+1)+'. '+t.titulo+' | Resp: '+uNm(t.owner_id)+' | Acción: '+(nextAction(t)||automationReason(t))+' | Fecha: '+fmt(followDate(t)||t.fecha_vencimiento));});
+    if(rows.length>25) lines.push('... '+(rows.length-25)+' registros adicionales.');
+    mOpen('Reporte filtrado · '+p.nombre,'<div class="report-box"><textarea id="filtered-report-text" readonly>'+esc(lines.join('\n'))+'</textarea></div><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'filtered-report-text\').value);toast(\'Reporte filtrado copiado ✓\',\'g\')">Copiar reporte</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>',true);
   },
 
 
