@@ -1482,7 +1482,7 @@ var A = {
       +'<div class="bulk-grid"><label><span>Responsable</span><select id="bulk_owner"><option value="">Sin cambio</option>'+users+'</select></label>'
       +'<label><span>Estado</span><select id="bulk_status"><option value="">Sin cambio</option><option value="pendiente">Pendiente</option><option value="en_proceso">En proceso</option><option value="en_revision">En revisión</option><option value="aprobada">Aprobada</option><option value="terminada">Terminada</option></select></label>'
       +'<label><span>Seguimiento</span><input id="bulk_follow" type="date"></label>'
-      +'<label><span>Siguiente acción</span><input id="bulk_action" type="text" placeholder="Sin cambio"></label></div>'
+      +'<label><span>Siguiente acción</span><input id="bulk_action" type="text" placeholder="Escribe el próximo paso"></label></div>'
       +'<textarea id="bulk_note" placeholder="Comentario masivo / avance ejecutivo"></textarea>'
       +'<div class="bulk-actions"><button class="btn btng" onclick="A.toggleBulkChecks(true)">Seleccionar todo</button><button class="btn btng" onclick="A.toggleBulkChecks(false)">Limpiar selección</button><button class="btn btnc" onclick="A.applyBulkFilter(\''+pid+'\',\''+type+'\')">Aplicar cambios</button><button class="btn btnc" onclick="A.filteredReport(\''+pid+'\',\''+type+'\')">Reporte filtrado</button></div></div>' : '';
     mOpen((labels[type]||'Filtro ejecutivo')+' · '+p.nombre, controls+'<div class="tw bulk-table-wrap"><table class="bulk-table"><thead><tr><th><input type="checkbox" onchange="A.toggleBulkChecks(this.checked)"></th><th>Tarea</th><th>Resp.</th><th>Acción sugerida</th><th>Fecha</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div><div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button></div>',true);
@@ -1497,6 +1497,10 @@ var A = {
     var ids=A.selectedBulkIds();
     if(!ids.length){toast('Selecciona al menos una tarea','r');return;}
     var owner=fv('bulk_owner'), status=fv('bulk_status'), follow=fv('bulk_follow'), action=fv('bulk_action').trim(), note=fv('bulk_note').trim();
+    // UX hotfix 2.3.1: cuando el usuario está en el filtro 'Sin acción',
+    // si escribe un avance pero no llena el campo Siguiente acción, usamos ese avance
+    // como siguiente acción para que la tarea salga del filtro y no quede duplicada.
+    if(type==='sin_accion' && !action && note) action=note;
     if(!owner&&!status&&!follow&&!action&&!note){toast('No hay cambios por aplicar','r');return;}
     for(var i=0;i<ids.length;i++){
       var t=xid(DB.tareas,ids[i]); if(!t||!canEditTask(t)) continue;
