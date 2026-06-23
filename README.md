@@ -75,8 +75,3 @@ La app fue refactorizada para GitHub Pages: `index.html` quedó como estructura 
 
 ## SM OS 2.3.2
 Ajuste visual premium: reemplazo de fondo beige por gris-azul claro y mejora de contraste general.
-
-
-## SM OS 2.3.3 - Centro de Ayuda y Manual
-
-Integra módulo Ayuda / Manual con FAQ interno, buscador sin IA y descarga de Manual_SM_OS.pdf desde /docs.

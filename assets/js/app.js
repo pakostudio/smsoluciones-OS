@@ -126,6 +126,97 @@ function buildProjectDescription(desc,category,icon,color){
   var clean=stripProjectMeta(desc);
   return ['Categoria: '+category,'Icono: '+icon,'Color: '+color,clean].filter(Boolean).join('\n');
 }
+
+function smTemplateCatalog(){
+  return {
+    vacio:{label:'Proyecto vacío',fronts:[],tasks:[]},
+    consultoria:{label:'Consultoría general',fronts:['Diagnóstico','Estrategia','Ejecución','Seguimiento','Reporte ejecutivo'],tasks:[
+      ['Diagnóstico','Levantar información inicial','Solicitar información base y contexto del cliente',3],
+      ['Estrategia','Definir objetivo y alcance','Alinear entregables, responsables y fechas',5],
+      ['Ejecución','Ejecutar plan de trabajo','Iniciar actividades prioritarias',10],
+      ['Seguimiento','Revisar avances semanales','Actualizar riesgos, pendientes y próximos pasos',7],
+      ['Reporte ejecutivo','Preparar reporte de avance','Generar reporte ejecutivo para revisión',14]
+    ]},
+    campana:{label:'Campaña digital',fronts:['Estrategia','Contenido','Diseño','Publicación','Reporte'],tasks:[
+      ['Estrategia','Definir objetivo de campaña','Confirmar audiencia, oferta y CTA principal',3],
+      ['Contenido','Desarrollar mensajes clave','Preparar copies y lineamientos de comunicación',5],
+      ['Diseño','Producir piezas creativas','Diseñar materiales prioritarios de campaña',7],
+      ['Publicación','Programar publicaciones y pauta','Definir calendario, canales y presupuesto',9],
+      ['Reporte','Medir resultados de campaña','Preparar reporte de desempeño y aprendizajes',14]
+    ]},
+    crm:{label:'CRM / implementación',fronts:['Diagnóstico','Base de datos','Pipeline','Automatización','Capacitación'],tasks:[
+      ['Diagnóstico','Mapear proceso comercial','Documentar etapas, responsables y puntos de control',3],
+      ['Base de datos','Depurar base inicial','Ordenar clientes, prospectos y campos críticos',5],
+      ['Pipeline','Configurar pipeline comercial','Definir estados, probabilidades y reglas de seguimiento',7],
+      ['Automatización','Definir alertas y reportes','Configurar recordatorios y próximos pasos',10],
+      ['Capacitación','Capacitar usuarios clave','Explicar uso operativo, reportes e historial',14]
+    ]},
+    evento:{label:'Evento / activación',fronts:['Concepto','Producción','Convocatoria','Operación','Post-evento'],tasks:[
+      ['Concepto','Definir formato del evento','Alinear objetivo, público, sede y narrativa',3],
+      ['Producción','Preparar logística y materiales','Confirmar recursos, responsables y tiempos',7],
+      ['Convocatoria','Activar invitaciones y comunicación','Lanzar convocatoria y seguimiento de asistentes',10],
+      ['Operación','Ejecutar evento / activación','Coordinar operación y registro de incidencias',14],
+      ['Post-evento','Cerrar reporte y aprendizajes','Documentar resultados, contenido y próximos pasos',16]
+    ]},
+    alianza:{label:'Alianza / patrocinio',fronts:['Prospecto','Propuesta','Negociación','Formalización','Activación'],tasks:[
+      ['Prospecto','Identificar aliado o patrocinador','Validar interés, contacto y oportunidad',3],
+      ['Propuesta','Preparar propuesta comercial','Definir beneficios, entregables y contraprestaciones',5],
+      ['Negociación','Dar seguimiento a negociación','Resolver dudas y ajustar condiciones',10],
+      ['Formalización','Preparar convenio o acuerdo','Documentar compromisos y responsables',14],
+      ['Activación','Ejecutar plan de alianza','Coordinar implementación, evidencias y reporte',21]
+    ]},
+    diagnostico:{label:'Diagnóstico operativo',fronts:['Levantamiento','Hallazgos','Procesos','Indicadores','Plan de acción'],tasks:[
+      ['Levantamiento','Agendar entrevistas iniciales','Confirmar participantes y calendario de diagnóstico',3],
+      ['Hallazgos','Consolidar hallazgos críticos','Ordenar problemas, causas y riesgos',7],
+      ['Procesos','Mapear procesos actuales','Documentar flujo, responsables y cuellos de botella',10],
+      ['Indicadores','Definir KPIs de control','Proponer métricas, semáforos y responsables',12],
+      ['Plan de acción','Presentar plan de trabajo','Preparar acciones, prioridades y próximos pasos',15]
+    ]},
+    comercial:{label:'Seguimiento comercial',fronts:['Prospección','Contacto','Reunión','Propuesta','Cierre'],tasks:[
+      ['Prospección','Definir lista de prospectos','Priorizar oportunidades y contactos clave',3],
+      ['Contacto','Realizar primer acercamiento','Enviar mensaje inicial y registrar respuesta',5],
+      ['Reunión','Agendar reunión comercial','Preparar objetivo y agenda de conversación',7],
+      ['Propuesta','Enviar propuesta de valor','Documentar monto, alcance y siguiente paso',10],
+      ['Cierre','Dar seguimiento a cierre','Confirmar decisión, objeciones y fecha de respuesta',14]
+    ]}
+  };
+}
+function smTemplateByKey(key){ return smTemplateCatalog()[key] || smTemplateCatalog().vacio; }
+function smGuidedOptions(){
+  return [
+    ['estrategia','Estrategia'],['ventas','Ventas'],['marketing','Marketing'],['crm','CRM'],['operacion','Operación'],['eventos','Eventos'],['reportes','Reportes'],['contenido','Contenido'],['patrocinios','Patrocinios'],['documentacion','Documentación'],['seguimiento','Seguimiento comercial']
+  ];
+}
+function smGuidedBuild(selected){
+  selected = selected || [];
+  var map={
+    estrategia:{fronts:['Diagnóstico','Estrategia'],tasks:[['Diagnóstico','Levantar contexto del cliente','Solicitar información inicial y prioridades',3],['Estrategia','Definir objetivo y plan de trabajo','Alinear alcance, entregables y responsables',5]]},
+    ventas:{fronts:['Estrategia comercial','Prospección','Pipeline'],tasks:[['Estrategia comercial','Definir oferta y oportunidad comercial','Alinear propuesta de valor y segmento objetivo',4],['Prospección','Identificar prospectos prioritarios','Preparar lista de contactos y oportunidades',7],['Pipeline','Dar seguimiento a oportunidades','Actualizar etapa, probabilidad y próximo paso',10]]},
+    marketing:{fronts:['Estrategia de marketing','Campaña','Reporte'],tasks:[['Estrategia de marketing','Definir mensaje y campaña','Alinear audiencia, canales y CTA',5],['Campaña','Activar piezas y publicaciones','Programar materiales y responsables',8],['Reporte','Medir desempeño de marketing','Preparar indicadores y aprendizajes',14]]},
+    crm:{fronts:['CRM','Automatización'],tasks:[['CRM','Configurar estructura de seguimiento','Definir etapas, responsables y campos críticos',7],['Automatización','Definir alertas operativas','Crear reglas de seguimiento y vencimiento',10]]},
+    operacion:{fronts:['Operación','Procesos'],tasks:[['Operación','Mapear operación actual','Identificar cuellos de botella y responsables',5],['Procesos','Estandarizar flujo de trabajo','Documentar proceso y SLA básico',10]]},
+    eventos:{fronts:['Evento / activación','Logística'],tasks:[['Evento / activación','Definir concepto de activación','Alinear objetivo, sede y convocatoria',5],['Logística','Preparar producción y materiales','Confirmar recursos, tiempos y responsables',10]]},
+    reportes:{fronts:['Reporte ejecutivo','Indicadores'],tasks:[['Indicadores','Definir KPIs del proyecto','Alinear métricas, semáforos y frecuencia',5],['Reporte ejecutivo','Generar primer reporte ejecutivo','Preparar resumen, riesgos y próximos pasos',7]]},
+    contenido:{fronts:['Contenido','Diseño'],tasks:[['Contenido','Definir línea de contenido','Preparar temas, formatos y calendario',5],['Diseño','Producir piezas prioritarias','Diseñar materiales base para validación',8]]},
+    patrocinios:{fronts:['Alianzas / patrocinios','Propuesta'],tasks:[['Alianzas / patrocinios','Mapear posibles aliados','Identificar marcas, contactos y beneficios',5],['Propuesta','Preparar propuesta de patrocinio','Definir paquetes, entregables y contraprestaciones',8]]},
+    documentacion:{fronts:['Documentación','Entregables'],tasks:[['Documentación','Organizar carpeta del proyecto','Centralizar documentos, minutas y acuerdos',3],['Entregables','Definir entregables iniciales','Confirmar formato, responsable y fecha',6]]},
+    seguimiento:{fronts:['Seguimiento comercial','Reuniones'],tasks:[['Seguimiento comercial','Definir rutina de seguimiento','Configurar responsables y fechas de revisión',5],['Reuniones','Agendar primera reunión de control','Confirmar agenda, participantes y acuerdos esperados',7]]}
+  };
+  var fronts=[], tasks=[];
+  selected.forEach(function(k){ var b=map[k]; if(!b)return; b.fronts.forEach(function(f){if(fronts.indexOf(f)<0)fronts.push(f);}); b.tasks.forEach(function(t){tasks.push(t);}); });
+  if(!fronts.length){ fronts=['Diagnóstico','Estrategia','Seguimiento','Reporte ejecutivo']; tasks=[['Diagnóstico','Levantar contexto inicial','Solicitar información y confirmar prioridades',3],['Estrategia','Definir alcance del proyecto','Alinear objetivo, responsables y próximos pasos',5],['Seguimiento','Revisar avances semanales','Actualizar pendientes y riesgos',7],['Reporte ejecutivo','Preparar reporte inicial','Generar lectura ejecutiva del proyecto',14]]; }
+  return {label:'Creación guiada',fronts:fronts,tasks:tasks};
+}
+function smCreationPlan(){
+  var mode = (document.getElementById('f_create_mode')||{}).value || 'vacio';
+  if(mode==='template') return smTemplateByKey((document.getElementById('f_template')||{}).value||'consultoria');
+  if(mode==='guided'){
+    var selected=Array.prototype.map.call(document.querySelectorAll('[data-guide-option]:checked'),function(el){return el.value;});
+    return smGuidedBuild(selected);
+  }
+  return smTemplateByKey('vacio');
+}
+
 function projectDescription(p){ return stripProjectMeta(p&&p.descripcion)||cNm(p&&p.cliente_id); }
 function projectAlertCount(pid){ return getAlerts().filter(function(a){return a.projectId===pid;}).length; }
 function userPrefs(id){ return DB.notification_preferences.find(function(p){return p.user_id===id;})||{email:'',email_enabled:true,browser_enabled:true,daily_digest:true,digest_hour:8,timezone:'America/Mexico_City'}; }
@@ -1637,6 +1728,7 @@ var A = {
     mOpen(p?'Editar proyecto':'Nuevo proyecto',
       '<div class="fg">'
       +'<div class="fr2">'+FSL('ci','Cliente',cO,p&&p.cliente_id)+FSL('oi','Responsable',uO,p&&p.owner_id||SES.userId)+'</div>'
+      +(p?'':'<div class="guided-create"><div class="fld"><label>Tipo de creación</label><select id="f_create_mode" onchange="A.previewProjectCreation()"><option value="vacio">Proyecto vacío</option><option value="template">Usar plantilla</option><option value="guided">Creación guiada</option></select></div><div id="guided-create-options"></div><div id="guided-create-preview" class="guided-preview"></div></div>')
       +FLD('nm','Nombre del proyecto','text',p&&p.nombre)
       +FTA('dc','Descripción',p&&projectDescription(p))
       +projectVisualFields(visual)
@@ -1645,17 +1737,58 @@ var A = {
       +FLD('dr','Link Google Drive (carpeta del proyecto)','url',p&&p.drive_url)
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sp(\''+( id||'')+'\')">Guardar proyecto</button></div>'
       +'</div>');
+    if(!p) A.previewProjectCreation();
+  },
+  previewProjectCreation: function(){
+    var mode=(document.getElementById('f_create_mode')||{}).value||'vacio';
+    var opt=document.getElementById('guided-create-options');
+    if(opt){
+      if(mode==='template'){
+        var cats=smTemplateCatalog();
+        opt.innerHTML='<div class="fld"><label>Plantilla</label><select id="f_template" onchange="A.previewProjectCreation()">'+Object.keys(cats).filter(function(k){return k!=='vacio';}).map(function(k){return '<option value="'+k+'">'+esc(cats[k].label)+'</option>';}).join('')+'</select></div>';
+      }else if(mode==='guided'){
+        var selectedNow=Array.prototype.map.call(document.querySelectorAll('[data-guide-option]:checked'),function(el){return el.value;});
+        opt.innerHTML='<div class="fld"><label>¿Qué necesita este cliente?</label><div class="guided-checks">'+smGuidedOptions().map(function(o){return '<label><input type="checkbox" data-guide-option value="'+o[0]+'" '+(selectedNow.indexOf(o[0])>=0?'checked':'')+' onchange="A.previewProjectCreation()"> '+esc(o[1])+'</label>';}).join('')+'</div></div>';
+      }else opt.innerHTML='<div class="hbar"><span class="dot dg"></span>Se creará solo la ficha del proyecto. Las tareas se cargarán después.</div>';
+    }
+    var plan=smCreationPlan();
+    var prev=document.getElementById('guided-create-preview');
+    if(prev){
+      prev.innerHTML='<strong>Vista previa operativa</strong><div class="guided-meta">Frentes: '+(plan.fronts.length?plan.fronts.join(' · '):'Sin frentes automáticos')+'</div><div class="guided-meta">Tareas base: '+plan.tasks.length+'</div>'+(plan.tasks.length?'<ul>'+plan.tasks.slice(0,6).map(function(t){return '<li><b>'+esc(t[0])+'</b> · '+esc(t[1])+'</li>';}).join('')+'</ul>':'');
+    }
   },
   _sp: async function(id){
     var nm = fv('nm'); if(!nm){toast('Nombre requerido','r');return;}
     var visual={category:fv('cat')||'Servicios profesionales',icon:fv('ico')||'briefcase-business',color:fv('clr')||'#2563EB'};
     if(!id && visual.category==='Servicios profesionales' && visual.icon==='briefcase-business') visual=suggestProjectVisual(nm,fv('dc'));
+    var creationPlan=!id?smCreationPlan():smTemplateByKey('vacio');
     var projectDesc=buildProjectDescription(fv('dc'),visual.category,visual.icon,visual.color);
-    var savedFronts=id?configuredProjectGroups(xid(DB.proyectos,id)):[];
+    var savedFronts=id?configuredProjectGroups(xid(DB.proyectos,id)):(creationPlan.fronts||[]);
     if(savedFronts.length)projectDesc+='\nFrentes: '+savedFronts.join(' | ');
     var data = {cliente_id:fv('ci'),owner_id:fv('oi'),nombre:nm,descripcion:projectDesc,fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,presupuesto:Number(fv('bud'))||0,pipeline:fv('pi'),estado:fv('es'),drive_url:fv('dr')||null};
     var r = id ? await upd('proyectos',id,data) : await ins('proyectos',data);
-    if(r){mClose();await refresh();trackEvent(id?'project_updated':'project_created',{project_id:r.id});toast(id?'Proyecto actualizado':'Proyecto creado ✓','g');}
+    if(r && !id && creationPlan.tasks && creationPlan.tasks.length){
+      await A.seedProjectFromPlan(r,creationPlan);
+    }
+    if(r){mClose();await refresh();trackEvent(id?'project_updated':'project_created',{project_id:r.id});toast(id?'Proyecto actualizado':'Proyecto creado ✓','g'); if(!id) A.openProject(r.id,'tareas');}
+  },
+  seedProjectFromPlan: async function(project,plan){
+    var owner=fv('oi')||SES.userId;
+    var start=fv('fi')||today();
+    function addDays(base,n){ var d=dateObj(base)||new Date(); d.setDate(d.getDate()+Number(n||7)); return dateKey(d); }
+    for(var i=0;i<plan.tasks.length;i++){
+      var item=plan.tasks[i];
+      var desc=buildDesc('',{grupo:item[0],accion:item[2],seguimiento:addDays(start,Math.max(1,(item[3]||7)-1))});
+      var data={proyecto_id:project.id,owner_id:owner,titulo:item[1],descripcion:desc,prioridad:i<2?'alta':'media',estado:'pendiente',fecha_inicio:start,fecha_vencimiento:addDays(start,item[3]||7),horas_estimadas:8,horas_reales:0};
+      if(crmEnabled()){
+        data.etapa_crm='por_contactar';
+        data.siguiente_accion=item[2]||'Definir siguiente acción';
+        data.fecha_proximo_seguimiento=addDays(start,Math.max(1,(item[3]||7)-1));
+        data.ultima_actividad=new Date().toISOString();
+      }
+      await sb.from('tareas').insert(data);
+    }
+    trackEvent('project_template_seeded',{project_id:project.id,source:'creation_guide'});
   },
   pickIcon: function(el,name){ document.getElementById('f_ico').value=name; el.parentNode.querySelectorAll('.icon-choice').forEach(function(x){x.classList.remove('selected');}); el.classList.add('selected'); hydrateIcons(); },
   pickColor: function(el,color){ document.getElementById('f_clr').value=color; el.parentNode.querySelectorAll('.color-choice').forEach(function(x){x.classList.remove('selected');}); el.classList.add('selected'); },
