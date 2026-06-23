@@ -72,6 +72,7 @@ var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
 var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
+var CLIENT_PROJECT_FOCUS = true; // Privacidad cliente: al estar dentro de un proyecto, la navegación lateral solo muestra ese proyecto.
 
 /* ── UTILS ── */
 function dateObj(s){
@@ -596,15 +597,28 @@ function myTasks(){
   var uid = SES.userId;
   return DB.tareas.filter(function(t){ return !isGroupHeader(t) && t.owner_id===uid; });
 }
+function activeClientProjectId(){
+  if(!CLIENT_PROJECT_FOCUS) return '';
+  if(VIEW==='proyectos' && FPID) return FPID;
+  if(VIEW==='prokicks'){ var p=pkProject && pkProject(); return p&&p.id ? p.id : ''; }
+  return '';
+}
 function buildProjectNav(){
   var box=document.getElementById('project-nav');
   if(!box) return;
+  var search=document.querySelector('.project-search');
+  var lbl=box.parentElement?box.parentElement.querySelector('.nav-lbl'):null;
   if(!SES){ box.innerHTML=''; return; }
+  var focusId=activeClientProjectId();
   var q=PROJECT_QUERY.toLowerCase().trim();
-  var projs=myProjs().filter(function(p){return p.estado!=='cerrado' && (!q || String(p.nombre||'').toLowerCase().indexOf(q)>=0);}).sort(function(a,b){return String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
-  box.innerHTML = projs.map(function(p){
+  var base=myProjs().filter(function(p){return p.estado!=='cerrado';});
+  var projs=(focusId ? base.filter(function(p){return p.id===focusId;}) : base.filter(function(p){return !q || String(p.nombre||'').toLowerCase().indexOf(q)>=0;}))
+    .sort(function(a,b){return String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
+  if(search) search.style.display=focusId?'none':'';
+  if(lbl) lbl.textContent=focusId?'Proyecto visible':'Proyectos';
+  box.innerHTML = (focusId?'<div class="client-privacy-pill"><span class="dot dg"></span>Modo cliente: solo se muestra el proyecto activo</div>':'') + projs.map(function(p){
     var v=projectVisual(p), count=projectAlertCount(p.id);
-    return '<button class="nbtn pnavbtn '+(VIEW==='proyectos'&&FPID===p.id?'active':'')+'" style="--project-color:'+esc(v.color)+'" type="button" onclick="A.openProject(\''+p.id+'\')" title="'+esc(v.category)+'"><span class="project-mark">'+iconHtml(v.icon)+'</span><span class="nav-project-name">'+esc(p.nombre)+'</span>'+(count?'<span class="nav-count">'+count+'</span>':'')+'</button>';
+    return '<button class="nbtn pnavbtn '+((FPID===p.id || (VIEW==='prokicks'&&focusId===p.id))?'active':'')+'" style="--project-color:'+esc(v.color)+'" type="button" onclick="A.openProject(\''+p.id+'\')" title="'+esc(v.category)+'"><span class="project-mark">'+iconHtml(v.icon)+'</span><span class="nav-project-name">'+esc(p.nombre)+'</span>'+(count?'<span class="nav-count">'+count+'</span>':'')+'</button>';
   }).join('');
   hydrateIcons();
 }
