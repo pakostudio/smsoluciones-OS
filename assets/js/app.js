@@ -704,6 +704,43 @@ function projectTree(p,limit){
 function lastComment(t){
   return DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));})[0] || null;
 }
+function taskActivityItems(t){
+  if(!t) return [];
+  var items=[];
+  if(t.created_at) items.push({ts:t.created_at,type:'creada',title:'Tarea creada',body:t.titulo,user:t.owner_id,icon:'plus-circle'});
+  DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).forEach(function(c){items.push({ts:c.created_at,type:'comentario',title:/^SM OS ·/.test(c.texto||'')?'Actualización del sistema':'Comentario / avance',body:c.texto,user:c.usuario_id,icon:'message-square'});});
+  DB.subtareas.filter(function(st){return st.tarea_id===t.id;}).forEach(function(st){items.push({ts:st.created_at,type:'microtarea',title:'Microtarea: '+st.titulo,body:'Estado: '+(st.estado||'pendiente')+' · Responsable: '+uNm(st.owner_id),user:st.owner_id,icon:'list-checks'});});
+  DB.entregables.filter(function(f){return f.tarea_id===t.id;}).forEach(function(f){items.push({ts:f.created_at,type:'entregable',title:'Entregable agregado',body:f.nombre+(f.version?' · v'+f.version:''),user:f.usuario_id,icon:'paperclip'});});
+  return items.sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
+}
+function renderActivityTimeline(items,emptyText){
+  if(!items.length) return '<div class="hbar">'+esc(emptyText||'Todavía no hay historial registrado.')+'</div>';
+  return '<div class="activity-timeline">'+items.map(function(it){return '<div class="activity-item"><div class="activity-ico">'+iconHtml(it.icon||'circle')+'</div><div class="activity-body"><div class="activity-head"><strong>'+esc(it.title||'Actividad')+'</strong><span>'+fmtdt(it.ts)+'</span></div><div class="activity-meta">'+esc(uNm(it.user))+' · '+esc(it.type||'actividad')+'</div><div class="activity-copy">'+esc(String(it.body||'').replace(/^SM OS ·\s*/,''))+'</div></div></div>';}).join('')+'</div>';
+}
+function taskDiffText(oldT,data){
+  var changes=[];
+  function add(label,oldVal,newVal,fmtFn){
+    var a=oldVal||'', b=newVal||'';
+    if(String(a)!==String(b)) changes.push(label+': '+(fmtFn?fmtFn(a):a||'—')+' → '+(fmtFn?fmtFn(b):b||'—'));
+  }
+  add('Estado',oldT.estado,data.estado,function(v){return String(v).replace('_',' ');});
+  add('Responsable',oldT.owner_id,data.owner_id,uNm);
+  add('Prioridad',oldT.prioridad,data.prioridad);
+  add('Inicio',oldT.fecha_inicio,data.fecha_inicio,fmt);
+  add('Término',oldT.fecha_vencimiento,data.fecha_vencimiento,fmt);
+  add('Siguiente acción',nextAction(oldT),data.siguiente_accion||descVal({descripcion:data.descripcion||''},'Siguiente accion'));
+  add('Próximo seguimiento',followDate(oldT),data.fecha_proximo_seguimiento||descVal({descripcion:data.descripcion||''},'Proximo seguimiento'),fmt);
+  return changes.join(' | ');
+}
+async function logTaskActivity(tid,text){
+  if(!SES || !tid || !text) return null;
+  try{ return await ins('comentarios',{tarea_id:tid,usuario_id:SES.userId,texto:'SM OS · '+text}); }catch(e){ return null; }
+}
+function projectActivityItems(pid){
+  var items=[];
+  projectTasks(pid).forEach(function(t){ taskActivityItems(t).forEach(function(it){ it.taskId=t.id; it.taskTitle=t.titulo; it.projectId=pid; items.push(it); }); });
+  return items.sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
+}
 function operationalBoard(p,limit){
   var tasks = projectTasks(p.id).sort(function(a,b){
     var ga = taskGroup(a), gb = taskGroup(b);
@@ -725,7 +762,7 @@ function operationalBoard(p,limit){
       +'<td>'+esc(pk?pkInternalOwner(t):uNm(t.owner_id))+'</td>'
       +'<td>'+alert+'</td>'
       +'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>'
-      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
+      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
       +'</tr>';
   }).join('');
   var frontStrip=isProkicksProject(p)?'<div class="front-strip">'+groupsForProject(p).map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div>':'';
@@ -744,9 +781,18 @@ function projectReportHtml(pid){
   return '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
     +'<div class="card"><div class="ch"><h3>'+(isProkicksProject(p)?'Frentes, tareas y seguimiento':'Grupos, registros y seguimiento')+'</h3></div>'+projectTree(p)+'</div>';
 }
+function projectHistoryHtml(p){
+  var items=projectActivityItems(p.id).slice(0,80);
+  var latest=items.slice(0,5).map(function(it){return '<tr><td>'+fmtdt(it.ts)+'</td><td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;text-align:left;cursor:pointer" onclick="A.td(\''+it.taskId+'\')">'+esc(it.taskTitle||'Tarea')+'</button></td><td>'+esc(it.title||'Actividad')+'</td><td>'+esc(uNm(it.user))+'</td><td>'+esc(String(it.body||'').replace(/^SM OS ·\s*/,''))+'</td></tr>';}).join('');
+  var byUser={};
+  items.forEach(function(it){var k=it.user||'na'; if(!byUser[k]) byUser[k]=0; byUser[k]++;});
+  var userRows=Object.keys(byUser).map(function(uid){return '<tr><td>'+esc(uNm(uid))+'</td><td>'+byUser[uid]+'</td></tr>';}).join('')||'<tr><td colspan="2">Sin actividad</td></tr>';
+  return '<div class="sg"><div class="sc"><div class="sl">Eventos</div><div class="sn">'+items.length+'</div></div><div class="sc g"><div class="sl">Comentarios</div><div class="sn">'+items.filter(function(i){return i.type==='comentario';}).length+'</div></div><div class="sc y"><div class="sl">Microtareas</div><div class="sn">'+items.filter(function(i){return i.type==='microtarea';}).length+'</div></div><div class="sc"><div class="sl">Entregables</div><div class="sn">'+items.filter(function(i){return i.type==='entregable';}).length+'</div></div></div>'
+    +'<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);gap:14px"><div class="card"><div class="ch"><h3>Bitácora del proyecto</h3><span class="chip">últimos 80 eventos</span></div>'+renderActivityTimeline(items,'Sin historial del proyecto.')+'</div><div style="display:grid;gap:14px"><div class="card"><div class="ch"><h3>Últimos movimientos</h3></div><div class="tw"><table><thead><tr><th>Fecha</th><th>Tarea</th><th>Evento</th><th>Resp.</th><th>Detalle</th></tr></thead><tbody>'+(latest||'<tr><td colspan="5">Sin actividad reciente</td></tr>')+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Actividad por usuario</h3></div><div class="tw"><table><thead><tr><th>Usuario</th><th>Eventos</th></tr></thead><tbody>'+userRows+'</tbody></table></div></div></div></div>';
+}
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
-  var tabs=[['tareas',mainLabel],['reporte','Reporte'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var tabs=[['tareas',mainLabel],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -809,6 +855,7 @@ function projectWorkspace(p){
     +operationalBoard(p);
   var body = tab==='tareas'?board
     : tab==='reporte'?projectReportHtml(p.id)
+    : tab==='historial'?projectHistoryHtml(p)
     : tab==='kanban'?projectKanbanHtml(p)
     : tab==='calendario'?projectCalendarHtml(p)
     : tab==='gantt'?projectGanttHtml(p)
@@ -828,15 +875,20 @@ function vDB(){
   var done = tasks.filter(function(t){return t.estado==='terminada';}).length;
   var over = tasks.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length;
   var noNext = tasks.filter(function(t){return crmEnabled() && t.estado!=='terminada' && !nextAction(t);}).length;
-  var alH = alerts.length ? alerts.map(function(a){
-    return '<div class="alitem '+a.cl+'"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';
-  }).join('') : '<div style="color:var(--muted);font-size:13px">✓ Sin alertas</div>';
+  var alH = alerts.length ? alerts.map(function(a){return '<div class="alitem '+a.cl+'"><div class="alicon">'+a.ic+'</div><div><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div></div>';}).join('') : '<div style="color:var(--muted);font-size:13px">✓ Sin alertas</div>';
   var cards = projs.map(function(p){return projectCard(p,true);}).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
-  return '<div class="sh"><div><h2>Mis proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Entra al proyecto para ver grupos, registros, reportes y seguimiento propio.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
+  var critical = tasks.filter(function(t){return t.estado!=='terminada' && (crmHealth(t).cl==='dr');}).slice(0,8);
+  var nextDue = tasks.filter(function(t){return t.estado!=='terminada' && t.fecha_vencimiento;}).sort(function(a,b){return dayDiff(a.fecha_vencimiento)-dayDiff(b.fecha_vencimiento);}).slice(0,6);
+  var workload = DB.usuarios.map(function(u){var assigned=DB.tareas.filter(function(t){return !isGroupHeader(t)&&t.owner_id===u.id&&t.estado!=='terminada';});return {u:u,n:assigned.length,late:assigned.filter(function(t){return t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length};}).filter(function(x){return x.n>0;}).sort(function(a,b){return b.n-a.n;}).slice(0,6);
+  var criticalRows = critical.map(function(t){return '<tr><td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;text-align:left;cursor:pointer" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted)">'+esc(pNm(t.proyecto_id))+'</div></td><td>'+esc(uNm(t.owner_id))+'</td><td>'+esc(crmHealth(t).txt)+'</td><td>'+fmt(t.fecha_vencimiento)+'</td></tr>';}).join('')||'<tr><td colspan="4">Sin riesgos críticos</td></tr>';
+  var dueRows = nextDue.map(function(t){return '<tr><td>'+esc(t.titulo)+'</td><td>'+esc(pNm(t.proyecto_id))+'</td><td>'+sem(t)+'</td><td>'+fmt(t.fecha_vencimiento)+'</td></tr>';}).join('')||'<tr><td colspan="4">Sin próximos vencimientos</td></tr>';
+  var workloadRows = workload.map(function(x){return '<tr><td>'+esc(x.u.nombre)+'</td><td>'+x.n+'</td><td>'+x.late+'</td></tr>';}).join('')||'<tr><td colspan="3">Sin carga activa</td></tr>';
+  var command = '<div class="command-grid"><div class="card"><div class="ch"><h3>Riesgos críticos</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Alertas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Riesgo</th><th>Vence</th></tr></thead><tbody>'+criticalRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Próximos vencimientos</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Control</th><th>Fecha</th></tr></thead><tbody>'+dueRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Carga por responsable</h3></div><div class="tw"><table><thead><tr><th>Responsable</th><th>Activas</th><th>Vencidas</th></tr></thead><tbody>'+workloadRows+'</tbody></table></div></div></div>';
+  return '<div class="sh"><div><h2>Centro de mando ejecutivo</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Control de proyectos, riesgos, vencimientos y carga operativa en una sola vista.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
     +'<div class="sg"><div class="sc"><div class="sl">Proyectos activos</div><div class="sn">'+projs.length+'</div></div><div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div></div><div class="sc y"><div class="sl">Sin siguiente acción</div><div class="sn">'+noNext+'</div></div><div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+over+'</div></div></div>'
-    +'<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:14px"><div style="display:grid;gap:14px">'+cards+'</div><div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div></div>';
+    +command
+    +'<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:14px;margin-top:14px"><div style="display:grid;gap:14px">'+cards+'</div><div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div></div>';
 }
-
 /* ALERTAS */
 function vAL(){
   var al = getAlerts();
@@ -873,7 +925,7 @@ function vTA(){
       +'<td style="font-size:12px;color:var(--muted);max-width:180px">'+esc(nextAction(t)||'—')+'</td>'
       +'<td style="font-size:12px;color:var(--muted)">'+t.horas_reales+'/'+t.horas_estimadas+'h</td>'
       +'<td style="font-size:12px;color:var(--muted)">'+fmt(t.fecha_vencimiento)+'</td>'
-      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ver</button>'
+      +'<td><div style="display:flex;gap:5px"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar</button><button class="btn btns btng" onclick="A.td(\''+t.id+'\')">Ver</button>'
       +(adm()?'<button class="btn btns btnd" onclick="A.dt(\''+t.id+'\')">✕</button>':'')
       +'</div></td></tr>';
   }).join('') || '<tr><td colspan="10"><div class="empty"><p>Sin tareas</p></div></td></tr>';
@@ -1481,6 +1533,32 @@ var A = {
     var r=await upd('tareas',id,data);
     if(r){mClose();await refresh();toast('Registro actualizado ✓','g');}
   },
+  quickEdit: function(id){
+    var t=xid(DB.tareas,id); if(!t)return;
+    if(!canEditTask(t)){toast('Solo el responsable puede editar esta tarea','r');return;}
+    var uO=DB.usuarios.map(function(u){return [u.id,u.nombre];});
+    mOpen('Edición rápida · '+t.titulo,
+      '<div class="fg">'
+      +'<div class="fr3">'+FSL('qe_es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t.estado||'pendiente')+FSL('qe_pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t.prioridad||'media')+FSL('qe_oi','Responsable',uO,t.owner_id)+'</div>'
+      +'<div class="fr2">'+FLD('qe_fv','Fecha término','date',t.fecha_vencimiento||'')+FLD('qe_ps','Próximo seguimiento','date',followDate(t)||'')+'</div>'
+      +FLD('qe_sa','Siguiente acción','text',nextAction(t)||'')
+      +FTA('qe_note','Comentario ejecutivo / avance','')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveQuickEdit(\''+id+'\')">Guardar</button></div>'
+      +'</div>',true);
+  },
+  saveQuickEdit: async function(id){
+    var t=xid(DB.tareas,id); if(!t)return;
+    if(!canEditTask(t)){toast('Solo el responsable puede editar esta tarea','r');return;}
+    var action=fv('qe_sa'), follow=fv('qe_ps');
+    var data={estado:fv('qe_es'),prioridad:fv('qe_pr'),owner_id:fv('qe_oi'),fecha_vencimiento:fv('qe_fv')||null,descripcion:buildDesc(t.descripcion,{accion:action,seguimiento:follow})};
+    if(crmEnabled()){data.siguiente_accion=action||null;data.fecha_proximo_seguimiento=follow||null;data.ultima_actividad=new Date().toISOString();}
+    var diff=taskDiffText(t,data);
+    var saved=await upd('tareas',id,data); if(!saved)return;
+    if(diff) await logTaskActivity(id,'Edición rápida: '+diff);
+    var note=fv('qe_note').trim();
+    if(note) await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:note});
+    mClose(); await refresh(); toast('Edición rápida guardada ✓','g');
+  },
   manageTask: function(id){
     var t=xid(DB.tareas,id); if(!t)return;
     var p=taskProject(t), comments=DB.comentarios.filter(function(c){return c.tarea_id===id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
@@ -1512,7 +1590,9 @@ var A = {
     var description=buildDesc(t.descripcion,{accion:action,seguimiento:follow});
     var data={estado:fv('mg_es'),fecha_inicio:fv('mg_fi')||null,fecha_vencimiento:fv('mg_fv')||null,descripcion:description};
     if(crmEnabled()){data.siguiente_accion=action||null;data.fecha_proximo_seguimiento=follow||null;data.ultima_actividad=new Date().toISOString();}
+    var diff=taskDiffText(t,data);
     var saved=await upd('tareas',id,data); if(!saved)return;
+    if(diff) await logTaskActivity(id,'Gestión actualizada: '+diff);
     if(note){
       var comment=await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:note});
       if(!comment)return;
@@ -1576,9 +1656,11 @@ var A = {
       +'</div>',true);
   },
   ss: async function(id,st){
+    var t=xid(DB.tareas,id);
     var data = {estado:st};
     if(crmEnabled()) data.ultima_actividad = new Date().toISOString();
     await upd('tareas',id,data);
+    if(t && t.estado!==st) await logTaskActivity(id,'Cambio de estado: '+String(t.estado||'—').replace('_',' ')+' → '+String(st||'—').replace('_',' '));
     await refresh(); toast('Estado actualizado ✓','g');
   },
   dt: async function(id){
