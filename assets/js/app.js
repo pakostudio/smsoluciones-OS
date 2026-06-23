@@ -312,11 +312,42 @@ function followDate(t){
 function crmHealth(t){
   if(t.estado==='terminada') return {cl:'dg',txt:'Cerrada'};
   var dDue = t.fecha_vencimiento ? dayDiff(t.fecha_vencimiento) : 999;
+  var dFollow = followDate(t) ? dayDiff(followDate(t)) : null;
   var dAct = daysSince(lastActivity(t));
-  if(dDue<0 || !nextAction(t)) return {cl:'dr',txt:dDue<0?'Vencida':'Sin siguiente acción'};
+  if(!t.owner_id) return {cl:'dr',txt:'Sin responsable'};
+  if(dDue<0) return {cl:'dr',txt:'Vencida'};
+  if(dFollow!==null && dFollow<0) return {cl:'dr',txt:'Seguimiento vencido'};
+  if(!nextAction(t)) return {cl:'dr',txt:'Sin siguiente acción'};
+  if(t.estado==='en_revision' && dAct!==null && dAct>=5) return {cl:'dr',txt:'Revisión bloqueada'};
   if(dAct!==null && dAct>=14) return {cl:'dr',txt:'Sin movimiento '+dAct+'d'};
-  if(dDue<=3 || (dAct!==null && dAct>=7)) return {cl:'dy',txt:dDue<=3?'Vence pronto':'Seguimiento frío'};
+  if(dDue<=7) return {cl:'dy',txt:dDue<=1?'Vence hoy/mañana':'Vence en '+dDue+'d'};
+  if(dFollow!==null && dFollow<=1) return {cl:'dy',txt:'Seguimiento inmediato'};
+  if(dAct!==null && dAct>=7) return {cl:'dy',txt:'Seguimiento frío'};
   return {cl:'dg',txt:'En control'};
+}
+function automationReason(t){
+  if(t.estado==='terminada') return 'Cerrada';
+  var h=crmHealth(t);
+  var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):null;
+  var fs=followDate(t), df=fs?dayDiff(fs):null;
+  if(!t.owner_id) return 'Asignar responsable';
+  if(d!==null && d<0) return 'Resolver vencimiento';
+  if(df!==null && df<0) return 'Actualizar seguimiento vencido';
+  if(!nextAction(t)) return 'Definir siguiente acción';
+  if(t.estado==='en_revision') return 'Desbloquear revisión';
+  return h.txt;
+}
+function automationBucket(t){
+  if(t.estado==='terminada') return 'cerrada';
+  var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;
+  var fs=followDate(t), df=fs?dayDiff(fs):999;
+  if(d<0) return 'vencidas';
+  if(df<0) return 'seguimiento_vencido';
+  if(!t.owner_id) return 'sin_dueno';
+  if(!nextAction(t)) return 'sin_accion';
+  if(t.estado==='en_revision') return 'revision';
+  if(d>=0&&d<=7) return 'proximos_7';
+  return 'control';
 }
 function crmPanel(t){
   var h = crmHealth(t), la = lastActivity(t), ds = daysSince(la);
@@ -814,10 +845,14 @@ function projectCommandCenterHtml(p){
   var byOwner=DB.usuarios.map(function(u){var a=open.filter(function(t){return t.owner_id===u.id;}); return {u:u,n:a.length,late:a.filter(function(t){return t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length,soon:a.filter(function(t){var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;return d>=0&&d<=7;}).length};}).filter(function(x){return x.n>0;}).sort(function(a,b){return b.n-a.n;});
   var ownerRows=byOwner.map(function(x){var load=x.n>=8?'Alta':(x.n>=4?'Media':'Ligera'); return '<tr><td>'+esc(x.u.nombre)+'</td><td>'+x.n+'</td><td>'+x.soon+'</td><td>'+x.late+'</td><td><span class="badge '+(x.n>=8?'br':x.n>=4?'by_':'bg_')+'">'+load+'</span></td></tr>';}).join('') || '<tr><td colspan="5">Sin carga activa</td></tr>';
   var groups=groupsForProject(p).map(function(g){var arr=tasks.filter(function(t){return taskGroup(t)===g;}); var fin=arr.filter(function(t){return t.estado==='terminada';}).length; var pct=arr.length?Math.round(fin/arr.length*100):0; var risks=arr.filter(function(t){return t.estado!=='terminada'&&crmHealth(t).cl==='dr';}).length; return '<div class="front-card"><div class="front-card-head"><strong>'+esc(g)+'</strong><span class="badge '+(risks?'br':'bg_')+'">'+(risks?risks+' riesgo(s)':'OK')+'</span></div><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div><div class="front-card-meta">'+fin+'/'+arr.length+' cerradas · '+pct+'%</div></div>';}).join('');
+  var filterCards=[['vencidas','Vencidas',overdue.length,'Riesgo rojo'],['proximos_7','Próx. 7 días',due7.length,'Seguimiento'],['sin_accion','Sin acción',noAction.length,'Definir paso'],['sin_dueno','Sin dueño',noOwner.length,'Asignar resp.'],['revision','En revisión',review.length,'Desbloquear'],['riesgos','Riesgos',blocked.length,'Atención']].map(function(f){return '<button class="filter-card" onclick="A.commandFilter(\''+p.id+'\',\''+f[0]+'\')"><span>'+esc(f[1])+'</span><strong>'+f[2]+'</strong><small>'+esc(f[3])+'</small></button>';}).join('');
+  var automationRows=blocked.concat(due7).filter(function(t,i,arr){return arr.findIndex(function(x){return x.id===t.id;})===i;}).slice(0,7).map(function(t){return '<tr><td><button class="linkbtn" onclick="A.quickEdit(\''+t.id+'\')">'+esc(t.titulo)+'</button><div class="muted-mini">'+esc(taskGroup(t))+'</div></td><td>'+esc(automationReason(t))+'</td><td>'+esc(uNm(t.owner_id))+'</td><td>'+fmt(followDate(t)||t.fecha_vencimiento)+'</td></tr>';}).join('') || '<tr><td colspan="4">Sin reglas activas de alerta</td></tr>';
   return '<div class="command-hero"><div><div class="sl">Estado general</div><h2><span class="dot '+status.cl+'"></span> '+status.label+'</h2><p>'+esc(status.copy)+'</p></div><button class="btn btnc" onclick="A.execReport(\''+p.id+'\')">Generar reporte ejecutivo</button></div>'
     +'<div class="sg command-kpis"><div class="sc"><div class="sl">Avance</div><div class="sn">'+progress+'%</div><div class="ss">'+done+'/'+tasks.length+' cerradas</div></div><div class="sc r"><div class="sl">Riesgos críticos</div><div class="sn">'+blocked.length+'</div><div class="ss">'+overdue.length+' vencidas</div></div><div class="sc y"><div class="sl">Próximos 7 días</div><div class="sn">'+due7.length+'</div><div class="ss">requieren seguimiento</div></div><div class="sc"><div class="sl">Sin acción / dueño</div><div class="sn">'+(noAction.length+noOwner.length)+'</div><div class="ss">'+noAction.length+' sin acción · '+noOwner.length+' sin dueño</div></div></div>'
-    +'<div class="command-layout"><div class="command-left"><div class="card"><div class="ch"><h3>Riesgos críticos</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Alertas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Riesgo</th><th>Fecha</th></tr></thead><tbody>'+riskRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Sin siguiente acción</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Frente</th><th>Resp.</th><th>Acción</th></tr></thead><tbody>'+noActionRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Próximos vencimientos</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Vence</th><th>Control</th></tr></thead><tbody>'+nextRows+'</tbody></table></div></div></div><div class="command-right"><div class="card"><div class="ch"><h3>Carga por responsable</h3></div><div class="tw"><table><thead><tr><th>Usuario</th><th>Activas</th><th>7 días</th><th>Venc.</th><th>Carga</th></tr></thead><tbody>'+ownerRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Avance por frente</h3></div><div class="front-cards">'+groups+'</div></div></div></div>';
+    +'<div class="automation-strip"><div><div class="sl">Filtros ejecutivos</div><h3>Automatizaciones operativas</h3></div><div class="filter-grid">'+filterCards+'</div></div>'
+    +'<div class="command-layout"><div class="command-left"><div class="card"><div class="ch"><h3>Riesgos críticos</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Alertas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Riesgo</th><th>Fecha</th></tr></thead><tbody>'+riskRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Reglas activas</h3><span class="chip">SM OS 2.2</span></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Acción sugerida</th><th>Resp.</th><th>Fecha</th></tr></thead><tbody>'+automationRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Sin siguiente acción</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Frente</th><th>Resp.</th><th>Acción</th></tr></thead><tbody>'+noActionRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Próximos vencimientos</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Vence</th><th>Control</th></tr></thead><tbody>'+nextRows+'</tbody></table></div></div></div><div class="command-right"><div class="card"><div class="ch"><h3>Carga por responsable</h3></div><div class="tw"><table><thead><tr><th>Usuario</th><th>Activas</th><th>7 días</th><th>Venc.</th><th>Carga</th></tr></thead><tbody>'+ownerRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Avance por frente</h3></div><div class="front-cards">'+groups+'</div></div></div></div>';
 }
+
 function executiveReportText(pid){
   var p=xid(DB.proyectos,pid); if(!p) return 'Proyecto no encontrado.';
   var tasks=projectTasks(pid), open=tasks.filter(function(t){return t.estado!=='terminada';}), done=tasks.length-open.length;
@@ -825,26 +860,40 @@ function executiveReportText(pid){
   var blocked=open.filter(function(t){return crmHealth(t).cl==='dr';});
   var due7=open.filter(function(t){var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;return d>=0&&d<=7;});
   var noAction=open.filter(function(t){return !nextAction(t);});
+  var noOwner=open.filter(function(t){return !t.owner_id;});
   var recent=projectActivityItems(pid).slice(0,5);
   var next=open.sort(function(a,b){return dayDiff((followDate(a)||a.fecha_vencimiento||pd(999)))-dayDiff((followDate(b)||b.fecha_vencimiento||pd(999)));}).slice(0,5);
+  var status = blocked.length ? 'Atención requerida' : (due7.length||noAction.length||noOwner.length ? 'Vigilancia' : 'En control');
   var lines=[];
   lines.push('REPORTE EJECUTIVO — '+p.nombre);
   lines.push('Fecha: '+fmtNow());
   lines.push('');
-  lines.push('1. Estado general');
-  lines.push('Avance: '+progress+'% ('+done+' de '+tasks.length+' tareas cerradas). Riesgos críticos: '+blocked.length+'. Próximos vencimientos a 7 días: '+due7.length+'. Tareas sin siguiente acción: '+noAction.length+'.');
+  lines.push('1. Lectura ejecutiva');
+  lines.push('Estado general: '+status+'. El proyecto registra '+tasks.length+' tareas, '+done+' cerradas y '+open.length+' activas. Avance global: '+progress+'%.');
+  if(blocked.length){var first=blocked[0];lines.push('La prioridad inmediata es atender "'+first.titulo+'", asignada a '+uNm(first.owner_id)+', por '+crmHealth(first).txt.toLowerCase()+'.');}
+  else if(due7.length){lines.push('La prioridad de la semana es dar seguimiento a '+due7.length+' tarea(s) con vencimiento próximo.');}
+  else {lines.push('No se detectan riesgos críticos en este momento.');}
   lines.push('');
-  lines.push('2. Riesgos principales');
-  if(blocked.length) blocked.slice(0,5).forEach(function(t){lines.push('- '+t.titulo+' | '+crmHealth(t).txt+' | Resp: '+uNm(t.owner_id)+' | Fecha: '+fmt(followDate(t)||t.fecha_vencimiento));}); else lines.push('- Sin riesgos críticos detectados.');
+  lines.push('2. Indicadores clave');
+  lines.push('- Avance: '+progress+'% ('+done+' de '+tasks.length+' tareas cerradas).');
+  lines.push('- Riesgos críticos: '+blocked.length+'.');
+  lines.push('- Próximos vencimientos a 7 días: '+due7.length+'.');
+  lines.push('- Tareas sin siguiente acción: '+noAction.length+'.');
+  lines.push('- Tareas sin responsable: '+noOwner.length+'.');
   lines.push('');
-  lines.push('3. Próximos pasos');
-  if(next.length) next.forEach(function(t){lines.push('- '+t.titulo+' | Acción: '+(nextAction(t)||'Definir siguiente acción')+' | Resp: '+uNm(t.owner_id)+' | Seguimiento: '+fmt(followDate(t)||t.fecha_vencimiento));}); else lines.push('- Sin pendientes abiertos.');
+  lines.push('3. Riesgos principales');
+  if(blocked.length) blocked.slice(0,5).forEach(function(t){lines.push('- '+t.titulo+' | Riesgo: '+crmHealth(t).txt+' | Responsable: '+uNm(t.owner_id)+' | Fecha: '+fmt(followDate(t)||t.fecha_vencimiento));}); else lines.push('- Sin riesgos críticos detectados.');
   lines.push('');
-  lines.push('4. Últimos movimientos');
-  if(recent.length) recent.forEach(function(it){lines.push('- '+fmtdt(it.ts)+' | '+(it.taskTitle||'Tarea')+' | '+String(it.body||'').replace(/^SM OS ·\s*/,''));}); else lines.push('- Sin actividad reciente.');
+  lines.push('4. Próximos pasos recomendados');
+  if(next.length) next.forEach(function(t){lines.push('- '+t.titulo+' | Acción sugerida: '+automationReason(t)+' | Siguiente acción: '+(nextAction(t)||'Definir siguiente acción')+' | Responsable: '+uNm(t.owner_id)+' | Seguimiento: '+fmt(followDate(t)||t.fecha_vencimiento));}); else lines.push('- Sin pendientes abiertos.');
   lines.push('');
   lines.push('5. Decisiones requeridas');
-  if(noAction.length) noAction.slice(0,5).forEach(function(t){lines.push('- Definir siguiente acción para: '+t.titulo+' | Resp: '+uNm(t.owner_id));}); else lines.push('- Sin decisiones urgentes registradas.');
+  if(noOwner.length) noOwner.slice(0,3).forEach(function(t){lines.push('- Asignar responsable para: '+t.titulo);});
+  if(noAction.length) noAction.slice(0,5).forEach(function(t){lines.push('- Definir siguiente acción para: '+t.titulo+' | Responsable actual: '+uNm(t.owner_id));});
+  if(!noOwner.length && !noAction.length) lines.push('- Sin decisiones urgentes registradas.');
+  lines.push('');
+  lines.push('6. Últimos movimientos');
+  if(recent.length) recent.forEach(function(it){lines.push('- '+fmtdt(it.ts)+' | '+(it.taskTitle||'Tarea')+' | '+String(it.body||'').replace(/^SM OS ·\s*/,''));}); else lines.push('- Sin actividad reciente.');
   return lines.join('\n');
 }
 
@@ -1384,6 +1433,25 @@ var A = {
     var txt=executiveReportText(pid);
     mOpen('Reporte ejecutivo · '+p.nombre, '<div class="report-box"><textarea id="exec-report-text" readonly>'+esc(txt)+'</textarea></div><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'exec-report-text\').value);toast(\'Reporte copiado ✓\',\'g\')">Copiar reporte</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>', true);
   },
+
+  commandFilter: function(pid,type){
+    var p=xid(DB.proyectos,pid); if(!p)return;
+    var open=projectTasks(pid).filter(function(t){return t.estado!=='terminada';});
+    var labels={vencidas:'Tareas vencidas',proximos_7:'Vencimientos próximos 7 días',sin_accion:'Sin siguiente acción',sin_dueno:'Sin responsable',revision:'En revisión',riesgos:'Riesgos críticos'};
+    var rows=open.filter(function(t){
+      var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;
+      if(type==='vencidas') return d<0;
+      if(type==='proximos_7') return d>=0&&d<=7;
+      if(type==='sin_accion') return !nextAction(t);
+      if(type==='sin_dueno') return !t.owner_id;
+      if(type==='revision') return t.estado==='en_revision';
+      if(type==='riesgos') return crmHealth(t).cl==='dr';
+      return false;
+    }).sort(function(a,b){return dayDiff((followDate(a)||a.fecha_vencimiento||pd(999)))-dayDiff((followDate(b)||b.fecha_vencimiento||pd(999)));});
+    var body=rows.map(function(t){return '<tr><td><button class="linkbtn" onclick="mClose();A.quickEdit(\''+t.id+'\')">'+esc(t.titulo)+'</button><div class="muted-mini">'+esc(taskGroup(t))+'</div></td><td>'+esc(uNm(t.owner_id))+'</td><td>'+esc(automationReason(t))+'</td><td>'+fmt(followDate(t)||t.fecha_vencimiento)+'</td><td><button class="btn btns btnc" onclick="mClose();A.quickEdit(\''+t.id+'\')">Editar</button></td></tr>';}).join('') || '<tr><td colspan="5">Sin registros para este filtro.</td></tr>';
+    mOpen((labels[type]||'Filtro ejecutivo')+' · '+p.nombre,'<div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Acción sugerida</th><th>Fecha</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div><div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button></div>',true);
+  },
+
 
   /* PROYECTO */
   pkManageFronts: function(pid){
