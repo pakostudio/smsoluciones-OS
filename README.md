@@ -5,12 +5,14 @@ CRM ligero para SM Soluciones. Funciona como app estática en GitHub Pages y usa
 ## Archivos necesarios
 
 - index.html
+- assets/css/styles.css
+- assets/js/app.js
 - assets/sm-logo.png
 - README.md
 
 ## Backend
 
-El frontend se conecta a Supabase desde `index.html`. Las tablas principales son:
+El frontend se conecta a Supabase desde `assets/js/app.js`; `index.html` conserva la estructura base, los CDN y la carga de estilos/scripts. Las tablas principales son:
 
 - usuarios
 - clientes
@@ -64,3 +66,8 @@ Prueba estructural:
 ## Login
 
 El login actual usa usuarios y PIN dentro de la tabla `usuarios`. Sirve para operación interna controlada, pero antes de producción conviene migrar a Supabase Auth y políticas RLS estrictas.
+
+
+## SM OS 1.5
+
+La app fue refactorizada para GitHub Pages: `index.html` quedó como estructura base, los estilos viven en `assets/css/styles.css` y la lógica principal en `assets/js/app.js`. Esto permite seguir creciendo sin saturar un solo archivo.

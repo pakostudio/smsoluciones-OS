@@ -3,14 +3,16 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+const appJs = fs.readFileSync(new URL('../assets/js/app.js', import.meta.url), 'utf8');
+const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
   .map((match) => match[1])
   .filter(Boolean);
 
-scripts.forEach((script) => new Function(script));
+inlineScripts.forEach((script) => new Function(script));
+new Function(appJs);
 
 function readArray(name) {
-  const match = html.match(new RegExp(`var ${name} = (\\[[\\s\\S]*?\\n\\]);`));
+  const match = appJs.match(new RegExp(`var ${name} = (\\[[\\s\\S]*?\\n\\]);`));
   assert.ok(match, `${name} debe existir`);
   return new Function(`return ${match[1]}`)();
 }
@@ -30,19 +32,20 @@ assert.ok(plan[1].subtasks.includes('SPOT Sur CDMX'));
 assert.ok(plan[1].subtasks.includes('SPOT Tlatelolco'));
 
 ['pkWorkPlanHtml', 'pkTaskProgress', 'pkInitPlan', 'pkToggleSub', 'pkAdvance', 'pkSaveAdvance'].forEach((name) => {
-  assert.ok(html.includes(name), `${name} debe estar integrado`);
+  assert.ok(appJs.includes(name), `${name} debe estar integrado`);
 });
-assert.match(html, /Plan de trabajo ProKicks/);
-assert.match(html, /\['tareas',mainLabel\],\['reporte','Reporte'\],\['kanban','Kanban'\],\['calendario','Calendario'\],\['gantt','Gantt'\],\['pipeline','Pipeline'\]/);
-assert.ok(!html.includes("if(isProkicksProject(p)) return prokicksProjectOverview();"));
+assert.match(appJs, /Plan de trabajo ProKicks/);
+assert.match(appJs, /\['tareas',mainLabel\],\['reporte','Reporte'\],\['kanban','Kanban'\],\['calendario','Calendario'\],\['gantt','Gantt'\],\['pipeline','Pipeline'\]/);
+assert.ok(!appJs.includes("if(isProkicksProject(p)) return prokicksProjectOverview();"));
 
-assert.ok(html.includes('Asignación operativa · no otorga acceso al CRM'));
-assert.ok(html.includes('Seguimiento CRM ProKicks'));
-assert.ok(html.includes('Registrar avance'));
-assert.ok(!html.includes('Billñi'));
-assert.ok(!html.includes('Jorege'));
+assert.ok(appJs.includes('Asignación y control ProKicks'));
+assert.ok(appJs.includes('responsables son etiquetas operativas'));
+assert.ok(appJs.includes('Seguimiento CRM ProKicks'));
+assert.ok(appJs.includes('Registrar avance'));
+assert.ok(!appJs.includes('Billñi'));
+assert.ok(!appJs.includes('Jorege'));
 
-const mainScript = scripts.at(-1).split('/* ── INIT ── */')[0];
+const mainScript = appJs.split('/* ── INIT ── */')[0];
 const element = new Proxy({
   value: '', textContent: '', innerHTML: '', style: {}, dataset: {},
   classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
@@ -71,7 +74,7 @@ const boardRendered = vm.runInContext(`(() => {
 assert.match(boardRendered, /Frente/);
 assert.match(boardRendered, /SPOT Sur CDMX/);
 assert.match(boardRendered, /Billi/);
-assert.match(boardRendered, /Registrar avance/);
+assert.match(boardRendered, /Gestionar/);
 
 const workspaceViews = vm.runInContext(`(() => {
   DB.pagos=[]; DB.prokicks_records=[]; DB.prokicks_settings=[];
