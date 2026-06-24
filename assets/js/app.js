@@ -889,7 +889,7 @@ function projectActivityItems(pid){
 }
 function operationalBoard(p,limit){
   var ofunamBoard = isOfunamProject(p);
-  var showCommentCol = !ofunamBoard;
+  var showCommentCol = false; // SM OS 2.4.4: ocultar Último comentario en tableros operativos para evitar desborde
   var tasks = projectTasks(p.id).sort(function(a,b){
     var ga = taskGroup(a), gb = taskGroup(b);
     if(ga!==gb) return groupsForProject(p).indexOf(ga)-groupsForProject(p).indexOf(gb);
@@ -902,10 +902,10 @@ function operationalBoard(p,limit){
     var pk=isProkicksProject(p);
     var alert = '<span class="sem"><span class="dot '+h.cl+'"></span>'+esc(h.txt)+'</span>';
     return '<tr>'
-      +'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>'
+      +(ofunamBoard?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
       +'<td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;cursor:pointer;text-align:left" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted);margin-top:3px">Inicio '+fmt(t.fecha_inicio)+' · Término '+fmt(t.fecha_vencimiento)+'</div></td>'
       +'<td>'+bSt(t.estado)+'</td>'
-      +'<td style="min-width:220px">'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
+      +'<td>'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
       +'<td>'+fmt(followDate(t)||t.fecha_proximo_seguimiento)+'</td>'
       +'<td>'+esc(pk?pkInternalOwner(t):uNm(t.owner_id))+'</td>'
       +'<td>'+alert+'</td>'
@@ -916,7 +916,8 @@ function operationalBoard(p,limit){
   var frontStrip=isProkicksProject(p)?'<div class="front-strip">'+groupsForProject(p).map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div>':'';
   var tableClass = 'operational-table' + (ofunamBoard ? ' ofunam-table' : '');
   var commentHead = showCommentCol ? '<th>Último comentario</th>' : '';
-  return frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr><th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th><th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  var groupHead = ofunamBoard ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
+  return frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';

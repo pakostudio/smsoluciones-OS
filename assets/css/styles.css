@@ -545,3 +545,90 @@ tr:hover td{background:var(--surface2)}
 .operational-table .operational-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch}
 .operational-table .operational-actions .btn{width:100%;min-width:0;padding:7px 8px;font-size:12px}
 @media(max-width:1200px){.operational-table{min-width:980px}}
+
+
+/* SM OS 2.4.5 — ancho definitivo tableros operativos
+   El tablero no debe tapar la columna Acciones. Se elimina dependencia de columna comentario
+   y se compacta tabla sin scroll horizontal visible en desktop. */
+.sticky-board{overflow:hidden;}
+.sticky-board .tw{overflow-x:hidden;max-width:100%;}
+.operational-table{
+  width:100%;
+  min-width:0 !important;
+  table-layout:fixed;
+}
+.operational-table th,
+.operational-table td{
+  padding:9px 8px;
+  font-size:12px;
+  vertical-align:middle;
+}
+.operational-table th:nth-child(1){width:9%;}
+.operational-table th:nth-child(2){width:23%;}
+.operational-table th:nth-child(3){width:9%;}
+.operational-table th:nth-child(4){width:26%;}
+.operational-table th:nth-child(5){width:9%;}
+.operational-table th:nth-child(6){width:6%;}
+.operational-table th:nth-child(7){width:10%;}
+.operational-table th:nth-child(8){width:118px;}
+.operational-table td:nth-child(2),
+.operational-table td:nth-child(4),
+.operational-table td:nth-child(7){
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+.operational-table th:last-child,
+.operational-table td:last-child{
+  position:sticky;
+  right:0;
+  z-index:6;
+  background:var(--surface);
+  box-shadow:-10px 0 16px rgba(11,37,71,.08);
+}
+.operational-table th:last-child{z-index:30;}
+.operational-actions{display:grid;gap:6px;}
+.operational-actions .btn{width:100%;font-size:11px;padding:6px 6px;white-space:nowrap;}
+@media(max-width:1180px){
+  .operational-table{min-width:980px !important;}
+  .sticky-board .tw{overflow-x:auto;}
+}
+
+
+/* SM OS 2.4.5 — FIX FINAL OFUNAM
+   Se elimina la columna Grupo en OFUNAM y se reparte el ancho real para que Acciones siempre sea visible. */
+.operational-table.ofunam-table{
+  width:100% !important;
+  min-width:0 !important;
+  table-layout:fixed !important;
+}
+.operational-table.ofunam-table th,
+.operational-table.ofunam-table td{
+  padding:8px 7px !important;
+  font-size:11.5px !important;
+  line-height:1.18 !important;
+}
+.operational-table.ofunam-table th:nth-child(1){width:25% !important;} /* Registro */
+.operational-table.ofunam-table th:nth-child(2){width:9% !important;}  /* Estado */
+.operational-table.ofunam-table th:nth-child(3){width:30% !important;} /* Siguiente acción */
+.operational-table.ofunam-table th:nth-child(4){width:9% !important;}  /* Seguimiento */
+.operational-table.ofunam-table th:nth-child(5){width:6% !important;}  /* Resp. */
+.operational-table.ofunam-table th:nth-child(6){width:11% !important;} /* Alerta */
+.operational-table.ofunam-table th:nth-child(7){width:110px !important;} /* Acciones */
+.operational-table.ofunam-table td:nth-child(1),
+.operational-table.ofunam-table td:nth-child(3),
+.operational-table.ofunam-table td:nth-child(6){
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+}
+.operational-table.ofunam-table th:last-child,
+.operational-table.ofunam-table td:last-child{
+  position:static !important;
+  right:auto !important;
+  box-shadow:none !important;
+  background:var(--surface) !important;
+}
+.operational-table.ofunam-table .operational-actions .btn{
+  font-size:11px !important;
+  padding:6px 5px !important;
+  white-space:nowrap !important;
+}
