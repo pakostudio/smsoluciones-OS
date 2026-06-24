@@ -525,3 +525,23 @@ tr:hover td{background:var(--surface2)}
 @media(max-width:1200px){
   .operational-table.ofunam-table{min-width:1080px}
 }
+
+
+/* SM OS 2.4.3 — layout verificado: tablero operativo sin desborde */
+.tw{max-width:100%;overflow-x:auto;overflow-y:visible}
+.operational-table{width:100%;min-width:0;table-layout:fixed}
+.operational-table th,.operational-table td{box-sizing:border-box;vertical-align:middle}
+.operational-table th:nth-child(1){width:9%}
+.operational-table th:nth-child(2){width:24%}
+.operational-table th:nth-child(3){width:9%}
+.operational-table th:nth-child(4){width:26%}
+.operational-table th:nth-child(5){width:10%}
+.operational-table th:nth-child(6){width:7%}
+.operational-table th:nth-child(7){width:9%}
+.operational-table th:nth-child(8){width:112px}
+.operational-table td:nth-child(2),
+.operational-table td:nth-child(4),
+.operational-table td:nth-child(7){overflow-wrap:anywhere;word-break:normal}
+.operational-table .operational-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.operational-table .operational-actions .btn{width:100%;min-width:0;padding:7px 8px;font-size:12px}
+@media(max-width:1200px){.operational-table{min-width:980px}}
