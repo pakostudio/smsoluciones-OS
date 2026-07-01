@@ -1939,7 +1939,7 @@ var A = {
       +'<div class="fr2">'+FLD('qe_fv','Fecha término','date',t.fecha_vencimiento||'')+FLD('qe_ps','Próximo seguimiento','date',followDate(t)||'')+'</div>'
       +FLD('qe_sa','Siguiente acción','text',nextAction(t)||'')
       +FTA('qe_note','Comentario ejecutivo / avance','')
-      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveQuickEdit(\''+id+'\')">Guardar</button></div>'
+      +'<div class="fa">'+(adm()?'<button class="btn btnd" onclick="A.dt(\''+id+'\')">Eliminar tarea</button>':'')+'<button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveQuickEdit(\''+id+'\')">Guardar</button></div>'
       +'</div>',true);
   },
   saveQuickEdit: async function(id){
@@ -1977,7 +1977,7 @@ var A = {
       +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Contacto</h3>'+contacts+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Registrar actividad</h3>'+FTA('mg_note','Comentario / avance','')+'</div>'
       +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Historial ('+comments.length+')</h3><div class="pkw-log">'+timeline+'</div></div>'
-      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveManagedTask(\''+id+'\')">Guardar actualización</button></div>'
+      +'<div class="fa">'+(adm()?'<button class="btn btnd" onclick="A.dt(\''+id+'\')">Eliminar tarea</button>':'')+'<button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveManagedTask(\''+id+'\')">Guardar actualización</button></div>'
       +'</div>',true);
   },
   saveManagedTask: async function(id){
@@ -2060,7 +2060,8 @@ var A = {
     await refresh(); toast('Estado actualizado ✓','g');
   },
   dt: async function(id){
-    if(!confirm('¿Eliminar esta tarea?')) return;
+    if(!adm()){toast('Solo administrador puede eliminar tareas','r');return;}
+    if(!confirm('¿Eliminar definitivamente esta tarea? Se eliminarán también comentarios, microtareas y entregables. Esta acción no se puede deshacer.')) return;
     await sb.from('comentarios').delete().eq('tarea_id',id);
     await sb.from('subtareas').delete().eq('tarea_id',id);
     await sb.from('entregables').delete().eq('tarea_id',id);
