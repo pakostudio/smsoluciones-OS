@@ -632,3 +632,50 @@ tr:hover td{background:var(--surface2)}
   padding:6px 5px !important;
   white-space:nowrap !important;
 }
+
+/* SM OS 2.4.7 — Filtros directos del tablero operativo */
+.board-filters{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(150px,1fr)) auto;
+  gap:8px;
+  align-items:end;
+  margin-bottom:10px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  padding:10px;
+  box-shadow:var(--shadow);
+}
+.board-filter{display:grid;gap:5px;min-width:0}
+.board-filter label{
+  font-size:10px;
+  font-weight:900;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+.board-filter select{
+  width:100%;
+  background:var(--surface2);
+  border:1px solid var(--line2);
+  border-radius:var(--rs);
+  padding:8px 10px;
+  color:var(--ink);
+  font-size:12px;
+  font-weight:800;
+  outline:none;
+}
+.board-filter-count{
+  font-size:12px;
+  font-weight:900;
+  color:var(--muted);
+  white-space:nowrap;
+  padding:8px 2px;
+}
+@media(max-width:900px){
+  .board-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .board-filter-count{grid-column:1/-1}
+}
+@media(max-width:600px){
+  .board-filters{grid-template-columns:1fr}
+}

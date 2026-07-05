@@ -72,6 +72,7 @@ var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
 var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
+var BOARD_FILTERS = {estado:'',accion:'',seguimiento:'',responsable:''};
 var CLIENT_PROJECT_FOCUS = true; // Privacidad cliente: al estar dentro de un proyecto, la navegación lateral solo muestra ese proyecto.
 
 /* ── UTILS ── */
@@ -887,6 +888,55 @@ function projectActivityItems(pid){
   projectTasks(pid).forEach(function(t){ taskActivityItems(t).forEach(function(it){ it.taskId=t.id; it.taskTitle=t.titulo; it.projectId=pid; items.push(it); }); });
   return items.sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
 }
+function boardOwnerName(t,p){
+  return isProkicksProject(p)?pkInternalOwner(t):uNm(t.owner_id);
+}
+function boardActionKind(t){
+  var a = String(nextAction(t)||'').toLowerCase();
+  if(!a) return 'sin_accion';
+  if(/recordatorio|recordar/.test(a)) return 'recordatorio';
+  if(/dalia/.test(a)) return 'dalia';
+  if(/espera|respuesta/.test(a)) return 'espera';
+  if(/propuesta|vobo|whatsapp/.test(a)) return 'propuesta';
+  return 'otra';
+}
+function boardFollowKind(t){
+  var f = followDate(t)||t.fecha_proximo_seguimiento||t.fecha_vencimiento;
+  if(!f) return 'sin_fecha';
+  var d = dayDiff(f);
+  if(d<0) return 'vencido';
+  if(d===0) return 'hoy';
+  if(d<=7) return 'semana';
+  return 'futuro';
+}
+function boardFilterTasks(tasks,p){
+  var f = BOARD_FILTERS;
+  return tasks.filter(function(t){
+    if(f.estado && t.estado!==f.estado) return false;
+    if(f.accion && boardActionKind(t)!==f.accion) return false;
+    if(f.seguimiento && boardFollowKind(t)!==f.seguimiento) return false;
+    if(f.responsable && boardOwnerName(t,p)!==f.responsable) return false;
+    return true;
+  });
+}
+function boardFilterSelect(label,key,options,value){
+  return '<div class="board-filter"><label>'+esc(label)+'</label><select onchange="A.setBoardFilter(\''+key+'\',this.value)">'
+    +options.map(function(o){return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(value)?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')
+    +'</select></div>';
+}
+function boardFiltersHtml(tasks,filtered,p){
+  var owners = [];
+  tasks.forEach(function(t){var o=boardOwnerName(t,p); if(o && owners.indexOf(o)<0) owners.push(o);});
+  owners.sort(function(a,b){return a.localeCompare(b,'es');});
+  var ownerOpts = [['','Todos']].concat(owners.map(function(o){return [o,o];}));
+  return '<div class="board-filters">'
+    +boardFilterSelect('Status','estado',[['','Todos'],['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],BOARD_FILTERS.estado)
+    +boardFilterSelect('Última acción','accion',[['','Todas'],['sin_accion','Sin acción'],['recordatorio','Recordatorio'],['dalia','Dalia'],['espera','En espera'],['propuesta','Propuesta / VoBo'],['otra','Otra']],BOARD_FILTERS.accion)
+    +boardFilterSelect('Seguimiento','seguimiento',[['','Todos'],['vencido','Vencido'],['hoy','Hoy'],['semana','Próximos 7 días'],['sin_fecha','Sin fecha'],['futuro','Más adelante']],BOARD_FILTERS.seguimiento)
+    +boardFilterSelect('Responsable','responsable',ownerOpts,BOARD_FILTERS.responsable)
+    +'<div><div class="board-filter-count">'+filtered.length+' de '+tasks.length+'</div><button class="btn btns btng" onclick="A.clearBoardFilters()">Limpiar</button></div>'
+    +'</div>';
+}
 function operationalBoard(p,limit){
   var ofunamBoard = isOfunamProject(p);
   var showCommentCol = false; // SM OS 2.4.4: ocultar Último comentario en tableros operativos para evitar desborde
@@ -895,8 +945,11 @@ function operationalBoard(p,limit){
     if(ga!==gb) return groupsForProject(p).indexOf(ga)-groupsForProject(p).indexOf(gb);
     return dayDiff(a.fecha_proximo_seguimiento||a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_proximo_seguimiento||b.fecha_vencimiento||pd(999));
   });
+  var allTasks = tasks.slice();
+  tasks = boardFilterTasks(tasks,p);
   if(limit) tasks = tasks.slice(0,limit);
-  if(!tasks.length) return '<div class="empty"><p>Sin registros en este proyecto</p></div>';
+  var filterBar = boardFiltersHtml(allTasks,tasks,p);
+  if(!tasks.length) return filterBar+'<div class="empty"><p>Sin registros con esos filtros</p></div>';
   var rows = tasks.map(function(t){
     var h=crmHealth(t), lc=lastComment(t), cCount=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).length;
     var pk=isProkicksProject(p);
@@ -907,7 +960,7 @@ function operationalBoard(p,limit){
       +'<td>'+bSt(t.estado)+'</td>'
       +'<td>'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
       +'<td>'+fmt(followDate(t)||t.fecha_proximo_seguimiento)+'</td>'
-      +'<td>'+esc(pk?pkInternalOwner(t):uNm(t.owner_id))+'</td>'
+      +'<td>'+esc(boardOwnerName(t,p))+'</td>'
       +'<td>'+alert+'</td>'
       +(showCommentCol?'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>':'')
       +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
@@ -917,7 +970,7 @@ function operationalBoard(p,limit){
   var tableClass = 'operational-table' + (ofunamBoard ? ' ofunam-table' : '');
   var commentHead = showCommentCol ? '<th>Último comentario</th>' : '';
   var groupHead = ofunamBoard ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
-  return frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  return filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
@@ -1656,6 +1709,14 @@ var A = {
 
 
   /* PROYECTO */
+  setBoardFilter: function(key,value){
+    BOARD_FILTERS[key]=value||'';
+    render();
+  },
+  clearBoardFilters: function(){
+    BOARD_FILTERS={estado:'',accion:'',seguimiento:'',responsable:''};
+    render();
+  },
   pkManageFronts: function(pid){
     var p=xid(DB.proyectos,pid); if(!p||!isProkicksProject(p))return;
     var custom=configuredProjectGroups(p);
