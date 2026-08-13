@@ -1,6 +1,6 @@
 /* ── SUPABASE ── */
-const SB_URL = 'https://bljqlibgwvpflrtwgsef.supabase.co';
-const SB_KEY = 'sb_publishable_09cUDYT1aBp4lJF1l1duUA_WLhJXCfb';
+const SB_URL = 'https://diqbmyqvuyollvlvjniz.supabase.co';
+const SB_KEY = 'sb_publishable_R_XGqN5PlehELFz7u3fgeg_ekGPb38Z';
 function restClient(url,key){
   function enc(v){ return encodeURIComponent(v==null?'':v); }
   function builder(tbl){
