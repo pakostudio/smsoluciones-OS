@@ -1402,6 +1402,7 @@ function vPI(){
 
 /* PROKICKS */
 var PKTABS = [['dashboard','Dashboard inventario'],['prospecto','Prospectos'],['cliente','Clientes ProKicks'],['venta','Ventas'],['comodato','Comodatos'],['cobranza','Cobranza']];
+var PKTAB_SINGLE = {prospecto:'prospecto',cliente:'cliente',venta:'venta',comodato:'comodato',cobranza:'cobranza'};
 var PKSCHEMAS = {
   prospecto:[['cliente','Club / empresa','text',true],['contacto','Contacto','text'],['cargo','Cargo','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['rep','Rep','text'],['fuente','Fuente','text'],['etapa','Etapa','select',true,['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido']],['siguiente_accion','Siguiente acción','text'],['proximo_seguimiento','Próximo seguimiento','date'],['probabilidad','Probabilidad %','number'],['monto_estimado','Monto estimado','number'],['devices_estimados','Devices estimados','number'],['notas','Notas','textarea']],
   cliente:[['nombre','Nombre','text',true],['empresa','Club / Empresa','text'],['contacto','Contacto','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['fuente','Fuente','text'],['notas','Notas','textarea']],
@@ -1489,7 +1490,8 @@ function vPK(){
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
   var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
-  return '<div class="sh"><h2>Operación ProKicks</h2>'+(PKTAB!=='dashboard'?'<button class="btn btnc" onclick="A.pkNew()">+ Nuevo registro</button>':'')+'</div><div class="tabs">'+tabs+'</div>'+body;
+  var addBtn = PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '';
+  return '<div class="sh"><h2>Operación ProKicks</h2>'+addBtn+'</div><div class="tabs">'+tabs+'</div>'+body;
 }
 function pkDashboard(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
@@ -1503,16 +1505,17 @@ function pkDashboard(){
   var inventario=pkNum(st.inventarioRedwood,invAuto);
   var metrics=[['Total producción',total],['Inventario',inventario],['Vendidos',vendidos],['En comodato',comodato],['Prospectos',prospectos.length],['Ventas cerradas',cerradas.length],['Ventas incompletas',incompletas.length],['Por cobrar',pkMoney(saldo)]];
   var note = st.inventarioRedwood===undefined||st.inventarioRedwood===null||st.inventarioRedwood==='' ? 'Inventario calculado automáticamente.' : 'Inventario capturado manualmente.';
-  return '<div class="sh"><h2>Dashboard inventario</h2><button class="btn btnc" onclick="A.pkSettings()">Editar inventario</button></div>'
+  var quick = '<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btns btnc" onclick="PKTAB=\'prospecto\';A.pkNew()">+ Prospecto</button><button class="btn btns btnc" onclick="PKTAB=\'cliente\';A.pkNew()">+ Cliente</button><button class="btn btns btnc" onclick="PKTAB=\'venta\';A.pkNew()">+ Venta</button><button class="btn btns btnc" onclick="PKTAB=\'comodato\';A.pkNew()">+ Comodato</button><button class="btn btns btnc" onclick="PKTAB=\'cobranza\';A.pkNew()">+ Cobranza</button><button class="btn btns btng" onclick="A.pkSettings()">Editar inventario</button></div>';
+  return '<div class="sh"><h2>Dashboard inventario</h2>'+quick+'</div>'
     +'<div class="sg">'+metrics.map(function(m){return '<div class="sc"><div class="sl">'+esc(m[0])+'</div><div class="sn" style="font-size:24px">'+esc(String(m[1]))+'</div></div>';}).join('')+'</div>'
     +'<div class="card" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted)">'+esc(note)+' Inventario teórico: '+invAuto+' · Última actualización: '+(st.actualizadoEn?fmtdt(st.actualizadoEn):'—')+'</div></div>';
 }
 function pkTable(tipo){
   var rows=pkRows(tipo);
   var cols={prospecto:[['cliente','Prospecto'],['contacto','Contacto'],['rep','Rep'],['etapa','Etapa'],['siguiente_accion','Siguiente acción'],['proximo_seguimiento','Seguimiento'],['probabilidad','Prob.'],['monto_estimado','Monto']],cliente:[['nombre','Nombre'],['empresa','Club / Empresa'],['contacto','Contacto'],['ciudad','Ciudad'],['telefono','Teléfono'],['fuente','Fuente']],venta:[['cliente','Cliente'],['rep','Rep'],['devices','Devices'],['monto','Monto'],['saldo','Saldo'],['estadoVenta','Venta'],['estadoPago','Pago'],['entrega','Entrega']],comodato:[['cliente','Cliente'],['rep','Rep'],['devices','Devices'],['estado','Estado'],['fechaEntrega','Entrega'],['fechaDevolucion','Devolución'],['ciudad','Ciudad']],cobranza:[['cliente','Cliente'],['rep','Rep'],['monto','Monto'],['saldo','Saldo'],['estadoVenta','Estado'],['accion','Acción']]}[tipo]||[];
-  var head=cols.map(function(c){return '<th>'+esc(c[1])+'</th>';}).join('')+'<th></th>';
+  var head=cols.map(function(c){return '<th>'+esc(c[1])+'</th>';}).join('')+'<th>Acciones</th>';
   var body=rows.map(function(r){return '<tr>'+cols.map(function(c){var v=pkVal(r,c[0]); if(['monto','saldo','monto_estimado'].indexOf(c[0])>=0)v=pkMoney(v); else if(['estadoVenta','estadoPago','entrega','estado','etapa'].indexOf(c[0])>=0)v=pkStatus(v); else v=esc(v||''); return '<td>'+v+'</td>';}).join('')+'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.pkEdit(\''+r.id+'\')">Editar</button><button class="btn btns btnd" onclick="A.pkDel(\''+r.id+'\')">Eliminar</button></div></td></tr>';}).join('') || '<tr><td colspan="'+(cols.length+1)+'"><div class="empty"><p>Sin registros</p></div></td></tr>';
-  return '<div class="card"><div class="ch"><h3>'+esc((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo)+'</h3><span class="chip">'+rows.length+' registro(s)</span></div><div class="tw"><table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
+  return '<div class="card"><div class="ch"><h3>'+esc((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo)+'</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip">'+rows.length+' registro(s)</span><button class="btn btns btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[tipo]||'registro')+'</button></div></div><div class="tw"><table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
 }
 
 /* CLIENTES */
@@ -2318,7 +2321,8 @@ var A = {
       return FLD(key,lbl,typ,val);
     }).join('');
     var title = (row?'Editar ':'Nuevo ')+((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo);
-    mOpen(title,'<div class="fg">'+fields+'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkSave(\''+(row?row.id:'')+'\',\''+tipo+'\')">Guardar</button></div></div>',true);
+    var deleteBtn = row ? '<button class="btn btnd" onclick="mClose();A.pkDel(\''+row.id+'\')">Eliminar</button>' : '';
+    mOpen(title,'<div class="fg">'+fields+'<div class="fa">'+deleteBtn+'<button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkSave(\''+(row?row.id:'')+'\',\''+tipo+'\')">Guardar</button></div></div>',true);
   },
   pkSave: async function(id,tipo){
     var schema = PKSCHEMAS[tipo]; if(!schema) return;
