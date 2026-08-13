@@ -518,6 +518,17 @@ function getAlerts(){
 }
 
 /* ── DB CRUD ── */
+async function loadUsersForLogin(){
+  try{
+    var u = await sb.from('usuarios').select('*').order('nombre');
+    if(u.error) throw u.error;
+    DB.usuarios = u.data || [];
+    return DB.usuarios.length > 0;
+  }catch(e){
+    console.error('login users failed', e);
+    return false;
+  }
+}
 async function loadAll(){
   try {
     var [u,c,p,t,st,cm,en,pa,re] = await Promise.all([
@@ -2525,14 +2536,20 @@ setInterval(updClock, 60000);
 /* ── INIT ── */
 (async function(){
   document.getElementById('vc').innerHTML = '<div class="loading"><div class="spin"></div><span>Conectando con Supabase…</span></div>';
+  var usersOk = await loadUsersForLogin();
+  if(!usersOk){
+    document.getElementById('lerr').textContent = 'No se pudieron cargar usuarios. Revisa internet/VPN y recarga.';
+    document.getElementById('vc').innerHTML = '<div class="loading"><span style="color:var(--red)">Error cargando usuarios. Usa Recargar app.</span></div>';
+    return;
+  }
+  buildSelector();
+  document.getElementById('vc').innerHTML = '';
   var ok = await loadAll();
+  buildProjectNav();
+  if(!ok) document.getElementById('lerr').textContent = 'Login disponible. Algunos datos siguen cargando; entra y usa Actualizar datos.';
   if(ok){
-    buildSelector();
-    buildProjectNav();
-    if(!restoreSession()) document.getElementById('vc').innerHTML = '';
-  } else {
-    document.getElementById('lerr').textContent = 'No se pudo conectar con Supabase. Revisa internet/VPN y recarga.';
-    document.getElementById('vc').innerHTML = '<div class="loading"><span style="color:var(--red)">⚠️ Error de conexión. Recarga la página.</span></div>';
+    if(!SES) restoreSession();
+    else render();
   }
 })();
 
