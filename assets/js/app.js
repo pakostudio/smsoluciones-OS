@@ -73,6 +73,7 @@ var SESSION_KEY = 'sm_os_session_v1';
 var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
 var BOARD_FILTERS = {estado:'',accion:'',seguimiento:'',responsable:''};
+var CONTROL_FILTERS = {estado:'',responsable:'',area:'',foco:''};
 var CLIENT_PROJECT_FOCUS = true; // Privacidad cliente: al estar dentro de un proyecto, la navegación lateral solo muestra ese proyecto.
 
 /* ── UTILS ── */
@@ -983,6 +984,72 @@ function operationalBoard(p,limit){
   var groupHead = ofunamBoard ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
   return filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
+
+function controlProgress(t){
+  if(t.estado==='terminada') return 100;
+  var n=Number(t.control_avance);
+  return Number.isFinite(n)?Math.max(0,Math.min(100,Math.round(n))):0;
+}
+function controlStateLabel(t){
+  if(t.control_bloqueado) return '<span class="badge br_">Bloqueada</span>';
+  if(t.estado==='terminada') return '<span class="badge bg_">Completada</span>';
+  if(t.estado==='en_proceso'||t.estado==='en_revision'||t.estado==='aprobada') return '<span class="badge bb_">En curso</span>';
+  return '<span class="badge bx_">No iniciada</span>';
+}
+function controlArea(t){ return taskGroup(t)||'General'; }
+function controlFilteredTasks(tasks,p){
+  return tasks.filter(function(t){
+    var state=t.control_bloqueado?'bloqueada':(t.estado==='terminada'?'completada':((t.estado==='en_proceso'||t.estado==='en_revision'||t.estado==='aprobada')?'en_curso':'no_iniciada'));
+    if(CONTROL_FILTERS.estado&&state!==CONTROL_FILTERS.estado)return false;
+    if(CONTROL_FILTERS.responsable&&boardOwnerName(t,p)!==CONTROL_FILTERS.responsable)return false;
+    if(CONTROL_FILTERS.area&&controlArea(t)!==CONTROL_FILTERS.area)return false;
+    if(CONTROL_FILTERS.foco==='bloqueos'&&!t.control_bloqueado)return false;
+    if(CONTROL_FILTERS.foco==='decisiones'&&!t.control_decision_requerida)return false;
+    if(CONTROL_FILTERS.foco==='cliente'&&t.control_visible_cliente===false)return false;
+    return true;
+  });
+}
+function controlSelect(label,key,options,value){
+  return '<label class="control-filter"><span>'+esc(label)+'</span><select onchange="A.setControlFilter(\''+key+'\',this.value)">'+options.map(function(o){return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(value)?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></label>';
+}
+function projectExecutionBoardHtml(p){
+  var tasks=projectTasks(p.id).slice().sort(function(a,b){return Number(a.control_orden||0)-Number(b.control_orden||0)||String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
+  var completed=tasks.filter(function(t){return t.estado==='terminada';}).length;
+  var blocked=tasks.filter(function(t){return !!t.control_bloqueado;}).length;
+  var decisions=tasks.filter(function(t){return !!t.control_decision_requerida;}).length;
+  var progress=tasks.length?Math.round(tasks.reduce(function(sum,t){return sum+controlProgress(t);},0)/tasks.length):0;
+  var owners=[],areas=[];
+  tasks.forEach(function(t){var o=boardOwnerName(t,p),a=controlArea(t);if(o&&owners.indexOf(o)<0)owners.push(o);if(a&&areas.indexOf(a)<0)areas.push(a);});
+  owners.sort();areas.sort();
+  var filtered=controlFilteredTasks(tasks,p);
+  var filters='<div class="control-toolbar">'
+    +controlSelect('Estado','estado',[['','Todos'],['no_iniciada','No iniciada'],['en_curso','En curso'],['bloqueada','Bloqueada'],['completada','Completada']],CONTROL_FILTERS.estado)
+    +controlSelect('Responsable','responsable',[['','Todos']].concat(owners.map(function(x){return[x,x];})),CONTROL_FILTERS.responsable)
+    +controlSelect('Área / frente','area',[['','Todas']].concat(areas.map(function(x){return[x,x];})),CONTROL_FILTERS.area)
+    +controlSelect('Foco','foco',[['','Todo'],['bloqueos','Con bloqueo'],['decisiones','Decisión requerida'],['cliente','Visible al cliente']],CONTROL_FILTERS.foco)
+    +'<div class="control-filter-result"><strong>'+filtered.length+'</strong><span>de '+tasks.length+'</span><button class="btn btns btng" onclick="A.clearControlFilters()">Limpiar</button></div></div>';
+  var summary='<div class="control-summary">'
+    +'<div class="control-stat"><span>Avance global</span><strong>'+progress+'%</strong><div class="control-progress"><i style="width:'+progress+'%"></i></div></div>'
+    +'<div class="control-stat"><span>Acciones</span><strong>'+tasks.length+'</strong><small>'+completed+' completadas</small></div>'
+    +'<div class="control-stat '+(blocked?'danger':'')+'"><span>Bloqueos</span><strong>'+blocked+'</strong><small>'+(blocked?'requieren atención':'sin bloqueos')+'</small></div>'
+    +'<div class="control-stat '+(decisions?'warning':'')+'"><span>Decisiones</span><strong>'+decisions+'</strong><small>'+(decisions?'pendientes':'sin pendientes')+'</small></div></div>';
+  var empty='<div class="control-empty"><div class="control-empty-icon">'+iconHtml('list-checks')+'</div><h3>El plan de ejecución está listo</h3><p>Agrega la primera acción o entregable de '+esc(p.nombre)+'.</p><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Primera acción</button></div>';
+  var noResults='<div class="control-empty compact"><h3>Sin resultados</h3><p>Ajusta o limpia los filtros visibles.</p></div>';
+  var rows=filtered.map(function(t){
+    var pct=controlProgress(t), blocker=t.control_bloqueado?(t.control_bloqueo_resumen||'Bloqueo sin detalle'):'Sin bloqueo';
+    var decision=t.control_decision_requerida?(t.control_decision_resumen||'Decisión pendiente'):'Sin decisión';
+    return '<article class="control-row '+(t.control_bloqueado?'is-blocked':'')+'">'
+      +'<div class="control-action"><button class="control-title" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div class="control-meta"><span>'+esc(controlArea(t))+'</span><span>'+fmt(t.fecha_inicio)+' → '+fmt(t.fecha_vencimiento)+'</span>'+(t.control_visible_cliente===false?'<span class="control-private">Interna</span>':'<span class="control-client">Cliente</span>')+'</div></div>'
+      +'<div class="control-owner"><span class="control-mobile-label">Responsable</span><strong>'+esc(boardOwnerName(t,p))+'</strong></div>'
+      +'<div class="control-date"><span class="control-mobile-label">Fecha</span><strong>'+fmt(t.fecha_vencimiento)+'</strong></div>'
+      +'<div class="control-progress-cell"><div><span class="control-mobile-label">Avance</span><strong>'+pct+'%</strong></div><div class="control-progress"><i style="width:'+pct+'%"></i></div></div>'
+      +'<div class="control-state"><span class="control-mobile-label">Estado</span>'+controlStateLabel(t)+'</div>'
+      +'<div class="control-signal '+(t.control_bloqueado?'danger':'muted')+'"><span class="control-mobile-label">Bloqueo</span><strong>'+esc(blocker)+'</strong></div>'
+      +'<div class="control-signal '+(t.control_decision_requerida?'warning':'muted')+'"><span class="control-mobile-label">Decisión</span><strong>'+esc(decision)+'</strong></div>'
+      +'<div class="control-row-action"><button class="btn btns btnc" onclick="A.controlEdit(\''+t.id+'\')">Actualizar</button></div></article>';
+  }).join('');
+  return '<section class="control-board"><div class="control-board-head"><div><span class="sl">Centro de Control del Proyecto</span><h2>Tablero de ejecución</h2><p>Avance, responsables, bloqueos y decisiones en una sola vista.</p></div><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Acción</button></div>'+summary+filters+(tasks.length?(rows||noResults):empty)+'</section>';
+}
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
   var tasks=projectTasks(pid), done=tasks.filter(function(t){return t.estado==='terminada';}).length;
@@ -1078,7 +1145,7 @@ function executiveReportText(pid){
 
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
-  var tabs=[['mando','Centro de mando'],['tareas',mainLabel],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var tabs=[['mando','Centro de Control'],['ejecucion','Ejecución'],['tareas',mainLabel],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -1141,6 +1208,7 @@ function projectWorkspace(p){
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>';
   var board = (isOfunamProject(p) ? compactOfunamHead : regularHead) + operationalBoard(p);
   var body = tab==='mando'?projectCommandCenterHtml(p)
+    : tab==='ejecucion'?projectExecutionBoardHtml(p)
     : tab==='tareas'?board
     : tab==='reporte'?projectReportHtml(p.id)
     : tab==='historial'?projectHistoryHtml(p)
@@ -1799,6 +1867,14 @@ var A = {
     nav('proyectos');
     trackEvent('project_opened',{project_id:id,tab:PTAB});
   },
+  setControlFilter: function(key,value){
+    if(Object.prototype.hasOwnProperty.call(CONTROL_FILTERS,key)) CONTROL_FILTERS[key]=value||'';
+    render();
+  },
+  clearControlFilters: function(){
+    CONTROL_FILTERS={estado:'',responsable:'',area:'',foco:''};
+    render();
+  },
   np: function(){ A._pm(null); },
   ep: function(id){ A._pm(id); },
   _pm: function(id){
@@ -2030,6 +2106,38 @@ var A = {
     var note=fv('qe_note').trim();
     if(note) await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:note});
     mClose(); await refresh(); toast('Edición rápida guardada ✓','g');
+  },
+  controlEdit: function(id){
+    var t=xid(DB.tareas,id); if(!t)return;
+    if(!canEditTask(t)){toast('No tienes permisos para actualizar esta acción','r');return;}
+    var uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
+    var blocked=!!t.control_bloqueado,decision=!!t.control_decision_requerida;
+    mOpen('Actualizar ejecución · '+t.titulo,
+      '<div class="fg control-edit-form">'
+      +'<div class="control-edit-intro"><strong>Actualización ejecutiva</strong><span>Estos cambios alimentan el tablero y el futuro portal del cliente.</span></div>'
+      +'<div class="fr3">'+FSL('ce_es','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['terminada','Completada']],t.estado==='en_revision'||t.estado==='aprobada'?'en_proceso':t.estado)+FSL('ce_oi','Responsable',uO,t.owner_id)+FLD('ce_fv','Fecha compromiso','date',t.fecha_vencimiento||'')+'</div>'
+      +'<div class="fld"><label>Avance <strong id="ce-progress-value">'+controlProgress(t)+'%</strong></label><input type="range" min="0" max="100" step="5" id="f_ce_av" value="'+controlProgress(t)+'" oninput="document.getElementById(\'ce-progress-value\').textContent=this.value+\'%\'"></div>'
+      +'<label class="control-check"><input type="checkbox" id="f_ce_bl" '+(blocked?'checked':'')+' onchange="document.getElementById(\'ce-blocker-wrap\').hidden=!this.checked"><span><strong>Existe un bloqueo</strong><small>Hazlo visible para poder resolverlo.</small></span></label>'
+      +'<div id="ce-blocker-wrap" '+(blocked?'':'hidden')+'>'+FTA('ce_br','Descripción del bloqueo',t.control_bloqueo_resumen||'')+'</div>'
+      +'<label class="control-check"><input type="checkbox" id="f_ce_dr" '+(decision?'checked':'')+' onchange="document.getElementById(\'ce-decision-wrap\').hidden=!this.checked"><span><strong>Se requiere una decisión</strong><small>Indica exactamente qué debe aprobarse o definirse.</small></span></label>'
+      +'<div id="ce-decision-wrap" '+(decision?'':'hidden')+'><div class="fr2">'+FLD('ce_ds','Decisión requerida','text',t.control_decision_resumen||'')+FLD('ce_df','Fecha límite','date',t.control_fecha_decision||'')+'</div></div>'
+      +'<label class="control-check"><input type="checkbox" id="f_ce_vc" '+(t.control_visible_cliente===false?'':'checked')+'><span><strong>Visible para el cliente</strong><small>Preparado para el portal del proyecto.</small></span></label>'
+      +FTA('ce_note','Comentario de avance','')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveControlEdit(\''+id+'\')">Guardar actualización</button></div></div>',true);
+  },
+  saveControlEdit: async function(id){
+    var t=xid(DB.tareas,id); if(!t)return;
+    var blocked=document.getElementById('f_ce_bl').checked;
+    var decision=document.getElementById('f_ce_dr').checked;
+    var data={estado:fv('ce_es'),owner_id:fv('ce_oi'),fecha_vencimiento:fv('ce_fv')||null,control_avance:Number(fv('ce_av'))||0,control_bloqueado:blocked,control_bloqueo_resumen:blocked?(fv('ce_br').trim()||null):null,control_decision_requerida:decision,control_decision_resumen:decision?(fv('ce_ds').trim()||null):null,control_fecha_decision:decision?(fv('ce_df')||null):null,control_visible_cliente:document.getElementById('f_ce_vc').checked};
+    if(data.estado==='terminada') data.control_avance=100;
+    if(data.control_avance>0&&data.estado==='pendiente') data.estado='en_proceso';
+    if(crmEnabled())data.ultima_actividad=new Date().toISOString();
+    var saved=await upd('tareas',id,data);if(!saved)return;
+    var note=fv('ce_note').trim();
+    if(note)await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:'Centro de Control · '+note});
+    await logTaskActivity(id,'Centro de Control: avance '+data.control_avance+'%'+(blocked?' · bloqueo activo':'')+(decision?' · decisión requerida':''));
+    mClose();await refresh();toast('Ejecución actualizada ✓','g');
   },
   manageTask: function(id){
     var t=xid(DB.tareas,id); if(!t)return;

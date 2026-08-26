@@ -1,5 +1,10 @@
 # SM OS
 
+## Centro de Control del Proyecto
+
+- Sprint 1: base universal, MONTESCANO y modelo protegido en Supabase.
+- Sprint 2: tablero de ejecución responsive para todos los proyectos, con avance, bloqueos, decisiones y visibilidad cliente.
+
 CRM ligero para SM Soluciones. Funciona como app estática en GitHub Pages y usa Supabase como base de datos.
 
 ## Archivos necesarios
