@@ -63,6 +63,16 @@ Prueba estructural:
 
 `node tests/prokicks-plan.test.mjs`
 
+## Centro de Control del Proyecto
+
+La migracion `migrations/2026-08-25-project-control-foundation.sql` agrega la base universal y replicable del Centro de Control. Todos los proyectos actuales y futuros heredan la capacidad sin duplicar tareas ni perder sus vistas existentes.
+
+Incluye areas, hitos, avance, KPIs, bloqueos, decisiones y actualizaciones ejecutivas, siempre vinculados por `proyecto_id`. Las nuevas tablas permanecen cerradas al acceso anonimo hasta implementar Supabase Auth y politicas RLS por proyecto.
+
+Prueba estructural:
+
+`node tests/project-control-sprint1.test.mjs`
+
 ## Login
 
 El login actual usa usuarios y PIN dentro de la tabla `usuarios`. Sirve para operación interna controlada, pero antes de producción conviene migrar a Supabase Auth y políticas RLS estrictas.
