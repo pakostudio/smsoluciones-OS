@@ -4,6 +4,7 @@
 
 - Sprint 1: base universal, MONTESCANO y modelo protegido en Supabase.
 - Sprint 2: tablero de ejecución responsive para todos los proyectos, con avance, bloqueos, decisiones y visibilidad cliente.
+- Sprint 3: dashboard visual con avance real vs. planeado, estados, carga, fases, hitos y focos ejecutivos.
 
 CRM ligero para SM Soluciones. Funciona como app estática en GitHub Pages y usa Supabase como base de datos.
 

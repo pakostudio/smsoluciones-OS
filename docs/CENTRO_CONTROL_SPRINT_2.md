@@ -25,3 +25,7 @@ MONTESCANO valida la plantilla universal sin tareas inventadas.
 La migración es aditiva e idempotente. Agrega a `tareas` los indicadores ejecutivos necesarios para que la interfaz actual pueda operar sin abrir las tablas protegidas del portal cliente.
 
 Las tablas especializadas de áreas, hitos, KPIs, bloqueos, decisiones y actualizaciones continúan cerradas mediante RLS hasta la fase de autenticación y portal.
+
+## Sprint 3
+
+El Centro de Control incorpora un dashboard visual calculado desde las mismas tareas: avance real frente al planeado, estados, carga por responsable, avance por fase, hitos y focos de bloqueo o decisión. No se duplican registros ni se agregan librerías externas.
