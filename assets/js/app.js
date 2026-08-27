@@ -1654,7 +1654,7 @@ function vPK(){
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
   var body=PKTAB==='dashboard'?pkDashboard():(PKTAB==='florida'?pkFloridaBoard():pkTable(PKTAB));
   var addBtn = PKTAB==='florida' ? '<button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button>' : (PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '');
-  return '<div class="sh"><h2>Operación ProKicks</h2>'+addBtn+'</div><div class="tabs">'+tabs+'</div>'+body;
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="nav(\'dashboard\')" title="Volver a Mis proyectos" aria-label="Volver a Mis proyectos">'+iconHtml('home')+' <span>Inicio</span></button><h2>Operación ProKicks</h2></div>'+addBtn+'</div><div class="tabs">'+tabs+'</div>'+body;
 }
 function pkDashboard(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
