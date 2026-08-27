@@ -1603,7 +1603,7 @@ var PKSCHEMAS = {
   venta:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['monto','Monto total','number',true],['saldo','Saldo pendiente','number'],['estadoVenta','Estado venta','select',true,['EN PROSPECCIÓN','VENTA INCOMPLETA','VENTA CERRADA']],['estadoPago','Estado pago','select',false,['PENDIENTE','PARCIAL','PAGADO']],['formaPago','Forma de pago','text'],['entrega','Entrega','select',false,['NO ENVIADO','ENVIADO','ENTREGADO','POR DEFINIR']],['fechaEntrega','Fecha entrega','text'],['ciudad','Ciudad','text'],['factura','Factura','select',false,['NO','SI']],['notas','Notas','textarea']],
   comodato:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['estado','Estado','select',true,['EN USO','DEVUELTO','POR DEVOLVER']],['fechaEntrega','Fecha entrega','text'],['fechaDevolucion','Fecha devolución','text'],['ciudad','Ciudad','text'],['notas','Notas','textarea']],
   cobranza:[['cliente','Cliente','text',true],['rep','Rep','text'],['monto','Monto total','number'],['saldo','Saldo pendiente','number',true],['estadoVenta','Estado','text'],['accion','Acción sugerida','text']],
-  floridaObjetivo:[['titulo','Objetivo','text',true],['meta','Meta / KPI','text'],['avance','Avance %','number'],['estado','Estado','select',true,['no_iniciado','en_curso','bloqueado','cumplido']],['responsable','Responsable','text'],['fecha_objetivo','Fecha objetivo','date'],['notas','Notas','textarea']]
+  floridaObjetivo:[['titulo','Objetivo','text',true],['metrica','Métrica automática','select',true,['manual','visitados','contactados','potencial_alto','ganados','prospectos_totales']],['meta','Meta (número objetivo)','number'],['avance','Avance % (solo si Métrica = manual)','number'],['estado','Estado','select',true,['no_iniciado','en_curso','bloqueado','cumplido']],['responsable','Responsable','text'],['fecha_objetivo','Fecha objetivo','date'],['notas','Notas','textarea']]
 };
 var PK_EXTRA_LABELS = {floridaObjetivo:'Objetivo Florida'};
 function pkProject(){
@@ -1854,21 +1854,41 @@ function floridaObjetivoEstadoLabel(v){
 function floridaObjetivoBadgeClass(v){
   return v==='cumplido'?'bg_':v==='bloqueado'?'br_':v==='en_curso'?'by_':'';
 }
+function floridaObjetivoMetricaLabel(v){
+  return ({manual:'Manual',visitados:'Prospectos visitados',contactados:'Prospectos contactados',potencial_alto:'Prospectos potencial 8-10',ganados:'Prospectos ganados',prospectos_totales:'Total de prospectos'})[v]||'Manual';
+}
+function floridaObjetivoActual(all,metrica){
+  if(metrica==='visitados') return all.filter(function(r){return pkVal(r,'visitado')==='Sí';}).length;
+  if(metrica==='contactados') return all.filter(function(r){return pkVal(r,'etapa')&&pkVal(r,'etapa')!=='por_contactar';}).length;
+  if(metrica==='potencial_alto') return all.filter(function(r){return Number(pkVal(r,'potencial')||0)>=8;}).length;
+  if(metrica==='ganados') return all.filter(function(r){return pkVal(r,'etapa')==='cerrado';}).length;
+  if(metrica==='prospectos_totales') return all.length;
+  return null;
+}
 function floridaObjectivesHtml(){
+  var florida=pkFloridaRows();
   var rows=pkRows('floridaObjetivo').slice().sort(function(a,b){return String(a.created_at||'').localeCompare(String(b.created_at||''));});
-  var avg=rows.length?Math.round(rows.reduce(function(s,r){return s+Number(pkVal(r,'avance')||0);},0)/rows.length):0;
+  var computed=rows.map(function(r){
+    var d=r.data||{}, metrica=d.metrica||'manual', meta=Number(d.meta||0);
+    var actual = metrica==='manual' ? null : floridaObjetivoActual(florida,metrica);
+    var av = metrica==='manual' ? Number(d.avance||0) : (meta>0 ? Math.min(100,Math.round((actual||0)/meta*100)) : 0);
+    return {r:r,d:d,metrica:metrica,meta:meta,actual:actual,av:av};
+  });
+  var avg=computed.length?Math.round(computed.reduce(function(s,c){return s+c.av;},0)/computed.length):0;
   var cumplidos=rows.filter(function(r){return pkVal(r,'estado')==='cumplido';}).length;
   var bloqueados=rows.filter(function(r){return pkVal(r,'estado')==='bloqueado';}).length;
-  var cards=rows.map(function(r){
-    var d=r.data||{}, av=Number(d.avance||0);
-    return '<div class="card" style="margin-bottom:10px"><div class="ch"><div><h3 style="margin:0">'+esc(d.titulo||'Objetivo')+'</h3>'+(d.meta?'<div style="font-size:12px;color:var(--muted);margin-top:2px">Meta: '+esc(d.meta)+'</div>':'')+'</div><span class="badge '+floridaObjetivoBadgeClass(d.estado)+'">'+esc(floridaObjetivoEstadoLabel(d.estado))+'</span></div>'
+  var cards=computed.map(function(c){
+    var d=c.d, av=c.av;
+    var progressLabel = c.metrica==='manual' ? (av+'% de avance') : (c.actual+'/'+c.meta+' · '+av+'%');
+    return '<div class="card" style="margin-bottom:10px"><div class="ch"><div><h3 style="margin:0">'+esc(d.titulo||'Objetivo')+'</h3><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(floridaObjetivoMetricaLabel(c.metrica))+(c.metrica!=='manual'&&c.meta?(' · meta '+c.meta):'')+'</div></div><span class="badge '+floridaObjetivoBadgeClass(d.estado)+'">'+esc(floridaObjetivoEstadoLabel(d.estado))+'</span></div>'
       +'<div class="control-progress" style="margin:8px 0"><i style="width:'+av+'%"></i></div>'
-      +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--muted)"><span>'+av+'% de avance</span><span>Responsable: '+esc(d.responsable||'Por asignar')+'</span><span>'+(d.fecha_objetivo?('Fecha objetivo: '+fmt(d.fecha_objetivo)):'Sin fecha objetivo')+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--muted)"><span>'+esc(progressLabel)+'</span><span>Responsable: '+esc(d.responsable||'Por asignar')+'</span><span>'+(d.fecha_objetivo?('Fecha objetivo: '+fmt(d.fecha_objetivo)):'Sin fecha objetivo')+'</span></div>'
       +(d.notas?'<p style="font-size:13px;margin-top:8px">'+esc(d.notas)+'</p>':'')
-      +'<div class="fa" style="margin-top:8px"><button class="btn btns btng" onclick="A.pkEdit(\''+r.id+'\')">Editar</button><button class="btn btns btnd" onclick="A.pkDel(\''+r.id+'\')">Eliminar</button></div></div>';
+      +'<div class="fa" style="margin-top:8px"><button class="btn btns btng" onclick="A.pkEdit(\''+c.r.id+'\')">Editar</button><button class="btn btns btnd" onclick="A.pkDel(\''+c.r.id+'\')">Eliminar</button></div></div>';
   }).join('')||'<div class="card"><div class="empty"><div class="ei">🎯</div><p>Aún no hay objetivos cargados para Florida. Agrega el primero.</p></div></div>';
   return '<div class="sg"><div class="sc"><div class="sl">Objetivos</div><div class="sn">'+rows.length+'</div></div><div class="sc g"><div class="sl">Cumplidos</div><div class="sn">'+cumplidos+'</div></div><div class="sc r"><div class="sl">Bloqueados</div><div class="sn">'+bloqueados+'</div></div><div class="sc y"><div class="sl">Avance promedio</div><div class="sn">'+avg+'%</div></div></div>'
     +'<div class="sh"><h3 style="margin:0">Objetivos de Florida · Darío</h3><button class="btn btnc" onclick="A.pkForm(null,\'floridaObjetivo\')">+ Nuevo objetivo</button></div>'
+    +'<p style="font-size:12px;color:var(--muted);margin:-4px 0 12px">Elige una "Métrica automática" (visitados, contactados, etc.) y una meta numérica para que el avance se calcule solo con los datos de Florida. Deja "Manual" si prefieres actualizarlo tú.</p>'
     +cards;
 }
 function floridaExecutionHtml(){
