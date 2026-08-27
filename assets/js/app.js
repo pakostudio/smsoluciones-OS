@@ -528,6 +528,14 @@ function getAlerts(){
       else if(d<=5) a.push({cl:'',ic:'💰',ti:'Pago próximo ('+d+'d): '+pay.concepto,su:cNm(pay.cliente_id)+' · $'+Number(pay.monto).toLocaleString()});
     });
   }
+  if(typeof canUseProkicks==='function' && canUseProkicks()){
+    pkFloridaRows().forEach(function(r){
+      var fs=pkVal(r,'proximo_seguimiento'); if(!fs) return;
+      var d=dayDiff(fs), cliente=pkVal(r,'cliente')||'Prospecto Florida';
+      if(d<0) a.push({cl:'ar',ic:'📌',ti:'Seguimiento vencido (Florida): '+cliente,su:(pkVal(r,'siguiente_accion')||'Calificar con Darío')+' · programado para '+fmt(fs),gotoFlorida:true});
+      else if(d<=1) a.push({cl:'',ic:'📌',ti:'Seguimiento hoy/mañana (Florida): '+cliente,su:(pkVal(r,'siguiente_accion')||'Calificar con Darío'),gotoFlorida:true});
+    });
+  }
   return a.sort(function(x,y){return (x.severity==='critical'?0:1)-(y.severity==='critical'?0:1);});
 }
 
@@ -1404,7 +1412,7 @@ function vAL(){
   var al = getAlerts();
   var permission=('Notification' in window)?Notification.permission:'unsupported';
   return '<div class="alert-toolbar"><div><h2>Centro de alertas</h2><div class="alsub">Vencimientos, seguimientos e inactividad de tus proyectos.</div></div><div class="alert-actions"><button class="btn btns btng" onclick="requestBrowserNotifications()">'+iconHtml('bell-ring')+' '+(permission==='granted'?'Notificaciones activas':'Activar navegador')+'</button></div></div>'
-    +(al.length ? al.map(function(a){return '<div class="alitem '+a.cl+'" '+(a.taskId?'style="cursor:pointer" onclick="A.td(\''+a.taskId+'\')"':'')+'><div class="alicon">'+a.ic+'</div><div style="flex:1"><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div>'+(a.taskId?'<button class="btn btns btng" onclick="event.stopPropagation();addTaskToCalendar(\''+a.taskId+'\')">'+iconHtml('calendar-plus')+' Calendario</button>':'')+'</div>';}).join('')
+    +(al.length ? al.map(function(a){var clickable=a.taskId||a.gotoFlorida; var onclick=a.taskId?("A.td('"+a.taskId+"')"):(a.gotoFlorida?"FLTAB='ejecucion';nav('florida')":''); return '<div class="alitem '+a.cl+'" '+(clickable?'style="cursor:pointer" onclick="'+onclick+'"':'')+'><div class="alicon">'+a.ic+'</div><div style="flex:1"><div class="altit">'+esc(a.ti)+'</div><div class="alsub">'+esc(a.su)+'</div></div>'+(a.taskId?'<button class="btn btns btng" onclick="event.stopPropagation();addTaskToCalendar(\''+a.taskId+'\')">'+iconHtml('calendar-plus')+' Calendario</button>':'')+'</div>';}).join('')
     : '<div class="card"><div class="empty"><div class="ei">✓</div><p>Sin alertas. Todo en orden.</p></div></div>');
 }
 
