@@ -745,7 +745,7 @@ function updateProjectNavActive(){
 /* ── RENDER ENGINE ── */
 function render(){
   var vc = document.getElementById('vc');
-  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,florida:vFlorida,clientes:vCL,usuarios:vUS,reportes:vRE};
+  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,florida:vFlorida,prokicksHistorial:vPKHistorial,floridaHistorial:vFloridaHistorial,clientes:vCL,usuarios:vUS,reportes:vRE};
   vc.innerHTML = (map[VIEW]||vDB)();
   // Privacidad cliente 2.2.3: reconstruir el sidebar después de cualquier cambio de proyecto activo.
   // Antes solo se marcaba el activo; por eso podían quedar visibles proyectos cargados previamente.
@@ -757,8 +757,8 @@ function render(){
   setTimeout(maybeNotifyBrowser,50);
 }
 function updTopbar(){
-  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',florida:'Florida · Darío',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
-  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',florida:'Expansión Florida',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
+  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',florida:'Florida · Darío',prokicksHistorial:'Historial Operación',floridaHistorial:'Historial Florida',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
+  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',florida:'Expansión Florida',prokicksHistorial:'Bitácora de inventario',floridaHistorial:'Bitácora de Florida',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
   updClock();
@@ -1665,6 +1665,56 @@ function prokicksProjectOverview(){
   return '<div class="sg">'+cards+'</div><div class="card"><div class="ch"><h3>Operación ProKicks</h3><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación completa</button></div><p style="font-size:13px;color:var(--muted);margin:0">La información de ProKicks está en su módulo operativo: inventario, prospectos, clientes, ventas, comodatos y cobranza.</p></div>'
     +(p?pkWorkPlanHtml(p):'');
 }
+function pkRecordLabel(r){
+  var d=r.data||{};
+  return d.cliente || d.code || d.device_id || (r.tipo?('Registro de '+(PKTAB_SINGLE[r.tipo]||r.tipo)):'Registro');
+}
+function pkTipoLabel(tipo){
+  return ({dashboard:'Inventario',florida:'Prospecto Florida',prospecto:'Prospecto',cliente:'Cliente ProKicks',venta:'Venta',comodato:'Comodato',cobranza:'Cobranza'})[tipo]||'Registro';
+}
+function prokicksActivityItems(rows){
+  var items=[];
+  rows.forEach(function(r){
+    items.push({ts:r.created_at,type:'creado',title:pkTipoLabel(r.tipo)+' creado',recordTitle:pkRecordLabel(r),body:'Registro dado de alta.',user:r.owner_id,icon:'plus-circle'});
+    if(r.updated_at && r.updated_at!==r.created_at){
+      items.push({ts:r.updated_at,type:'actualizado',title:pkTipoLabel(r.tipo)+' actualizado',recordTitle:pkRecordLabel(r),body:'Registro actualizado.',user:r.owner_id,icon:'refresh-ccw'});
+    }
+  });
+  return items.sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
+}
+function prokicksHistoryHtml(rows,heading){
+  var items=prokicksActivityItems(rows).slice(0,80);
+  var latest=items.slice(0,5).map(function(it){return '<tr><td>'+fmtdt(it.ts)+'</td><td>'+esc(it.recordTitle||'Registro')+'</td><td>'+esc(it.title||'Actividad')+'</td><td>'+esc(uNm(it.user))+'</td><td>'+esc(it.body||'')+'</td></tr>';}).join('');
+  var byUser={};
+  items.forEach(function(it){var k=it.user||'na'; if(!byUser[k]) byUser[k]=0; byUser[k]++;});
+  var userRows=Object.keys(byUser).map(function(uid){return '<tr><td>'+esc(uNm(uid))+'</td><td>'+byUser[uid]+'</td></tr>';}).join('')||'<tr><td colspan="2">Sin actividad</td></tr>';
+  return '<div class="sg"><div class="sc"><div class="sl">Eventos</div><div class="sn">'+items.length+'</div></div><div class="sc g"><div class="sl">Registros</div><div class="sn">'+rows.length+'</div></div><div class="sc y"><div class="sl">Creados</div><div class="sn">'+items.filter(function(i){return i.type==='creado';}).length+'</div></div><div class="sc"><div class="sl">Actualizados</div><div class="sn">'+items.filter(function(i){return i.type==='actualizado';}).length+'</div></div></div>'
+    +'<div class="history-grid"><div class="card history-main"><div class="ch"><h3>'+esc(heading||'Bitácora')+'</h3><span class="chip">últimos '+items.length+' eventos</span></div>'+renderActivityTimeline(items,'Todavía no hay historial en esta sección.')+'</div><div class="history-side"><div class="card"><div class="ch"><h3>Últimos movimientos</h3></div><div class="tw history-tw"><table class="history-table"><thead><tr><th>Fecha</th><th>Registro</th><th>Evento</th><th>Resp.</th><th>Detalle</th></tr></thead><tbody>'+(latest||'<tr><td colspan="5">Sin actividad reciente</td></tr>')+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Actividad por usuario</h3></div><div class="tw history-tw"><table class="history-table compact"><thead><tr><th>Usuario</th><th>Eventos</th></tr></thead><tbody>'+userRows+'</tbody></table></div></div></div></div>';
+}
+function pkScopedTabs(p,activeKey,historialView){
+  var mainLabel = 'Plan de trabajo';
+  var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas',mainLabel,'list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
+  return '<nav class="project-tabs" aria-label="Módulos del proyecto">'+tabs.map(function(t,i){
+    var isHist = t[0]==='historial';
+    var onclick = isHist ? "nav('"+historialView+"')" : "A.openProject('"+p.id+"','"+t[0]+"')";
+    var active = isHist ? activeKey==='historial' : false;
+    return (i===4?'<span class="project-tab-divider" aria-hidden="true"></span>':'')+'<button class="project-tab '+(active?'active':'')+'" onclick="'+onclick+'" title="'+esc(t[1])+'">'+iconHtml(t[2])+'<span>'+esc(t[1])+'</span></button>';
+  }).join('')+'</nav>';
+}
+function vPKHistorial(){
+  var p=pkProject();
+  if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
+  if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
+  var rows = DB.prokicks_records.filter(function(r){return r.proyecto_id===p.id;});
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Historial de Operación ProKicks</h2></div><button class="btn btng" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Volver a Operación</button></div>'+pkScopedTabs(p,'historial','prokicksHistorial')+prokicksHistoryHtml(rows,'Bitácora de Operación ProKicks');
+}
+function vFloridaHistorial(){
+  var p=pkProject();
+  if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
+  if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
+  var rows = pkFloridaRows();
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Historial de Florida · Darío</h2></div><button class="btn btng" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Volver a Florida</button></div>'+pkScopedTabs(p,'historial','floridaHistorial')+prokicksHistoryHtml(rows,'Bitácora de Florida · Darío');
+}
 function vPK(){
   var p=pkProject();
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
@@ -1672,13 +1722,13 @@ function vPK(){
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
   var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
   var addBtn = PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '';
-  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Operación ProKicks</h2></div>'+addBtn+'</div>'+projectTabs(p)+'<div class="tabs">'+tabs+'</div>'+body;
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Operación ProKicks</h2></div>'+addBtn+'</div>'+pkScopedTabs(p,'operacion','prokicksHistorial')+'<div class="tabs">'+tabs+'</div>'+body;
 }
 function vFlorida(){
   var p=pkProject();
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
-  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div><button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button></div>'+projectTabs(p)+pkFloridaBoard();
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div><button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button></div>'+pkScopedTabs(p,'florida','floridaHistorial')+pkFloridaBoard();
 }
 function pkDashboard(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
