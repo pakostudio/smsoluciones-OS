@@ -2769,27 +2769,31 @@ var A = {
 };
 
 /* ── LOGIN ── */
+function normName(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function buildSelector(){
-  var users = DB.usuarios.filter(function(u){return u.activo;});
   var container = document.getElementById('user-sel');
   if(!container) return;
-  container.innerHTML = '<select id="user-select" class="user-select"><option value="">— Selecciona —</option>'
-    + users.map(function(u){ return '<option value="'+u.id+'">'+esc(u.nombre)+'</option>'; }).join('')
-    + '</select>';
-  document.getElementById('user-select').addEventListener('change', function(){
-    var u = xid(DB.usuarios, this.value);
-    if(!u){
+  container.innerHTML = '<input id="user-select" class="user-select" type="text" autocomplete="off" autocapitalize="words" placeholder="Escribe tu nombre">';
+  var input = document.getElementById('user-select');
+  input.addEventListener('input', function(){
+    var users = DB.usuarios.filter(function(u){return u.activo;});
+    var match = users.find(function(u){ return normName(u.nombre)===normName(input.value); });
+    if(!match){
       SELUID = '';
       document.getElementById('pin-wrap').style.display = 'none';
       document.getElementById('btn-login').style.display = 'none';
+      document.getElementById('lerr').textContent = '';
       return;
     }
-    SELUID = u.id;
+    SELUID = match.id;
     document.getElementById('pin-lbl').textContent = 'Ingresa tu PIN';
     document.getElementById('pin-wrap').style.display = 'block';
     document.getElementById('btn-login').style.display = 'block';
     document.getElementById('lerr').textContent = '';
     resetOtpBoxes(true);
+  });
+  input.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && SELUID){ var b=otpBoxes()[0]; if(b) b.focus(); }
   });
 }
 
