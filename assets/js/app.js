@@ -2817,15 +2817,12 @@ function hidePreloader(){
   setTimeout(function(){ pl.classList.remove('show'); }, 350);
 }
 
-function doLogin(){
+async function doLogin(){
   if(!SELUID){ document.getElementById('lerr').textContent='Selecciona tu nombre.'; return; }
   var pin = document.getElementById('f-pin').value.trim();
   if(!pin){ document.getElementById('lerr').textContent='Ingresa tu PIN.'; return; }
-  var found = null;
-  for(var i=0;i<DB.usuarios.length;i++){
-    var u = DB.usuarios[i];
-    if(u.id===SELUID && String(u.pin)===String(pin) && u.activo){ found=u; break; }
-  }
+  var r = await sb.rpc('sm_verify_pin', {p_user_id: SELUID, p_pin: pin});
+  var found = (r && r.data && r.data[0]) ? r.data[0] : null;
   if(!found){
     document.getElementById('lerr').textContent = 'PIN incorrecto.';
     shakeOtpBoxes();
