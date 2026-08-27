@@ -1734,8 +1734,8 @@ function vPK(){
   if(PKTABS.map(function(t){return t[0];}).indexOf(PKTAB)<0) PKTAB='dashboard';
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
   var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
-  var addBtn = PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '';
-  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Operación ProKicks</h2></div>'+addBtn+'</div>'+pkScopedTabs(p,'operacion','prokicksHistorial')+'<div class="tabs">'+tabs+'</div>'+body;
+  var addBtn = (PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '') + '<button class="btn btng" onclick="nav(\'prokicksHistorial\')">'+iconHtml('history')+' Historial</button>';
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Operación ProKicks</h2></div>'+addBtn+'</div><div class="tabs">'+tabs+'</div>'+body;
 }
 function vFlorida(){
   var p=pkProject();
