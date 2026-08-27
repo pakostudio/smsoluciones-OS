@@ -745,7 +745,7 @@ function updateProjectNavActive(){
 /* ── RENDER ENGINE ── */
 function render(){
   var vc = document.getElementById('vc');
-  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,clientes:vCL,usuarios:vUS,reportes:vRE};
+  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,florida:vFlorida,clientes:vCL,usuarios:vUS,reportes:vRE};
   vc.innerHTML = (map[VIEW]||vDB)();
   // Privacidad cliente 2.2.3: reconstruir el sidebar después de cualquier cambio de proyecto activo.
   // Antes solo se marcaba el activo; por eso podían quedar visibles proyectos cargados previamente.
@@ -757,8 +757,8 @@ function render(){
   setTimeout(maybeNotifyBrowser,50);
 }
 function updTopbar(){
-  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
-  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
+  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',florida:'Florida · Darío',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
+  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',florida:'Expansión Florida',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
   updClock();
@@ -1295,7 +1295,7 @@ function projectWorkspace(p){
   var tab = PTAB || 'tareas';
   var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
   var floridaCount=isProkicksProject(p)?pkFloridaRows().length:0;
-  var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="PKTAB=\'florida\';nav(\'prokicks\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
+  var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
   var pkUtilityBar = isProkicksProject(p) ? '<div class="prokicks-utility-bar"><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">'+iconHtml('layers-3')+' Frentes</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">'+iconHtml('plus')+' Tarea</button></div>' : '';
   var compactOfunamHead = '<div class="compact-board-summary"><div><h2>'+mainTitle+'</h2><div class="compact-board-metrics"><span class="metric">Registros <strong>'+s.tasks.length+'</strong></span><span class="metric">Sin acción <strong>'+s.noNext+'</strong></span><span class="metric">Riesgos <strong>'+(s.overdue+s.noNext)+'</strong></span><span class="metric">Resp. <strong>'+esc(uNm(p.owner_id))+'</strong></span></div></div>'+mainButton+'</div>';
   var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">Registros</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
@@ -1565,7 +1565,7 @@ function vPI(){
 }
 
 /* PROKICKS */
-var PKTABS = [['dashboard','Dashboard inventario'],['florida','Florida · Darío'],['prospecto','Prospectos'],['cliente','Clientes ProKicks'],['venta','Ventas'],['comodato','Comodatos'],['cobranza','Cobranza']];
+var PKTABS = [['dashboard','Dashboard inventario'],['prospecto','Prospectos'],['cliente','Clientes ProKicks'],['venta','Ventas'],['comodato','Comodatos'],['cobranza','Cobranza']];
 var PKTAB_SINGLE = {florida:'prospecto',prospecto:'prospecto',cliente:'cliente',venta:'venta',comodato:'comodato',cobranza:'cobranza'};
 var PKSCHEMAS = {
   prospecto:[['cliente','Club / empresa','text',true],['contacto','Contacto','text'],['cargo','Cargo','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['rep','Rep','text'],['fuente','Fuente','text'],['mercado','Mercado','text'],['region','Región','text'],['tipo_instalacion','Tipo de instalación','text'],['direccion','Dirección completa','text'],['actividad_liga','Actividad / liga','textarea'],['fuente_liga','Fuente web','url'],['visitado','Visitado','select',false,['Pendiente','Sí','No']],['potencial','Potencial 1–10','number'],['etapa','Etapa','select',true,['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido']],['siguiente_accion','Siguiente acción','text'],['proximo_seguimiento','Próximo seguimiento','date'],['probabilidad','Probabilidad %','number'],['monto_estimado','Monto estimado','number'],['devices_estimados','Devices estimados','number'],['notas','Notas','textarea']],
@@ -1653,9 +1653,15 @@ function vPK(){
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
-  var body=PKTAB==='dashboard'?pkDashboard():(PKTAB==='florida'?pkFloridaBoard():pkTable(PKTAB));
-  var addBtn = PKTAB==='florida' ? '<button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button>' : (PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '');
+  var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
+  var addBtn = PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '';
   return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Operación ProKicks</h2></div>'+addBtn+'</div><div class="tabs">'+tabs+'</div>'+body;
+}
+function vFlorida(){
+  var p=pkProject();
+  if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
+  if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div><button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button></div>'+pkFloridaBoard();
 }
 function pkDashboard(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
@@ -2600,7 +2606,7 @@ var A = {
     if(potential!==''&&(Number(potential)<1||Number(potential)>10)){toast('El potencial debe estar entre 1 y 10','r');return;}
     var data=Object.assign({},row.data||{}, {etapa:fv('pkf_es'),visitado:fv('pkf_vi'),potencial:potential===''?'':Number(potential),proximo_seguimiento:fv('pkf_ps'),siguiente_accion:fv('pkf_sa'),contacto:fv('pkf_ct'),cargo:fv('pkf_cg'),email:fv('pkf_em'),telefono:fv('pkf_te'),notas:fv('pkf_no'),ultima_actividad:new Date().toISOString()});
     var saved=await upd('prokicks_records',id,{data:data,updated_at:new Date().toISOString()});
-    if(saved){mClose();await refresh();PKTAB='florida';toast('Prospecto actualizado ✓','g');}
+    if(saved){mClose();await refresh();toast('Prospecto actualizado ✓','g');nav('florida');}
   },
   pkSettings: function(){
     if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
@@ -2654,7 +2660,13 @@ var A = {
     }
     var payload = {proyecto_id:p.id, owner_id:SES.userId, tipo:tipo, data:data, updated_at:new Date().toISOString()};
     var r = id ? await upd('prokicks_records',id,payload) : await ins('prokicks_records',payload);
-    if(r){ mClose(); await refresh(); PKTAB=(tipo==='prospecto'&&data.mercado==='Florida')?'florida':tipo; toast(id?'Registro actualizado':'Registro creado ✓','g'); }
+    if(r){
+      mClose(); await refresh();
+      var toFlorida = tipo==='prospecto' && data.mercado==='Florida';
+      PKTAB = toFlorida ? 'prospecto' : tipo;
+      toast(id?'Registro actualizado':'Registro creado ✓','g');
+      if(toFlorida) nav('florida');
+    }
   },
   pkDel: async function(id){
     if(!confirm('¿Eliminar este registro de ProKicks?')) return;
