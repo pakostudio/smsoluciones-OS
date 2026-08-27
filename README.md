@@ -67,6 +67,17 @@ El proyecto ProKicks incluye un tablero operativo con tres frentes: Indoor Commu
 
 El semáforo utiliza vencimientos, próximo seguimiento, siguiente acción y días sin actividad. El botón **Crear plan de trabajo ProKicks** instala las tareas y microtareas base de forma idempotente desde la interfaz.
 
+### Florida · Darío
+
+La operación ProKicks incorpora un pipeline específico para Florida sobre los mismos registros de prospectos. La vista muestra cobertura regional, embudo comercial, visitas, potencial, contactos faltantes y permite registrar el siguiente avance sin crear un CRM paralelo. Darío Sala se maneja como responsable operativo; esa asignación no concede acceso automáticamente.
+
+La importación idempotente de las 79 instalaciones se prepara y ejecuta con:
+
+```bash
+node scripts/import-prokicks-florida-2026-08-26.mjs
+node scripts/import-prokicks-florida-2026-08-26.mjs --apply
+```
+
 Prueba estructural:
 
 `node tests/prokicks-plan.test.mjs`

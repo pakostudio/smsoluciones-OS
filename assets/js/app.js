@@ -67,6 +67,7 @@ var PTAB = 'tareas'; // project workspace tab
 var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
 var PKWORKTAB = 'todos';
+var PK_FLORIDA_FILTERS = {region:'',tipo:'',etapa:'',busqueda:''};
 var PK_INIT_BUSY = false;
 var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
@@ -941,13 +942,14 @@ function boardFiltersHtml(tasks,filtered,p){
   tasks.forEach(function(t){var o=boardOwnerName(t,p); if(o && owners.indexOf(o)<0) owners.push(o);});
   owners.sort(function(a,b){return a.localeCompare(b,'es');});
   var ownerOpts = [['','Todos']].concat(owners.map(function(o){return [o,o];}));
-  return '<div class="board-filters">'
+  var active=Object.keys(BOARD_FILTERS).filter(function(k){return BOARD_FILTERS[k];}).length;
+  return '<details class="board-filter-panel" '+(active?'open':'')+'><summary><span>'+iconHtml('sliders-horizontal')+' <strong>Filtros</strong><small>'+(active?active+' activo(s)':'Opcionales · abre solo cuando los necesites')+'</small></span><b>'+filtered.length+' de '+tasks.length+' '+iconHtml('chevron-down')+'</b></summary><div class="board-filters">'
     +boardFilterSelect('Status','estado',[['','Todos'],['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],BOARD_FILTERS.estado)
     +boardFilterSelect('Última acción','accion',[['','Todas'],['sin_accion','Sin acción'],['recordatorio','Recordatorio'],['dalia','Dalia'],['espera','En espera'],['propuesta','Propuesta / VoBo'],['otra','Otra']],BOARD_FILTERS.accion)
     +boardFilterSelect('Seguimiento','seguimiento',[['','Todos'],['vencido','Vencido'],['hoy','Hoy'],['semana','Próximos 7 días'],['sin_fecha','Sin fecha'],['futuro','Más adelante']],BOARD_FILTERS.seguimiento)
     +boardFilterSelect('Responsable','responsable',ownerOpts,BOARD_FILTERS.responsable)
     +'<div><div class="board-filter-count">'+filtered.length+' de '+tasks.length+'</div><button class="btn btns btng" onclick="A.clearBoardFilters()">Limpiar</button></div>'
-    +'</div>';
+    +'</div></details>';
 }
 function operationalBoard(p,limit){
   var ofunamBoard = isOfunamProject(p);
@@ -1230,8 +1232,8 @@ function executiveReportText(pid){
 
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
-  var tabs=[['mando','Centro de Control'],['objetivos','Objetivos'],['ejecucion','Ejecución'],['tareas',mainLabel],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
-  return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
+  var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas',mainLabel,'list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
+  return '<nav class="project-tabs" aria-label="Módulos del proyecto">'+tabs.map(function(t,i){return (i===4?'<span class="project-tab-divider" aria-hidden="true"></span>':'')+'<button class="project-tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')" title="'+esc(t[1])+'">'+iconHtml(t[2])+'<span>'+esc(t[1])+'</span></button>';}).join('')+'</nav>';
 }
 function projectKanbanHtml(p){
   var tasks=projectTasks(p.id);
@@ -1277,7 +1279,7 @@ function projectCard(p,compact){
   return '<div class="card" style="border-left:3px solid var(--cyan)">'
     +'<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">'
     +'<div><div style="font-size:18px;font-weight:900;color:var(--ink);cursor:pointer" onclick="A.openProject(\''+p.id+'\')">'+esc(p.nombre)+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+esc(projectDescription(p))+'</div></div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+bPi(p.pipeline)+' '+bSt(p.estado)+'<button class="btn btns btnc" onclick="A.openProject(\''+p.id+'\')">Entrar</button></div></div>'
+    +'<div class="project-card-actions">'+bPi(p.pipeline)+' '+bSt(p.estado)+'<button class="btn btns btnc" onclick="A.openProject(\''+p.id+'\',\'mando\')">'+iconHtml('arrow-right')+' Entrar</button>'+(adm()?'<button class="btn btns btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('pencil')+' Editar</button>'+(p.estado==='cerrado'?'<button class="btn btns btng" onclick="A.restoreProject(\''+p.id+'\')">'+iconHtml('archive-restore')+' Reactivar</button>':'<button class="btn btns project-archive" onclick="A.baja(\''+p.id+'\')">'+iconHtml('archive')+' Dar de baja</button>'):'')+'</div></div>'
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 10px"><div class="di"><div class="dl">Avance</div><div class="dv">'+s.progress+'%</div></div><div class="di"><div class="dl">Tareas</div><div class="dv">'+s.tasks.length+'</div></div><div class="di"><div class="dl">Riesgos</div><div class="dv">'+(s.overdue+s.noNext)+'</div></div><div class="di"><div class="dl">Próximo</div><div class="dv" style="font-size:13px">'+next+'</div></div></div>'
     +'<div style="display:flex;align-items:center;gap:9px"><div class="pb" style="flex:1"><div class="pf" style="width:'+s.progress+'%"></div></div><span class="dot '+h+'" style="width:10px;height:10px"></span></div>'
     +(compact?'':'<div style="margin-top:12px">'+projectTree(p,3)+'</div>')
@@ -1303,7 +1305,7 @@ function projectWorkspace(p){
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
-  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="btn btns btng" onclick="FPID=\'\';PTAB=\'tareas\';nav(\'proyectos\')" title="Volver a mis proyectos">←</button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">Editar proyecto</button>':'')+'</div>'
+  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'mando\')" title="Volver al Centro de Control" aria-label="Volver al Centro de Control">'+iconHtml('arrow-left')+'</button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div><button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button></div></div>'
     +projectTabs(p)
     +body+'</div>';
@@ -1354,7 +1356,7 @@ function vDB(){
   var dueRows = nextDue.map(function(t){return '<tr><td>'+esc(t.titulo)+'</td><td>'+esc(pNm(t.proyecto_id))+'</td><td>'+sem(t)+'</td><td>'+fmt(t.fecha_vencimiento)+'</td></tr>';}).join('')||'<tr><td colspan="4">Sin próximos vencimientos</td></tr>';
   var workloadRows = workload.map(function(x){return '<tr><td>'+esc(x.u.nombre)+'</td><td>'+x.n+'</td><td>'+x.late+'</td></tr>';}).join('')||'<tr><td colspan="3">Sin carga activa</td></tr>';
   var command = '<div class="command-grid"><div class="card"><div class="ch"><h3>Riesgos críticos</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Alertas</button></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Resp.</th><th>Riesgo</th><th>Vence</th></tr></thead><tbody>'+criticalRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Próximos vencimientos</h3></div><div class="tw"><table><thead><tr><th>Tarea</th><th>Proyecto</th><th>Control</th><th>Fecha</th></tr></thead><tbody>'+dueRows+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Carga por responsable</h3></div><div class="tw"><table><thead><tr><th>Responsable</th><th>Activas</th><th>Vencidas</th></tr></thead><tbody>'+workloadRows+'</tbody></table></div></div></div>';
-  return '<div class="sh"><div><h2>Centro de mando ejecutivo</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Control de proyectos, riesgos, vencimientos y carga operativa en una sola vista.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'
+  return '<div class="sh"><div><h2>Centro de mando ejecutivo</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Control de proyectos, riesgos, vencimientos y carga operativa en una sola vista.</div></div>'+(adm()?'<div class="admin-quick-actions"><button class="btn btng" onclick="FPID=\'\';nav(\'proyectos\')">'+iconHtml('folder-cog')+' Administrar proyectos</button><button class="btn btng" onclick="nav(\'usuarios\')">'+iconHtml('shield-check')+' Usuarios y permisos</button><button class="btn btnc" onclick="A.np()">'+iconHtml('plus')+' Nuevo proyecto</button></div>':'')+'</div>'
     +'<div class="sg"><div class="sc"><div class="sl">Proyectos activos</div><div class="sn">'+projs.length+'</div></div><div class="sc g"><div class="sl">Terminadas</div><div class="sn">'+done+'</div></div><div class="sc y"><div class="sl">Sin siguiente acción</div><div class="sn">'+noNext+'</div></div><div class="sc r"><div class="sl">Vencidas</div><div class="sn">'+over+'</div></div></div>'
     +command
     +'<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:14px;margin-top:14px"><div style="display:grid;gap:14px">'+cards+'</div><div class="card"><div class="ch"><h3>Alertas recientes</h3><button class="btn btns btng" onclick="nav(\'alertas\')">Ver todas</button></div>'+alH+'</div></div>';
@@ -1374,9 +1376,9 @@ function vPR(){
     var selected=xid(DB.proyectos,FPID);
     if(selected) return projectWorkspace(selected);
   }
-  var projs = myProjs().filter(function(p){return p.estado!=='cerrado';});
+  var projs = myProjs().slice().sort(function(a,b){return (a.estado==='cerrado')-(b.estado==='cerrado')||String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
   var html = projs.map(function(p){ return projectCard(p,false); }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
-  return '<div class="sh"><div><h2>Proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Escoge un proyecto para trabajar dentro de su propio contexto.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">+ Nuevo proyecto</button>':'')+'</div>'+html;
+  return '<div class="sh"><div><h2>Administrar proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Entra, edita o da de baja proyectos desde una sola pantalla.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">'+iconHtml('plus')+' Nuevo proyecto</button>':'')+'</div>'+html;
 }
 
 /* TAREAS */
@@ -1555,10 +1557,10 @@ function vPI(){
 }
 
 /* PROKICKS */
-var PKTABS = [['dashboard','Dashboard inventario'],['prospecto','Prospectos'],['cliente','Clientes ProKicks'],['venta','Ventas'],['comodato','Comodatos'],['cobranza','Cobranza']];
-var PKTAB_SINGLE = {prospecto:'prospecto',cliente:'cliente',venta:'venta',comodato:'comodato',cobranza:'cobranza'};
+var PKTABS = [['dashboard','Dashboard inventario'],['florida','Florida · Darío'],['prospecto','Prospectos'],['cliente','Clientes ProKicks'],['venta','Ventas'],['comodato','Comodatos'],['cobranza','Cobranza']];
+var PKTAB_SINGLE = {florida:'prospecto',prospecto:'prospecto',cliente:'cliente',venta:'venta',comodato:'comodato',cobranza:'cobranza'};
 var PKSCHEMAS = {
-  prospecto:[['cliente','Club / empresa','text',true],['contacto','Contacto','text'],['cargo','Cargo','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['rep','Rep','text'],['fuente','Fuente','text'],['etapa','Etapa','select',true,['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido']],['siguiente_accion','Siguiente acción','text'],['proximo_seguimiento','Próximo seguimiento','date'],['probabilidad','Probabilidad %','number'],['monto_estimado','Monto estimado','number'],['devices_estimados','Devices estimados','number'],['notas','Notas','textarea']],
+  prospecto:[['cliente','Club / empresa','text',true],['contacto','Contacto','text'],['cargo','Cargo','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['rep','Rep','text'],['fuente','Fuente','text'],['mercado','Mercado','text'],['region','Región','text'],['tipo_instalacion','Tipo de instalación','text'],['direccion','Dirección completa','text'],['actividad_liga','Actividad / liga','textarea'],['fuente_liga','Fuente web','url'],['visitado','Visitado','select',false,['Pendiente','Sí','No']],['potencial','Potencial 1–10','number'],['etapa','Etapa','select',true,['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido']],['siguiente_accion','Siguiente acción','text'],['proximo_seguimiento','Próximo seguimiento','date'],['probabilidad','Probabilidad %','number'],['monto_estimado','Monto estimado','number'],['devices_estimados','Devices estimados','number'],['notas','Notas','textarea']],
   cliente:[['nombre','Nombre','text',true],['empresa','Club / Empresa','text'],['contacto','Contacto','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['fuente','Fuente','text'],['notas','Notas','textarea']],
   venta:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['monto','Monto total','number',true],['saldo','Saldo pendiente','number'],['estadoVenta','Estado venta','select',true,['EN PROSPECCIÓN','VENTA INCOMPLETA','VENTA CERRADA']],['estadoPago','Estado pago','select',false,['PENDIENTE','PARCIAL','PAGADO']],['formaPago','Forma de pago','text'],['entrega','Entrega','select',false,['NO ENVIADO','ENVIADO','ENTREGADO','POR DEFINIR']],['fechaEntrega','Fecha entrega','text'],['ciudad','Ciudad','text'],['factura','Factura','select',false,['NO','SI']],['notas','Notas','textarea']],
   comodato:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['estado','Estado','select',true,['EN USO','DEVUELTO','POR DEVOLVER']],['fechaEntrega','Fecha entrega','text'],['fechaDevolucion','Fecha devolución','text'],['ciudad','Ciudad','text'],['notas','Notas','textarea']],
@@ -1643,8 +1645,8 @@ function vPK(){
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
-  var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
-  var addBtn = PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '';
+  var body=PKTAB==='dashboard'?pkDashboard():(PKTAB==='florida'?pkFloridaBoard():pkTable(PKTAB));
+  var addBtn = PKTAB==='florida' ? '<button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button>' : (PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '');
   return '<div class="sh"><h2>Operación ProKicks</h2>'+addBtn+'</div><div class="tabs">'+tabs+'</div>'+body;
 }
 function pkDashboard(){
@@ -1672,6 +1674,58 @@ function pkTable(tipo){
   return '<div class="card"><div class="ch"><h3>'+esc((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo)+'</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip">'+rows.length+' registro(s)</span><button class="btn btns btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[tipo]||'registro')+'</button></div></div><div class="tw"><table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
 }
 
+function pkFloridaStageLabel(v){
+  return ({por_contactar:'Por contactar',contactado:'Contactado',demo_agendada:'Visita / demo',propuesta_enviada:'Propuesta',negociacion:'Negociación',cerrado:'Ganado',perdido:'Descartado'})[v]||'Por contactar';
+}
+function pkFloridaRows(){
+  return pkRows('prospecto').filter(function(r){
+    var d=r.data||{};
+    return String(d.mercado||'').toLowerCase()==='florida' || /indoor florida/i.test(String(d.fuente||'')) || /florida/i.test(String(d.import_batch||''));
+  });
+}
+function pkFloridaBoard(){
+  var all=pkFloridaRows(), f=PK_FLORIDA_FILTERS;
+  var rows=all.filter(function(r){
+    var d=r.data||{}, hay=(String(d.cliente||'')+' '+String(d.contacto||'')+' '+String(d.ciudad||'')+' '+String(d.email||'')).toLowerCase();
+    return (!f.region||d.region===f.region)&&(!f.tipo||d.tipo_instalacion===f.tipo)&&(!f.etapa||d.etapa===f.etapa)&&(!f.busqueda||hay.indexOf(f.busqueda.toLowerCase())>=0);
+  }).sort(function(a,b){return Number(pkVal(b,'potencial')||0)-Number(pkVal(a,'potencial')||0)||String(pkVal(a,'cliente')||'').localeCompare(String(pkVal(b,'cliente')||''));});
+  var regions=['South Florida','Central Florida','West Florida','North Florida'];
+  var types=['Indoor Soccer/Futsal','Ice Rink','Field House/Multi-Sport','Other Indoor Sports Venue'];
+  var stages=['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido'];
+  var visited=all.filter(function(r){return pkVal(r,'visitado')==='Sí';}).length;
+  var qualified=all.filter(function(r){return Number(pkVal(r,'potencial')||0)>=8;}).length;
+  var contacted=all.filter(function(r){return pkVal(r,'etapa')&&pkVal(r,'etapa')!=='por_contactar';}).length;
+  var missing=all.filter(function(r){return !pkVal(r,'email')&&!pkVal(r,'telefono');}).length;
+  var stageCards=stages.map(function(s){
+    var n=all.filter(function(r){return (pkVal(r,'etapa')||'por_contactar')===s;}).length;
+    return '<button class="pkf-stage '+(f.etapa===s?'active':'')+'" onclick="PK_FLORIDA_FILTERS.etapa='+(f.etapa===s?"''":"'"+s+"'")+';render()"><span>'+esc(pkFloridaStageLabel(s))+'</span><strong>'+n+'</strong></button>';
+  }).join('');
+  var regionBars=regions.map(function(region){
+    var n=all.filter(function(r){return pkVal(r,'region')===region;}).length;
+    return '<button class="pkf-region" onclick="PK_FLORIDA_FILTERS.region=\''+region+'\';render()"><span>'+esc(region.replace(' Florida',''))+'</span><div><i style="width:'+Math.round(n/Math.max(all.length,1)*100)+'%"></i></div><strong>'+n+'</strong></button>';
+  }).join('');
+  var regionOptions='<option value="">Todas las regiones</option>'+regions.map(function(x){return '<option '+(f.region===x?'selected':'')+'>'+esc(x)+'</option>';}).join('');
+  var typeOptions='<option value="">Todos los tipos</option>'+types.map(function(x){return '<option '+(f.tipo===x?'selected':'')+'>'+esc(x)+'</option>';}).join('');
+  var stageOptions='<option value="">Todas las etapas</option>'+stages.map(function(x){return '<option value="'+x+'" '+(f.etapa===x?'selected':'')+'>'+esc(pkFloridaStageLabel(x))+'</option>';}).join('');
+  var table=rows.map(function(r){
+    var d=r.data||{}, potential=Number(d.potencial||0), contact=[d.contacto,d.cargo].filter(Boolean).join(' · ');
+    return '<tr><td><strong>'+esc(d.cliente||'')+'</strong><small>'+esc(d.ciudad||d.direccion||'')+'</small></td>'
+      +'<td><span class="pkf-pill">'+esc(d.region||'—')+'</span><small>'+esc(d.tipo_instalacion||'')+'</small></td>'
+      +'<td><strong>'+esc(contact||'Por investigar')+'</strong><small>'+esc(d.email||d.telefono||'Sin contacto público')+'</small></td>'
+      +'<td>'+pkStatus(d.etapa||'por_contactar')+'</td>'
+      +'<td><div class="pkf-score '+(potential>=8?'hot':potential>=5?'warm':'')+'"><strong>'+(potential||'—')+'</strong><span>/10</span></div><small>'+esc(d.visitado||'Pendiente')+'</small></td>'
+      +'<td><strong>'+esc(d.siguiente_accion||'Calificar con Darío')+'</strong><small>'+fmt(d.proximo_seguimiento)+'</small></td>'
+      +'<td><button class="btn btns btnc" onclick="A.pkFloridaEdit(\''+r.id+'\')">Gestionar</button></td></tr>';
+  }).join('')||'<tr><td colspan="7"><div class="empty"><p>No hay prospectos con estos filtros.</p></div></td></tr>';
+  return '<section class="pkf-board">'
+    +'<div class="pkf-hero"><div><span class="pkf-eyebrow">EXPANSIÓN FLORIDA · PARTNER DARÍO SALA</span><h2>Indoor Facilities Pipeline</h2><p>Una sola vista para calificar, visitar y convertir oportunidades en Florida.</p></div><div class="pkf-owner"><span>Responsable operativo</span><strong>Darío Sala</strong><small>Asignación sin acceso automático al CRM</small></div></div>'
+    +'<div class="pkf-kpis"><div><span>Prospectos</span><strong>'+all.length+'</strong><small>Base importada</small></div><div><span>Contactados</span><strong>'+contacted+'</strong><small>'+Math.round(contacted/Math.max(all.length,1)*100)+'% del universo</small></div><div><span>Visitados</span><strong>'+visited+'</strong><small>Pendientes '+(all.length-visited)+'</small></div><div class="success"><span>Potencial 8–10</span><strong>'+qualified+'</strong><small>Prioridad comercial</small></div><div class="warning"><span>Sin email/teléfono</span><strong>'+missing+'</strong><small>Requieren investigación</small></div></div>'
+    +'<div class="pkf-grid"><div class="pkf-card"><div class="pkf-card-head"><h3>Embudo comercial</h3><span>'+all.length+' instalaciones</span></div><div class="pkf-funnel">'+stageCards+'</div></div><div class="pkf-card"><div class="pkf-card-head"><h3>Cobertura regional</h3><span>Florida</span></div><div class="pkf-regions">'+regionBars+'</div></div></div>'
+    +'<div class="pkf-toolbar"><input id="pkf_q" type="search" value="'+esc(f.busqueda)+'" placeholder="Buscar instalación, ciudad o contacto"><select id="pkf_region">'+regionOptions+'</select><select id="pkf_tipo">'+typeOptions+'</select><select id="pkf_etapa">'+stageOptions+'</select><button class="btn btnc" onclick="A.pkFloridaApply()">Aplicar</button><button class="btn btng" onclick="A.pkFloridaClear()">Limpiar</button><span>'+rows.length+' de '+all.length+'</span></div>'
+    +'<div class="card pkf-table"><div class="tw"><table><thead><tr><th>Instalación</th><th>Región / tipo</th><th>Contacto</th><th>Etapa</th><th>Potencial</th><th>Siguiente acción</th><th></th></tr></thead><tbody>'+table+'</tbody></table></div></div>'
+    +'</section>';
+}
+
 /* CLIENTES */
 function vCL(){
   if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
@@ -1696,18 +1750,26 @@ function vCL(){
 /* USUARIOS */
 function vUS(){
   if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
+  var activeUsers=DB.usuarios.filter(function(u){return u.activo;}).length, admins=DB.usuarios.filter(function(u){return u.activo&&u.rol==='admin';}).length;
   var rows = DB.usuarios.map(function(u){
+    var projectIds=[];
+    DB.proyectos.forEach(function(p){if(p.owner_id===u.id&&projectIds.indexOf(p.id)<0)projectIds.push(p.id);});
+    DB.tareas.forEach(function(t){if(t.owner_id===u.id&&projectIds.indexOf(t.proyecto_id)<0)projectIds.push(t.proyecto_id);});
+    var openTasks=DB.tareas.filter(function(t){return t.owner_id===u.id&&t.estado!=='terminada';}).length;
     return '<tr>'
       +'<td><div style="display:flex;align-items:center;gap:9px"><div class="av">'+ini(u.nombre)+'</div><span style="font-weight:700">'+esc(u.nombre)+'</span></div></td>'
       +'<td style="color:var(--muted)">'+esc(u.username)+'</td>'
       +'<td><span class="badge '+(u.rol==='admin'?'bc_':'bb_')+'">'+( u.rol==='admin'?'Administrador':'Usuario')+'</span></td>'
       +'<td>'+(u.activo?'<span class="badge bg_">Activo</span>':'<span class="badge bx_">Inactivo</span>')+'</td>'
-      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.eu(\''+u.id+'\')">Editar</button>'
+      +'<td><strong>'+projectIds.length+'</strong><small style="display:block;color:var(--muted)">'+openTasks+' tarea(s) abiertas</small></td>'
+      +'<td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btns btng" onclick="A.eu(\''+u.id+'\')">'+iconHtml('user-cog')+' Editar acceso</button>'
       +(u.id!==SES.userId?'<button class="btn btns btnd" onclick="A.tu(\''+u.id+'\')">'+( u.activo?'Desactivar':'Activar')+'</button>':'')
       +'</div></td></tr>';
   }).join('');
-  return '<div class="sh"><h2>Usuarios</h2><button class="btn btnc" onclick="A.nu()">+ Nuevo usuario</button></div>'
-    +'<div class="card"><div class="tw"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  return '<div class="sh"><div><h2>Usuarios y permisos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Altas, bajas y roles desde un solo lugar.</div></div><button class="btn btnc" onclick="A.nu()">'+iconHtml('user-plus')+' Nuevo usuario</button></div>'
+    +'<div class="user-access-note">'+iconHtml('shield-check')+'<div><strong>Modelo de acceso actual</strong><span>Administrador: ve y gestiona todo. Usuario: ve proyectos o tareas que tiene asignados. Cambiar un responsable interno de ProKicks no crea acceso.</span></div></div>'
+    +'<div class="sg user-kpis"><div class="sc"><div class="sl">Usuarios</div><div class="sn">'+DB.usuarios.length+'</div></div><div class="sc g"><div class="sl">Activos</div><div class="sn">'+activeUsers+'</div></div><div class="sc"><div class="sl">Administradores</div><div class="sn">'+admins+'</div></div><div class="sc y"><div class="sl">Inactivos</div><div class="sn">'+(DB.usuarios.length-activeUsers)+'</div></div></div>'
+    +'<div class="card user-admin-table"><div class="tw"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Proyectos</th><th>Administración</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 
 /* REPORTES */
@@ -1978,7 +2040,7 @@ var A = {
       +'<div class="fr3">'+FLD('fi','Inicio','date',p&&p.fecha_inicio||today())+FLD('fv','Vencimiento','date',p&&p.fecha_vencimiento||pd(90))+FLD('bud','Presupuesto','number',p&&p.presupuesto||'')+'</div>'
       +'<div class="fr2">'+FSL('pi','Etapa',[['prospecto','Prospecto'],['propuesta','Propuesta'],['negociacion','Negociación'],['ejecucion','Ejecución'],['cerrado_ganado','Ganado'],['cerrado_perdido','Perdido']],p&&p.pipeline||'propuesta')+FSL('es','Estado',[['activo','Activo'],['pausado','Pausado'],['cerrado','Cerrado']],p&&p.estado||'activo')+'</div>'
       +FLD('dr','Link Google Drive (carpeta del proyecto)','url',p&&p.drive_url)
-      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sp(\''+( id||'')+'\')">Guardar proyecto</button></div>'
+      +'<div class="fa">'+(p?'<button class="btn project-archive" onclick="mClose();A.baja(\''+p.id+'\')">'+iconHtml('archive')+' Dar de baja</button>':'')+'<span style="flex:1"></span><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sp(\''+( id||'')+'\')">Guardar proyecto</button></div>'
       +'</div>');
     if(!p) A.previewProjectCreation();
   },
@@ -2036,9 +2098,15 @@ var A = {
   pickIcon: function(el,name){ document.getElementById('f_ico').value=name; el.parentNode.querySelectorAll('.icon-choice').forEach(function(x){x.classList.remove('selected');}); el.classList.add('selected'); hydrateIcons(); },
   pickColor: function(el,color){ document.getElementById('f_clr').value=color; el.parentNode.querySelectorAll('.color-choice').forEach(function(x){x.classList.remove('selected');}); el.classList.add('selected'); },
   baja: async function(id){
-    if(!confirm('¿Dar de baja este proyecto? Se eliminará permanentemente.')) return;
-    var ok = await del('proyectos',id);
-    if(ok){ await refresh(); toast('Proyecto dado de baja ✓','g'); }
+    var p=xid(DB.proyectos,id); if(!p)return;
+    if(!confirm('¿Dar de baja '+p.nombre+'? Se conservarán sus tareas, historial y datos; podrás reactivarlo después.')) return;
+    var ok = await upd('proyectos',id,{estado:'cerrado'});
+    if(ok){FPID='';await refresh();nav('proyectos');toast('Proyecto dado de baja y archivado ✓','g');}
+  },
+  restoreProject: async function(id){
+    var p=xid(DB.proyectos,id); if(!p)return;
+    var ok=await upd('proyectos',id,{estado:'activo'});
+    if(ok){await refresh();toast('Proyecto reactivado ✓','g');}
   },
   pd: function(id){
     var p = xid(DB.proyectos,id); if(!p) return;
@@ -2478,6 +2546,34 @@ var A = {
     await upd('tareas',id,data);mClose();await refresh();toast('Avance registrado ✓','g');
   },
   pkNew: function(){ A.pkForm(null, PKTAB); },
+  pkNewFlorida: function(){
+    A.pkForm(null,'prospecto',{mercado:'Florida',rep:'Darío Sala',fuente:'Lista indoor Florida',visitado:'Pendiente',etapa:'por_contactar',siguiente_accion:'Calificar con Darío'});
+  },
+  pkFloridaApply: function(){
+    PK_FLORIDA_FILTERS={region:fv('pkf_region'),tipo:fv('pkf_tipo'),etapa:fv('pkf_etapa'),busqueda:fv('pkf_q').trim()}; render();
+  },
+  pkFloridaClear: function(){ PK_FLORIDA_FILTERS={region:'',tipo:'',etapa:'',busqueda:''}; render(); },
+  pkFloridaEdit: function(id){
+    var row=DB.prokicks_records.find(function(x){return x.id===id;}); if(!row)return;
+    var d=row.data||{};
+    mOpen('Gestionar prospecto Florida','<div class="fg pkf-manage">'
+      +'<div class="control-edit-intro"><strong>'+esc(d.cliente||'Prospecto')+'</strong><span>'+esc(d.region||'Florida')+' · '+esc(d.tipo_instalacion||'Instalación deportiva')+' · Responsable: Darío Sala</span></div>'
+      +'<div class="fr2">'+FSL('pkf_es','Etapa',[['por_contactar','Por contactar'],['contactado','Contactado'],['demo_agendada','Visita / demo'],['propuesta_enviada','Propuesta'],['negociacion','Negociación'],['cerrado','Ganado'],['perdido','Descartado']],d.etapa||'por_contactar')+FSL('pkf_vi','Visitado',[['Pendiente','Pendiente'],['Sí','Sí'],['No','No']],d.visitado||'Pendiente')+'</div>'
+      +'<div class="fr2">'+FLD('pkf_po','Potencial 1–10','number',d.potencial||'')+FLD('pkf_ps','Próximo seguimiento','date',d.proximo_seguimiento||'')+'</div>'
+      +FLD('pkf_sa','Siguiente acción','text',d.siguiente_accion||'Calificar con Darío')
+      +'<div class="fr2">'+FLD('pkf_ct','Contacto','text',d.contacto||'')+FLD('pkf_cg','Cargo','text',d.cargo||'')+'</div>'
+      +'<div class="fr2">'+FLD('pkf_em','Email','email',d.email||'')+FLD('pkf_te','Teléfono','text',d.telefono||'')+'</div>'
+      +FTA('pkf_no','Notas de seguimiento',d.notas||'')
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkFloridaSave(\''+id+'\')">Guardar avance</button></div></div>',true);
+  },
+  pkFloridaSave: async function(id){
+    var row=DB.prokicks_records.find(function(x){return x.id===id;}); if(!row)return;
+    var potential=fv('pkf_po');
+    if(potential!==''&&(Number(potential)<1||Number(potential)>10)){toast('El potencial debe estar entre 1 y 10','r');return;}
+    var data=Object.assign({},row.data||{}, {etapa:fv('pkf_es'),visitado:fv('pkf_vi'),potencial:potential===''?'':Number(potential),proximo_seguimiento:fv('pkf_ps'),siguiente_accion:fv('pkf_sa'),contacto:fv('pkf_ct'),cargo:fv('pkf_cg'),email:fv('pkf_em'),telefono:fv('pkf_te'),notas:fv('pkf_no'),ultima_actividad:new Date().toISOString()});
+    var saved=await upd('prokicks_records',id,{data:data,updated_at:new Date().toISOString()});
+    if(saved){mClose();await refresh();PKTAB='florida';toast('Prospecto actualizado ✓','g');}
+  },
   pkSettings: function(){
     if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
     var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato');
@@ -2505,10 +2601,10 @@ var A = {
     mClose(); await refresh(); toast('Inventario actualizado ✓','g');
   },
   pkEdit: function(id){ var r=DB.prokicks_records.find(function(x){return x.id===id;}); if(r) A.pkForm(r, r.tipo); },
-  pkForm: function(row,tipo){
+  pkForm: function(row,tipo,defaults){
     if(!canUseProkicks()){ toast('Sin permiso para ProKicks','r'); return; }
     var schema = PKSCHEMAS[tipo]; if(!schema){ toast('Tipo no disponible','r'); return; }
-    var data = row ? (row.data||{}) : {};
+    var data = Object.assign({},defaults||{},row ? (row.data||{}) : {});
     var fields = schema.map(function(f){
       var key=f[0], lbl=f[1], typ=f[2]||'text', req=f[3]?' required':'', val=data[key]||'', opts=f[4]||[];
       if(typ==='textarea') return '<div class="fld"><label>'+esc(lbl)+'</label><textarea id="f_'+key+'"'+req+'>'+esc(val)+'</textarea></div>';
@@ -2530,7 +2626,7 @@ var A = {
     }
     var payload = {proyecto_id:p.id, owner_id:SES.userId, tipo:tipo, data:data, updated_at:new Date().toISOString()};
     var r = id ? await upd('prokicks_records',id,payload) : await ins('prokicks_records',payload);
-    if(r){ mClose(); await refresh(); PKTAB=tipo; toast(id?'Registro actualizado':'Registro creado ✓','g'); }
+    if(r){ mClose(); await refresh(); PKTAB=(tipo==='prospecto'&&data.mercado==='Florida')?'florida':tipo; toast(id?'Registro actualizado':'Registro creado ✓','g'); }
   },
   pkDel: async function(id){
     if(!confirm('¿Eliminar este registro de ProKicks?')) return;
@@ -2609,7 +2705,8 @@ var A = {
     mOpen(u?'Editar usuario':'Nuevo usuario',
       '<div class="fg">'
       +'<div class="fr2">'+FLD('nm','Nombre completo','text',u&&u.nombre)+FLD('us','Usuario (login)','text',u&&u.username)+'</div>'
-      +'<div class="fr2">'+FLD('pi','PIN','text',u&&u.pin)+FSL('ro','Rol',[['admin','Administrador'],['user','Usuario']],u&&u.rol||'user')+'</div>'
+      +'<div class="fr3">'+FLD('pi','PIN','text',u&&u.pin)+FSL('ro','Rol',[['admin','Administrador'],['user','Usuario']],u&&u.rol||'user')+FSL('ac','Estado de acceso',[['true','Activo'],['false','Inactivo']],String(u?u.activo:true))+'</div>'
+      +'<div class="user-role-help"><strong>Administrador</strong> puede ver y modificar todos los proyectos. <strong>Usuario</strong> solo accede a proyectos o tareas asignadas.</div>'
       +'<div class="fr2">'+FLD('em','Correo para alertas','email',pref.email)+FLD('dh','Hora del resumen diario','number',pref.digest_hour)+'</div>'
       +'<div class="fr2">'+FSL('ne','Alertas por correo',[['true','Activadas'],['false','Desactivadas']],String(pref.email_enabled))+FSL('nd','Resumen diario',[['true','Activado'],['false','Desactivado']],String(pref.daily_digest))+'</div>'
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._su(\''+( id||'')+'\')">Guardar</button></div>'
@@ -2619,7 +2716,7 @@ var A = {
     var nm=fv('nm'),us=fv('us'),pi=fv('pi');
     if(!nm||!us||!pi){toast('Todos los campos son requeridos','r');return;}
     if(!id && DB.usuarios.some(function(u){return u.username===us;})){toast('Ese usuario ya existe','r');return;}
-    var data = {nombre:nm,username:us,pin:pi,rol:fv('ro')};
+    var data = {nombre:nm,username:us,pin:pi,rol:fv('ro'),activo:fv('ac')==='true'};
     var r = id ? await upd('usuarios',id,data) : await ins('usuarios',Object.assign({activo:true},data));
     if(r){
       await sb.from('notification_preferences').upsert({user_id:r.id,email:fv('em')||null,email_enabled:fv('ne')==='true',browser_enabled:true,daily_digest:fv('nd')==='true',digest_hour:Math.max(0,Math.min(23,Number(fv('dh'))||8)),timezone:'America/Mexico_City',updated_at:new Date().toISOString()},{onConflict:'user_id'});

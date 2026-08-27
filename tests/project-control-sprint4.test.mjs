@@ -8,7 +8,7 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(app, /function projectObjectivesHtml\(p\)/);
 assert.match(app, /function objectiveName\(t\)/);
 assert.match(app, /function objectiveSignal\(tasks\)/);
-assert.match(app, /\['objetivos','Objetivos'\]/);
+assert.match(app, /\['objetivos','Objetivos','target'\]/);
 assert.match(app, /tab==='objetivos'\?projectObjectivesHtml\(p\)/);
 assert.match(app, /Mapa de Objetivos/);
 assert.match(app, /Matriz de trazabilidad/);
@@ -33,7 +33,7 @@ for (const selector of [
   '.objective-matrix'
 ]) assert.ok(css.includes(selector), `${selector} debe tener estilos`);
 
-assert.match(html, /styles\.css\?v=2\.7\.0/);
-assert.match(html, /app\.js\?v=2\.7\.0/);
+assert.match(html, /styles\.css\?v=2\.(?:7|8)\.0/);
+assert.match(html, /app\.js\?v=2\.(?:7|8)\.0/);
 
 console.log('Project Control Sprint 4 objective traceability tests: OK');

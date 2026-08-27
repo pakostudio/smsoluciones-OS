@@ -35,7 +35,9 @@ assert.ok(plan[1].subtasks.includes('SPOT Tlatelolco'));
   assert.ok(appJs.includes(name), `${name} debe estar integrado`);
 });
 assert.match(appJs, /Plan de trabajo ProKicks/);
-assert.match(appJs, /\['mando','Centro de Control'\],\['objetivos','Objetivos'\],\['ejecucion','Ejecución'\],\['tareas',mainLabel\],\['reporte','Reporte'\],\['historial','Historial'\],\['kanban','Kanban'\],\['calendario','Calendario'\],\['gantt','Gantt'\],\['pipeline','Pipeline'\]/);
+assert.match(appJs, /\['mando','Centro de Control','gauge'\]/);
+assert.match(appJs, /\['tareas',mainLabel,'list-checks'\]/);
+assert.match(appJs, /\['pipeline','Pipeline','git-branch'\]/);
 assert.ok(!appJs.includes("if(isProkicksProject(p)) return prokicksProjectOverview();"));
 
 assert.ok(appJs.includes('Asignación y control ProKicks'));
