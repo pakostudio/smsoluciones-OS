@@ -59,7 +59,7 @@ try{
 }catch(e){}
 
 /* ── STATE ── */
-var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[],prokicks_records:[],prokicks_settings:[],notification_preferences:[],usage_events:[]};
+var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[],prokicks_records:[],prokicks_settings:[],notification_preferences:[],usage_events:[],proyecto_usuarios:[]};
 var SES = null;  // {userId}
 var VIEW = 'dashboard';
 var FPID = '';   // filter project id
@@ -553,6 +553,8 @@ async function loadAll(){
     DB.prokicks_settings = pkset.error ? [] : (pkset.data||[]);
     var prefs = await sb.from('notification_preferences').select('*');
     DB.notification_preferences = prefs.error ? [] : (prefs.data||[]);
+    var pu = await sb.from('proyecto_usuarios').select('*');
+    DB.proyecto_usuarios = pu.error ? [] : (pu.data||[]);
     if(await normalizeProjectGroups()){
       var [t2,st2] = await Promise.all([
         sb.from('tareas').select('*').order('created_at',{ascending:false}),
@@ -694,7 +696,9 @@ function myProjs(){
   if(adm()) return DB.proyectos;
   var uid = SES.userId;
   return DB.proyectos.filter(function(p){
-    return p.owner_id===uid || DB.tareas.some(function(t){ return t.proyecto_id===p.id && t.owner_id===uid; });
+    return p.owner_id===uid
+      || DB.tareas.some(function(t){ return t.proyecto_id===p.id && t.owner_id===uid; })
+      || DB.proyecto_usuarios.some(function(pu){ return pu.proyecto_id===p.id && pu.usuario_id===uid; });
   });
 }
 function myTasks(){
@@ -1308,7 +1312,7 @@ function projectWorkspace(p){
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
-  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'mando\')" title="Volver al Centro de Control" aria-label="Volver al Centro de Control">'+iconHtml('arrow-left')+'</button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
+  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="nav(\'dashboard\')" title="Volver a Mis proyectos" aria-label="Volver a Mis proyectos">'+iconHtml('arrow-left')+'</button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div><button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button></div></div>'
     +projectTabs(p)
     +body+'</div>';
@@ -1729,6 +1733,15 @@ function pkFloridaBoard(){
     +'</section>';
 }
 
+function projectAccessField(p){
+  var users = DB.usuarios.filter(function(u){ return u.activo && u.rol!=='admin'; });
+  var current = p ? DB.proyecto_usuarios.filter(function(pu){ return pu.proyecto_id===p.id; }).map(function(pu){ return pu.usuario_id; }) : [];
+  var boxes = users.map(function(u){
+    return '<label class="access-check"><input type="checkbox" data-access-user value="'+u.id+'" '+(current.indexOf(u.id)>=0?'checked':'')+'> <span class="usav" style="width:22px;height:22px;font-size:10px;display:inline-flex">'+ini(u.nombre)+'</span> '+esc(u.nombre)+'</label>';
+  }).join('');
+  return '<div class="fld"><label>¿Quién puede ver este proyecto?</label><div class="access-check-list">'+(boxes||'<p style="color:var(--muted);font-size:12px">No hay usuarios activos para asignar.</p>')+'</div><p style="color:var(--muted);font-size:11px;margin-top:4px">Además de quien ya tenga tareas asignadas aquí. Los administradores siempre ven todos los proyectos.</p></div>';
+}
+
 /* CLIENTES */
 function vCL(){
   if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
@@ -1743,7 +1756,7 @@ function vCL(){
       +'<td style="text-align:center">'+np+'</td>'
       +'<td>'+(c.drive_url?'<a href="'+esc(c.drive_url)+'" target="_blank" class="btn btns btng">📁 Drive</a>':'—')+'</td>'
       +'<td>'+bSt(c.estado)+'</td>'
-      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.ec(\''+c.id+'\')">Editar</button><button class="btn btns" onclick="A.pagos(\''+c.id+'\')">Pagos</button></div></td>'
+      +'<td><div style="display:flex;gap:5px"><button class="btn btns btng" onclick="A.ec(\''+c.id+'\')">Editar</button><button class="btn btns" onclick="A.pagos(\''+c.id+'\')">Pagos</button>'+(c.estado==='inactivo'?'<button class="btn btns btng" onclick="A.rc(\''+c.id+'\')">Reactivar</button>':'<button class="btn btns btnd" onclick="A.dc(\''+c.id+'\')">Eliminar</button>')+'</div></td>'
       +'</tr>';
   }).join('') || '<tr><td colspan="9"><div class="empty"><p>Sin clientes</p></div></td></tr>';
   return '<div class="sh"><h2>Clientes</h2><button class="btn btnc" onclick="A.nc()">+ Nuevo cliente</button></div>'
@@ -2043,6 +2056,7 @@ var A = {
       +'<div class="fr3">'+FLD('fi','Inicio','date',p&&p.fecha_inicio||today())+FLD('fv','Vencimiento','date',p&&p.fecha_vencimiento||pd(90))+FLD('bud','Presupuesto','number',p&&p.presupuesto||'')+'</div>'
       +'<div class="fr2">'+FSL('pi','Etapa',[['prospecto','Prospecto'],['propuesta','Propuesta'],['negociacion','Negociación'],['ejecucion','Ejecución'],['cerrado_ganado','Ganado'],['cerrado_perdido','Perdido']],p&&p.pipeline||'propuesta')+FSL('es','Estado',[['activo','Activo'],['pausado','Pausado'],['cerrado','Cerrado']],p&&p.estado||'activo')+'</div>'
       +FLD('dr','Link Google Drive (carpeta del proyecto)','url',p&&p.drive_url)
+      +projectAccessField(p)
       +'<div class="fa">'+(p?'<button class="btn project-archive" onclick="mClose();A.baja(\''+p.id+'\')">'+iconHtml('archive')+' Dar de baja</button>':'')+'<span style="flex:1"></span><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._sp(\''+( id||'')+'\')">Guardar proyecto</button></div>'
       +'</div>');
     if(!p) A.previewProjectCreation();
@@ -2078,7 +2092,17 @@ var A = {
     if(r && !id && creationPlan.tasks && creationPlan.tasks.length){
       await A.seedProjectFromPlan(r,creationPlan);
     }
-    if(r){mClose();await refresh();trackEvent(id?'project_updated':'project_created',{project_id:r.id});toast(id?'Proyecto actualizado':'Proyecto creado ✓','g'); if(!id) A.openProject(r.id,'tareas');}
+    if(r){
+      await A.saveProjectAccess(r.id);
+      mClose();await refresh();trackEvent(id?'project_updated':'project_created',{project_id:r.id});toast(id?'Proyecto actualizado':'Proyecto creado ✓','g'); if(!id) A.openProject(r.id,'tareas');
+    }
+  },
+  saveProjectAccess: async function(pid){
+    var checked = Array.prototype.map.call(document.querySelectorAll('[data-access-user]:checked'),function(el){return el.value;});
+    await sb.from('proyecto_usuarios').delete().eq('proyecto_id',pid);
+    if(checked.length){
+      await sb.from('proyecto_usuarios').insert(checked.map(function(uid){return {proyecto_id:pid,usuario_id:uid};}));
+    }
   },
   seedProjectFromPlan: async function(project,plan){
     var owner=fv('oi')||SES.userId;
@@ -2658,6 +2682,17 @@ var A = {
     var r = id ? await upd('clientes',id,data) : await ins('clientes',data);
     if(r){mClose();await refresh();toast(id?'Cliente actualizado':'Cliente registrado ✓','g');}
   },
+  dc: async function(id){
+    var c = xid(DB.clientes,id); if(!c) return;
+    if(!confirm('¿Eliminar '+c.nombre+'? Se marcará como inactivo; sus proyectos y pagos se conservan y puedes reactivarlo después.')) return;
+    var ok = await upd('clientes',id,{estado:'inactivo'});
+    if(ok){await refresh();toast('Cliente eliminado','g');}
+  },
+  rc: async function(id){
+    var c = xid(DB.clientes,id); if(!c) return;
+    var ok = await upd('clientes',id,{estado:'activo'});
+    if(ok){await refresh();toast('Cliente reactivado ✓','g');}
+  },
   pagos: function(cid){
     var pays = DB.pagos.filter(function(p){return p.cliente_id===cid;});
     var c = xid(DB.clientes,cid);
@@ -2738,23 +2773,23 @@ function buildSelector(){
   var users = DB.usuarios.filter(function(u){return u.activo;});
   var container = document.getElementById('user-sel');
   if(!container) return;
-  container.innerHTML = '';
-  users.forEach(function(u){
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'usbtn';
-    btn.innerHTML = '<div class="usav">'+ini(u.nombre)+'</div>'+esc(u.nombre);
-    btn.addEventListener('click', function(){
-      SELUID = u.id;
-      container.querySelectorAll('.usbtn').forEach(function(b){ b.classList.remove('sel'); });
-      btn.classList.add('sel');
-      document.getElementById('pin-lbl').textContent = 'PIN de '+u.nombre;
-      document.getElementById('pin-wrap').style.display = 'block';
-      document.getElementById('btn-login').style.display = 'block';
-      document.getElementById('lerr').textContent = '';
-      resetOtpBoxes(true);
-    });
-    container.appendChild(btn);
+  container.innerHTML = '<select id="user-select" class="user-select"><option value="">— Selecciona —</option>'
+    + users.map(function(u){ return '<option value="'+u.id+'">'+esc(u.nombre)+'</option>'; }).join('')
+    + '</select>';
+  document.getElementById('user-select').addEventListener('change', function(){
+    var u = xid(DB.usuarios, this.value);
+    if(!u){
+      SELUID = '';
+      document.getElementById('pin-wrap').style.display = 'none';
+      document.getElementById('btn-login').style.display = 'none';
+      return;
+    }
+    SELUID = u.id;
+    document.getElementById('pin-lbl').textContent = 'Ingresa tu PIN';
+    document.getElementById('pin-wrap').style.display = 'block';
+    document.getElementById('btn-login').style.display = 'block';
+    document.getElementById('lerr').textContent = '';
+    resetOtpBoxes(true);
   });
 }
 
@@ -2882,7 +2917,7 @@ function doLogout(){
   document.getElementById('btn-login').style.display = 'none';
   resetOtpBoxes(false);
   document.getElementById('lerr').textContent = '';
-  document.querySelectorAll('.usbtn').forEach(function(b){ b.classList.remove('sel'); });
+  buildSelector();
 }
 document.getElementById('btn-out').addEventListener('click', doLogout);
 document.getElementById('btn-out-top').addEventListener('click', doLogout);
