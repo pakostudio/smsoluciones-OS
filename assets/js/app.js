@@ -1719,6 +1719,7 @@ function vPK(){
   var p=pkProject();
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
+  if(PKTABS.map(function(t){return t[0];}).indexOf(PKTAB)<0) PKTAB='dashboard';
   var tabs=PKTABS.map(function(t){return '<button class="tab '+(PKTAB===t[0]?'active':'')+'" onclick="PKTAB=\''+t[0]+'\';render()">'+t[1]+'</button>';}).join('');
   var body=PKTAB==='dashboard'?pkDashboard():pkTable(PKTAB);
   var addBtn = PKTAB!=='dashboard' ? '<button class="btn btnc" onclick="A.pkNew()">+ Nuevo '+esc(PKTAB_SINGLE[PKTAB]||'registro')+'</button>' : '';
