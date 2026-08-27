@@ -1014,12 +1014,12 @@ tr:hover td{background:var(--surface2)}
 }
 
 /* ── PRELOADER ── */
-#preloader{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:linear-gradient(145deg,#0B2547,#163460);opacity:0;transition:opacity .35s ease}
+#preloader{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:linear-gradient(145deg,#F8FAFC,#EEF3F8);opacity:0;transition:opacity .35s ease}
 #preloader.show{display:flex}
 #preloader.visible{opacity:1}
 .pl-logo-wrap{position:relative;width:96px;height:96px;display:grid;place-items:center}
 .pl-logo{width:56px;height:auto;position:relative;z-index:2;animation:plPulse 1.4s ease-in-out infinite}
-.pl-ring{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--cyan);animation:plSpin .9s linear infinite}
-.pl-text{color:#fff;font-size:13px;font-weight:700;letter-spacing:.04em;opacity:.85}
+.pl-ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--cyan);animation:plSpin .9s linear infinite}
+.pl-text{color:var(--navy);font-size:13px;font-weight:700;letter-spacing:.04em;opacity:.85}
 @keyframes plPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.75}}
 @keyframes plSpin{to{transform:rotate(360deg)}}

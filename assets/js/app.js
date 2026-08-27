@@ -2834,24 +2834,29 @@ async function doLogin(){
 
 function activateSession(found,state){
   showPreloader();
-  SES = {userId: found.id};
-  document.getElementById('lerr').textContent = '';
-  document.body.classList.add('logged');
-  document.getElementById('sb-av').textContent = ini(found.nombre);
-  document.getElementById('sb-n').textContent = found.nombre;
-  document.getElementById('sb-r').textContent = found.rol==='admin' ? 'Administrador' : 'Usuario';
-  if(found.rol==='admin') document.getElementById('nav-admin').style.display = 'block';
-  else document.getElementById('nav-admin').style.display = 'none';
-  document.getElementById('tb-live').style.display = 'block';
-  buildProjectNav();
-  VIEW = state&&state.view || 'dashboard';
-  FPID = state&&state.fpid || '';
-  PTAB = state&&state.ptab || 'tareas';
-  PKTAB = state&&state.pktab || 'dashboard';
-  document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===VIEW); });
-  render();
-  saveSession();
-  setTimeout(hidePreloader, 450);
+  var plStart = Date.now();
+  setTimeout(function(){
+    SES = {userId: found.id};
+    document.getElementById('lerr').textContent = '';
+    document.body.classList.add('logged');
+    document.getElementById('sb-av').textContent = ini(found.nombre);
+    document.getElementById('sb-n').textContent = found.nombre;
+    document.getElementById('sb-r').textContent = found.rol==='admin' ? 'Administrador' : 'Usuario';
+    if(found.rol==='admin') document.getElementById('nav-admin').style.display = 'block';
+    else document.getElementById('nav-admin').style.display = 'none';
+    document.getElementById('tb-live').style.display = 'block';
+    buildProjectNav();
+    VIEW = state&&state.view || 'dashboard';
+    FPID = state&&state.fpid || '';
+    PTAB = state&&state.ptab || 'tareas';
+    PKTAB = state&&state.pktab || 'dashboard';
+    document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===VIEW); });
+    render();
+    saveSession();
+    var elapsed = Date.now() - plStart;
+    var minShow = 900;
+    setTimeout(hidePreloader, Math.max(0, minShow - elapsed));
+  }, 60);
 }
 
 function restoreSession(){
