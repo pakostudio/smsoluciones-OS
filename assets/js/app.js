@@ -1973,6 +1973,14 @@ function projectAccessField(p){
   }).join('');
   return '<div class="fld"><label>¿Quién puede ver este proyecto?</label><div class="access-check-list">'+(boxes||'<p style="color:var(--muted);font-size:12px">No hay usuarios activos para asignar.</p>')+'</div><p style="color:var(--muted);font-size:11px;margin-top:4px">Además de quien ya tenga tareas asignadas aquí. Los administradores siempre ven todos los proyectos.</p></div>';
 }
+function userProjectAccessField(u){
+  var projects = DB.proyectos.filter(function(p){ return p.estado!=='cerrado'; });
+  var current = u ? DB.proyecto_usuarios.filter(function(pu){ return pu.usuario_id===u.id; }).map(function(pu){ return pu.proyecto_id; }) : [];
+  var boxes = projects.map(function(p){
+    return '<label class="access-check"><input type="checkbox" data-access-project value="'+p.id+'" '+(current.indexOf(p.id)>=0?'checked':'')+'> '+esc(p.nombre)+'</label>';
+  }).join('');
+  return '<div class="fld"><label>¿A qué proyectos tiene acceso?</label><div class="access-check-list">'+(boxes||'<p style="color:var(--muted);font-size:12px">No hay proyectos activos.</p>')+'</div><p style="color:var(--muted);font-size:11px;margin-top:4px">Además de cualquier proyecto donde ya tenga tareas asignadas. Solo aplica a usuarios con rol Usuario; los Administradores siempre ven todo.</p></div>';
+}
 
 /* CLIENTES */
 function vCL(){
@@ -2985,6 +2993,7 @@ var A = {
       +'<div class="user-role-help"><strong>Administrador</strong> puede ver y modificar todos los proyectos. <strong>Usuario</strong> solo accede a proyectos o tareas asignadas.</div>'
       +'<div class="fr2">'+FLD('em','Correo para alertas','email',pref.email)+FLD('dh','Hora del resumen diario','number',pref.digest_hour)+'</div>'
       +'<div class="fr2">'+FSL('ne','Alertas por correo',[['true','Activadas'],['false','Desactivadas']],String(pref.email_enabled))+FSL('nd','Resumen diario',[['true','Activado'],['false','Desactivado']],String(pref.daily_digest))+'</div>'
+      +(adm()?userProjectAccessField(u):'')
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._su(\''+( id||'')+'\')">Guardar</button></div>'
       +'</div>');
   },
@@ -2996,7 +3005,15 @@ var A = {
     var r = id ? await upd('usuarios',id,data) : await ins('usuarios',Object.assign({activo:true},data));
     if(r){
       await sb.from('notification_preferences').upsert({user_id:r.id,email:fv('em')||null,email_enabled:fv('ne')==='true',browser_enabled:true,daily_digest:fv('nd')==='true',digest_hour:Math.max(0,Math.min(23,Number(fv('dh'))||8)),timezone:'America/Mexico_City',updated_at:new Date().toISOString()},{onConflict:'user_id'});
+      if(adm() && document.querySelector('[data-access-project]')) await A.saveUserProjectAccess(r.id);
       mClose();await refresh();buildSelector();toast(id?'Usuario actualizado':'Usuario creado ✓','g');
+    }
+  },
+  saveUserProjectAccess: async function(uid){
+    var checked = Array.prototype.map.call(document.querySelectorAll('[data-access-project]:checked'),function(el){return el.value;});
+    await sb.from('proyecto_usuarios').delete().eq('usuario_id',uid);
+    if(checked.length){
+      await sb.from('proyecto_usuarios').insert(checked.map(function(pid){return {proyecto_id:pid,usuario_id:uid};}));
     }
   },
   tu: async function(id){
