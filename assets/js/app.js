@@ -1312,7 +1312,7 @@ function projectWorkspace(p){
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
-  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="nav(\'dashboard\')" title="Volver a Mis proyectos" aria-label="Volver a Mis proyectos">'+iconHtml('arrow-left')+'</button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
+  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="nav(\'dashboard\')" title="Volver a Mis proyectos" aria-label="Volver a Mis proyectos">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div><button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button></div></div>'
     +projectTabs(p)
     +body+'</div>';
