@@ -868,11 +868,28 @@ function projectTree(p,limit){
 function lastComment(t){
   return DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));})[0] || null;
 }
+function humanComment(texto){
+  var s = String(texto||'');
+  var m = s.match(/^INVPK::(.+)$/);
+  if(!m) return s;
+  try{
+    var d = JSON.parse(m[1]);
+    if(d.type==='device'){
+      var dev=d.device||{};
+      return 'Alta de dispositivo '+(dev.code||dev.id||'')+' · Estado: '+(dev.status||'—')+(dev.notas?' · '+dev.notas:'');
+    }
+    if(d.type==='movement'){
+      var mv=d.movement||{};
+      return 'Movimiento de '+(mv.code||mv.device_id||'')+' ('+(mv.movement_type||'—')+') · Nuevo estado: '+(mv.new_status||'—')+(mv.notas?' · '+mv.notas:'');
+    }
+    return 'Registro de inventario actualizado.';
+  }catch(e){ return s; }
+}
 function taskActivityItems(t){
   if(!t) return [];
   var items=[];
   if(t.created_at) items.push({ts:t.created_at,type:'creada',title:'Tarea creada',body:t.titulo,user:t.owner_id,icon:'plus-circle'});
-  DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).forEach(function(c){items.push({ts:c.created_at,type:'comentario',title:/^SM OS ·/.test(c.texto||'')?'Actualización del sistema':'Comentario / avance',body:c.texto,user:c.usuario_id,icon:'message-square'});});
+  DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).forEach(function(c){var isInv=/^INVPK::/.test(c.texto||'');items.push({ts:c.created_at,type:'comentario',title:isInv?'Movimiento de inventario':(/^SM OS ·/.test(c.texto||'')?'Actualización del sistema':'Comentario / avance'),body:humanComment(c.texto),user:c.usuario_id,icon:isInv?'package':'message-square'});});
   DB.subtareas.filter(function(st){return st.tarea_id===t.id;}).forEach(function(st){items.push({ts:st.created_at,type:'microtarea',title:'Microtarea: '+st.titulo,body:'Estado: '+(st.estado||'pendiente')+' · Responsable: '+uNm(st.owner_id),user:st.owner_id,icon:'list-checks'});});
   DB.entregables.filter(function(f){return f.tarea_id===t.id;}).forEach(function(f){items.push({ts:f.created_at,type:'entregable',title:'Entregable agregado',body:f.nombre+(f.version?' · v'+f.version:''),user:f.usuario_id,icon:'paperclip'});});
   return items.sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
@@ -980,7 +997,7 @@ function operationalBoard(p,limit){
       +'<td>'+fmt(followDate(t)||t.fecha_proximo_seguimiento)+'</td>'
       +'<td>'+esc(boardOwnerName(t,p))+'</td>'
       +'<td>'+alert+'</td>'
-      +(showCommentCol?'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(lc.texto||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>':'')
+      +(showCommentCol?'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(humanComment(lc.texto)||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>':'')
       +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
       +'</tr>';
   }).join('');
@@ -1615,7 +1632,7 @@ function pkWorkPlanHtml(p){
         +'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar</button></div>';
     }).join('')||'<div class="pkw-empty">Todavía no hay microtareas.</div>';
     var logs=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));}).slice(0,3);
-    var logHtml=logs.length?'<div class="pkw-log">'+logs.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+'</div>'+esc(c.texto)+'</div>';}).join('')+'</div>':'';
+    var logHtml=logs.length?'<div class="pkw-log">'+logs.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+'</div>'+esc(humanComment(c.texto))+'</div>';}).join('')+'</div>':'';
     return '<section class="pkw-card '+cls+'"><div class="pkw-head">'
       +'<div><div class="pkw-title">'+esc(t.titulo)+'</div><div class="pkw-meta">'+esc(descVal(t,'Objetivo')||nextAction(t)||'Objetivo por definir')+'</div><div class="pkw-people">'+people+'</div></div>'
       +'<div class="pkw-progress"><div class="pkw-progress-line"><span>Avance</span><span>'+pg.pct+'%</span></div><div class="pb" style="height:8px"><div class="pf" style="width:'+pg.pct+'%"></div></div><div class="pkw-meta">'+pg.done+' de '+pg.subs.length+' microtareas</div></div>'
@@ -2339,7 +2356,7 @@ var A = {
       ['Uso recomendado',descVal(t,'Uso recomendado')]
     ].filter(function(x){return x[1];});
     var contacts=contactFields.length?'<div class="crmgrid">'+contactFields.map(function(x){return '<div class="crmcell"><div class="dl">'+esc(x[0])+'</div><div class="dv">'+esc(x[1])+'</div></div>';}).join('')+'</div>':'<div class="hbar">Sin datos de contacto adicionales.</div>';
-    var timeline=comments.length?comments.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+' · '+esc(uNm(c.usuario_id))+'</div>'+esc(c.texto)+'</div>';}).join(''):'<div class="hbar">Todavía no hay actividades registradas.</div>';
+    var timeline=comments.length?comments.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+' · '+esc(uNm(c.usuario_id))+'</div>'+esc(humanComment(c.texto))+'</div>';}).join(''):'<div class="hbar">Todavía no hay actividades registradas.</div>';
     var owner=isProkicksProject(p)?pkInternalOwner(t):uNm(t.owner_id);
     mOpen('Gestionar · '+t.titulo,
       '<div class="fg">'
@@ -2381,7 +2398,7 @@ var A = {
       return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;align-items:center"><div style="display:flex;gap:9px;align-items:flex-start"><input class="pkw-check" type="checkbox" '+(s.estado==='terminada'?'checked':'')+' onchange="A.pkToggleSub(\''+s.id+'\')"><div><strong>'+esc(s.titulo)+'</strong><div style="color:var(--muted);font-size:12px;margin-top:3px">'+esc(uNm(s.owner_id))+' · Término: '+fmt(s.fecha_vencimiento)+'</div></div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+bSt(s.estado)+'<button class="btn btns btng" onclick="A.esub(\''+s.id+'\')">Editar fecha/estado</button></div></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin subtareas</div>';
     var comH = coms.map(function(c){
-      return '<div style="padding:9px;background:var(--surface2);border-radius:var(--rs);margin-bottom:7px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><strong style="font-size:13px">'+esc(uNm(c.usuario_id))+'</strong><span style="font-size:11px;color:var(--muted)">'+fmtdt(c.created_at)+'</span></div><p style="font-size:13px;margin:0">'+esc(c.texto)+'</p></div>';
+      return '<div style="padding:9px;background:var(--surface2);border-radius:var(--rs);margin-bottom:7px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><strong style="font-size:13px">'+esc(uNm(c.usuario_id))+'</strong><span style="font-size:11px;color:var(--muted)">'+fmtdt(c.created_at)+'</span></div><p style="font-size:13px;margin:0">'+esc(humanComment(c.texto))+'</p></div>';
     }).join('') || '<div style="color:var(--muted);font-size:13px">Sin comentarios</div>';
     var filH = fils.map(function(f){
       return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center"><div><strong>'+esc(f.nombre)+'</strong><span style="color:var(--muted);margin-left:7px">v'+esc(f.version)+'</span></div><a href="'+esc(f.url)+'" target="_blank" class="btn btns btng">🔗 Abrir</a></div>';
