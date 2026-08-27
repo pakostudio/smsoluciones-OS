@@ -980,7 +980,8 @@ function operationalBoard(p,limit){
       +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
       +'</tr>';
   }).join('');
-  var frontStrip=isProkicksProject(p)?'<div class="front-strip">'+groupsForProject(p).map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div>':'';
+  var fronts=groupsForProject(p);
+  var frontStrip=isProkicksProject(p)?'<details class="front-panel"><summary><span>'+iconHtml('layers-3')+'<strong>Frentes de trabajo</strong><small>'+fronts.length+' frentes · '+tasks.length+' tareas visibles</small></span><b>Administrar '+iconHtml('chevron-down')+'</b></summary><div class="front-strip">'+fronts.map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div></details>':'';
   var tableClass = 'operational-table' + (ofunamBoard ? ' ofunam-table' : '');
   var commentHead = showCommentCol ? '<th>Último comentario</th>' : '';
   var groupHead = ofunamBoard ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
@@ -1289,11 +1290,13 @@ function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
   var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
-  var mainButton = isProkicksProject(p) ? '<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">+ Frente</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">+ Tarea</button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">Abrir operación ProKicks</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
+  var floridaCount=isProkicksProject(p)?pkFloridaRows().length:0;
+  var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="PKTAB=\'florida\';nav(\'prokicks\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">'+iconHtml('layers-3')+' Frentes</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">'+iconHtml('plus')+' Tarea</button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
   var compactOfunamHead = '<div class="compact-board-summary"><div><h2>'+mainTitle+'</h2><div class="compact-board-metrics"><span class="metric">Registros <strong>'+s.tasks.length+'</strong></span><span class="metric">Sin acción <strong>'+s.noNext+'</strong></span><span class="metric">Riesgos <strong>'+(s.overdue+s.noNext)+'</strong></span><span class="metric">Resp. <strong>'+esc(uNm(p.owner_id))+'</strong></span></div></div>'+mainButton+'</div>';
   var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">Registros</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>';
-  var board = (isOfunamProject(p) ? compactOfunamHead : regularHead) + operationalBoard(p);
+  var prokicksHead='<div class="prokicks-work-head"><div><h2>'+mainTitle+'</h2><small>'+s.tasks.length+' tareas · '+(s.overdue+s.noNext)+' requieren atención</small></div>'+mainButton+'</div>';
+  var board = (isProkicksProject(p) ? prokicksHead : (isOfunamProject(p) ? compactOfunamHead : regularHead)) + operationalBoard(p);
   var body = tab==='mando'?projectCommandCenterHtml(p)
     : tab==='objetivos'?projectObjectivesHtml(p)
     : tab==='ejecucion'?projectExecutionBoardHtml(p)
