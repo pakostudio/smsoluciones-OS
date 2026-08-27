@@ -72,6 +72,17 @@ var FLTAB = 'tareas';
 var PK_INIT_BUSY = false;
 var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
+var VALID_VIEWS = ['dashboard','alertas','ayuda','proyectos','tareas','kanban','gantt','calendario','pipeline','prokicks','florida','prokicksHistorial','floridaHistorial','clientes','usuarios','reportes'];
+var VALID_PTABS = ['mando','objetivos','ejecucion','tareas','reporte','historial','kanban','calendario','gantt','pipeline'];
+var VALID_FLTABS = ['mando','objetivos','ejecucion','tareas','reporte','kanban','calendario','gantt','pipeline'];
+function sanitizeSessionState(state){
+  var view = state&&state.view; if(VALID_VIEWS.indexOf(view)<0) view='dashboard';
+  var ptab = state&&state.ptab; if(VALID_PTABS.indexOf(ptab)<0) ptab='tareas';
+  var pktabList = PKTABS.map(function(t){return t[0];});
+  var pktab = state&&state.pktab; if(pktabList.indexOf(pktab)<0) pktab='dashboard';
+  var fltab = state&&state.fltab; if(VALID_FLTABS.indexOf(fltab)<0) fltab='tareas';
+  return {view:view, fpid:(state&&state.fpid)||'', ptab:ptab, pktab:pktab, fltab:fltab};
+}
 var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
 var BOARD_FILTERS = {estado:'',accion:'',seguimiento:'',responsable:''};
@@ -783,7 +794,7 @@ function updBadge(){
 function saveSession(){
   if(!SES) return;
   try{
-    localStorage.setItem(SESSION_KEY, JSON.stringify({userId:SES.userId,view:VIEW,fpid:FPID,ptab:PTAB,pktab:PKTAB}));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({userId:SES.userId,view:VIEW,fpid:FPID,ptab:PTAB,pktab:PKTAB,fltab:FLTAB}));
   }catch(e){}
 }
 function clearSession(){
@@ -793,6 +804,7 @@ function storedSession(){
   try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; }
 }
 function nav(v){
+  if(VALID_VIEWS.indexOf(v)<0) return;
   if(['proyectos','tareas','kanban','gantt','calendario','pipeline','reportes'].indexOf(v)<0) FPID='';
   VIEW = v;
   document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===v); });
@@ -3083,10 +3095,8 @@ function activateSession(found,state){
     else document.getElementById('nav-admin').style.display = 'none';
     document.getElementById('tb-live').style.display = 'block';
     buildProjectNav();
-    VIEW = state&&state.view || 'dashboard';
-    FPID = state&&state.fpid || '';
-    PTAB = state&&state.ptab || 'tareas';
-    PKTAB = state&&state.pktab || 'dashboard';
+    var st = sanitizeSessionState(state);
+    VIEW = st.view; FPID = st.fpid; PTAB = st.ptab; PKTAB = st.pktab; FLTAB = st.fltab;
     document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===VIEW); });
     render();
     saveSession();
