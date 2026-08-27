@@ -1073,6 +1073,42 @@ function projectHistoryHtml(p){
     +'<div class="history-grid"><div class="card history-main"><div class="ch"><h3>Bitácora del proyecto</h3><span class="chip">últimos 80 eventos</span></div>'+renderActivityTimeline(items,'Sin historial del proyecto.')+'</div><div class="history-side"><div class="card"><div class="ch"><h3>Últimos movimientos</h3></div><div class="tw history-tw"><table class="history-table"><thead><tr><th>Fecha</th><th>Tarea</th><th>Evento</th><th>Resp.</th><th>Detalle</th></tr></thead><tbody>'+(latest||'<tr><td colspan="5">Sin actividad reciente</td></tr>')+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Actividad por usuario</h3></div><div class="tw history-tw"><table class="history-table compact"><thead><tr><th>Usuario</th><th>Eventos</th></tr></thead><tbody>'+userRows+'</tbody></table></div></div></div></div>';
 }
 
+function objectiveName(t){
+  var explicit=descVal(t,'Objetivo');
+  if(explicit)return explicit;
+  var area=controlArea(t);
+  return area&&area!=='General'?area:'Objetivo por definir';
+}
+function objectiveSignal(tasks){
+  if(tasks.some(function(t){return t.control_bloqueado;}))return {key:'danger',label:'Bloqueado'};
+  if(tasks.some(function(t){return t.control_decision_requerida;}))return {key:'warning',label:'Decisión requerida'};
+  if(tasks.some(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}))return {key:'danger',label:'Atrasado'};
+  if(tasks.length&&tasks.every(function(t){return t.estado==='terminada';}))return {key:'success',label:'Cumplido'};
+  return {key:'control',label:'En curso'};
+}
+function projectObjectivesHtml(p){
+  var tasks=projectTasks(p.id).slice().sort(function(a,b){return Number(a.control_orden||0)-Number(b.control_orden||0)||String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
+  var explicit=tasks.filter(function(t){return !!descVal(t,'Objetivo');});
+  var missing=tasks.filter(function(t){return objectiveName(t)==='Objetivo por definir';});
+  var groups={};
+  tasks.forEach(function(t){var name=objectiveName(t);if(!groups[name])groups[name]=[];groups[name].push(t);});
+  var names=Object.keys(groups).sort(function(a,b){if(a==='Objetivo por definir')return 1;if(b==='Objetivo por definir')return -1;return Number(groups[a][0].control_orden||0)-Number(groups[b][0].control_orden||0)||a.localeCompare(b);});
+  var coverage=tasks.length?Math.round((tasks.length-missing.length)/tasks.length*100):0;
+  var kpis=[];tasks.forEach(function(t){var k=descVal(t,'KPI');if(k&&kpis.indexOf(k)<0)kpis.push(k);});
+  var objectiveCards=names.map(function(name,index){
+    var arr=groups[name],pct=Math.round(arr.reduce(function(sum,t){return sum+controlProgress(t);},0)/Math.max(1,arr.length));
+    var sig=objectiveSignal(arr),owners=[],taskKpis=[],evidence=0;
+    arr.forEach(function(t){var owner=boardOwnerName(t,p),k=descVal(t,'KPI'),meta=descVal(t,'Meta');if(owner&&owners.indexOf(owner)<0)owners.push(owner);if(k){var label=k+(meta?' · Meta '+meta:'');if(taskKpis.indexOf(label)<0)taskKpis.push(label);}evidence+=DB.entregables.filter(function(e){return e.tarea_id===t.id;}).length;});
+    var taskRows=arr.map(function(t){var ev=DB.entregables.filter(function(e){return e.tarea_id===t.id;}).length;return '<button class="objective-task" onclick="A.td(\''+t.id+'\')"><span><strong>'+esc(t.titulo)+'</strong><small>'+esc(controlArea(t))+' · '+esc(boardOwnerName(t,p))+' · '+fmt(t.fecha_vencimiento)+'</small></span><span class="objective-task-progress"><i style="width:'+controlProgress(t)+'%"></i></span><b>'+controlProgress(t)+'%</b><em>'+ev+' evidencia(s)</em></button>';}).join('');
+    return '<article class="objective-card '+(name==='Objetivo por definir'?'is-gap':'')+'"><div class="objective-card-head"><div><span class="objective-code">OBJ-'+String(index+1).padStart(2,'0')+'</span><h3>'+esc(name)+'</h3></div><span class="objective-status '+sig.key+'">'+sig.label+'</span></div><div class="objective-card-kpis"><div><span>Avance</span><strong>'+pct+'%</strong></div><div><span>Acciones</span><strong>'+arr.length+'</strong></div><div><span>Responsables</span><strong>'+owners.length+'</strong></div><div><span>Evidencias</span><strong>'+evidence+'</strong></div></div><div class="objective-progress"><i style="width:'+pct+'%"></i></div><div class="objective-links"><span><b>KPI / Meta</b>'+esc(taskKpis.join(' · ')||'Por definir')+'</span><span><b>Responsables</b>'+esc(owners.join(', ')||'Por asignar')+'</span></div><details class="objective-actions"><summary>Ver trazabilidad de '+arr.length+' acción(es)</summary><div>'+taskRows+'</div></details></article>';
+  }).join('');
+  var matrix=tasks.map(function(t){var sig=objectiveSignal([t]),evidence=DB.entregables.filter(function(e){return e.tarea_id===t.id;}).length,kpi=descVal(t,'KPI'),meta=descVal(t,'Meta');return '<tr><td><button class="linkbtn" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><small>'+esc(controlArea(t))+'</small></td><td>'+esc(objectiveName(t))+'</td><td>'+esc(kpi?(kpi+(meta?' · '+meta:'')):'Por definir')+'</td><td>'+esc(boardOwnerName(t,p))+'</td><td><div class="objective-matrix-progress"><i style="width:'+controlProgress(t)+'%"></i></div><b>'+controlProgress(t)+'%</b></td><td><span class="objective-status '+sig.key+'">'+sig.label+'</span></td><td>'+evidence+'</td></tr>';}).join('');
+  var empty='<div class="control-empty"><div class="control-empty-icon">'+iconHtml('target')+'</div><h3>Sin acciones para mapear</h3><p>Agrega acciones al proyecto y vincula su objetivo, KPI y meta.</p><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Primera acción</button></div>';
+  return '<section class="objectives-map"><div class="objectives-head"><div><span class="sl">Centro de Control del Proyecto</span><h2>Mapa de Objetivos</h2><p>Objetivo → KPI y meta → fase → acción → responsable → evidencia → resultado.</p></div><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Acción vinculada</button></div>'
+    +'<div class="objective-summary"><div><span>Objetivos</span><strong>'+names.filter(function(n){return n!=='Objetivo por definir';}).length+'</strong><small>rutas activas</small></div><div class="'+(coverage<100?'warning':'success')+'"><span>Cobertura</span><strong>'+coverage+'%</strong><small>'+explicit.length+' explícita(s) · '+(tasks.length-explicit.length)+' por fase</small></div><div class="'+(missing.length?'danger':'')+'"><span>Brechas</span><strong>'+missing.length+'</strong><small>acciones sin objetivo</small></div><div><span>KPIs</span><strong>'+kpis.length+'</strong><small>indicadores vinculados</small></div></div>'
+    +(tasks.length?'<div class="objective-route"><span>Objetivo</span><i>→</i><span>KPI / Meta</span><i>→</i><span>Fase</span><i>→</i><span>Acción</span><i>→</i><span>Responsable</span><i>→</i><span>Evidencia</span><i>→</i><span>Resultado</span></div><div class="objective-grid">'+objectiveCards+'</div><div class="card objective-matrix"><div class="ch"><div><h3>Matriz de trazabilidad</h3><p>Lectura completa de cómo cada acción contribuye al objetivo.</p></div><span class="chip">'+tasks.length+' acciones</span></div><div class="tw"><table><thead><tr><th>Acción / fase</th><th>Objetivo</th><th>KPI / Meta</th><th>Responsable</th><th>Avance</th><th>Señal</th><th>Evid.</th></tr></thead><tbody>'+matrix+'</tbody></table></div></div>':empty)+'</section>';
+}
+
 function controlStateKey(t){
   if(t.control_bloqueado)return 'bloqueada';
   if(t.estado==='terminada')return 'completada';
@@ -1194,7 +1230,7 @@ function executiveReportText(pid){
 
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
-  var tabs=[['mando','Centro de Control'],['ejecucion','Ejecución'],['tareas',mainLabel],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
+  var tabs=[['mando','Centro de Control'],['objetivos','Objetivos'],['ejecucion','Ejecución'],['tareas',mainLabel],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
   return '<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div>';
 }
 function projectKanbanHtml(p){
@@ -1257,6 +1293,7 @@ function projectWorkspace(p){
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>';
   var board = (isOfunamProject(p) ? compactOfunamHead : regularHead) + operationalBoard(p);
   var body = tab==='mando'?projectCommandCenterHtml(p)
+    : tab==='objetivos'?projectObjectivesHtml(p)
     : tab==='ejecucion'?projectExecutionBoardHtml(p)
     : tab==='tareas'?board
     : tab==='reporte'?projectReportHtml(p.id)
@@ -2054,12 +2091,12 @@ var A = {
       +(crm?'':'<div class="hbar"><span class="dot dy"></span>Modo compatible: estos datos se guardarán en la descripción hasta ejecutar la migración CRM.</div>')
       +'</div>';
     var selectedCollabs=t?pkCollaborators(t):[];
+    var traceH='<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:5px">Trazabilidad del objetivo</h3><div style="font-size:12px;color:var(--muted);margin-bottom:12px">Conecta esta acción con el objetivo, entregable y resultado que debe producir.</div><div class="fr2">'+FLD('ob','Objetivo','text',t&&descVal(t,'Objetivo')||'')+FLD('en','Entregable / resultado','text',t&&descVal(t,'Entregable')||'')+'</div><div class="fr2">'+FLD('kp','KPI principal','text',t&&descVal(t,'KPI')||'')+FLD('mt','Meta','text',t&&descVal(t,'Meta')||'')+'</div></div>';
     var pkH=isPk?'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:5px">Asignación y control ProKicks</h3><div style="font-size:12px;color:var(--muted);margin-bottom:12px">Los responsables son etiquetas operativas y no obtienen acceso al CRM.</div>'
       +'<div class="fr2">'+FSL('fr','Frente',groupsForProject(selectedProject).map(function(n){return[n,n];}),t?pkTaskFront(t):(PK_NEW_FRONT||PROKICKS_WORK_FRONTS[0]))+FSL('ri','Responsable interno',[['','Por asignar']].concat(PROKICKS_INTERNAL_PEOPLE.map(function(n){return[n,n];})),t&&pkInternalOwner(t)!=='Por asignar'?pkInternalOwner(t):'')+'</div>'
       +'<div class="fld"><label>Colaboradores internos</label><div class="pkw-checks">'+PROKICKS_INTERNAL_PEOPLE.map(function(n,i){return '<label class="pkw-check-label"><input type="checkbox" data-pk-collab value="'+esc(n)+'" '+(selectedCollabs.indexOf(n)>=0?'checked':'')+'> '+esc(n)+'</label>';}).join('')+'</div></div>'
-      +'<div class="fr2">'+FLD('ob','Objetivo','text',t&&descVal(t,'Objetivo')||'')+FLD('en','Entregable','text',t&&descVal(t,'Entregable')||'')+'</div>'
       +'<div class="fr2">'+FLD('sa','Siguiente acción','text',t&&(t.siguiente_accion||nextAction(t))||'')+FLD('ps','Próximo seguimiento','date',t&&(t.fecha_proximo_seguimiento||followDate(t))||'')+'</div>'
-      +'<div class="fr3">'+FSL('kp','KPI principal',[['','Por definir'],['Avance','Avance'],['Asistencia','Asistencia'],['Registros','Registros'],['Alcance','Alcance'],['Seguidores','Seguidores'],['Tráfico','Tráfico'],['Ventas','Ventas'],['Interacciones','Interacciones']],t&&descVal(t,'KPI')||'')+FLD('mt','Meta','text',t&&descVal(t,'Meta')||'')+FLD('ct','Llamada a la acción','text',t&&descVal(t,'CTA')||'')+'</div>'
+      +FLD('ct','Llamada a la acción','text',t&&descVal(t,'CTA')||'')
       +'</div>':'';
     var mainFields=isPk
       ?'<input type="hidden" id="f_pi" value="'+esc(p2)+'"><input type="hidden" id="f_oi" value="'+esc(t&&t.owner_id||SES.userId)+'">'
@@ -2076,6 +2113,7 @@ var A = {
     mOpen(t?'Editar tarea':'Nueva tarea',
       '<div class="fg">'
       +mainFields
+      +traceH
       +pkH
       +(isPk?'':crmH)
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
@@ -2089,7 +2127,7 @@ var A = {
     var selectedProject=xid(DB.proyectos,fv('pi'));
     var isPk=isProkicksProject(selectedProject);
     var collabs=isPk?Array.prototype.map.call(document.querySelectorAll('[data-pk-collab]:checked'),function(el){return el.value;}):[];
-    var desc = buildDesc(fv('dc'),{grupo:isPk?'':fv('gr'),frente:isPk?fv('fr'):'',responsableInterno:isPk?fv('ri'):'',colaboradoresInternos:isPk?collabs.join(' | '):'',objetivo:isPk?fv('ob'):'',entregable:isPk?fv('en'):'',kpi:isPk?fv('kp'):'',meta:isPk?fv('mt'):'',cta:isPk?fv('ct'):'',email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
+    var desc = buildDesc(fv('dc'),{grupo:isPk?'':fv('gr'),frente:isPk?fv('fr'):'',responsableInterno:isPk?fv('ri'):'',colaboradoresInternos:isPk?collabs.join(' | '):'',objetivo:fv('ob'),entregable:fv('en'),kpi:fv('kp'),meta:fv('mt'),cta:isPk?fv('ct'):'',email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
     var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:desc,prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
     if(id && old && !adm()){
       data.proyecto_id = old.proyecto_id;

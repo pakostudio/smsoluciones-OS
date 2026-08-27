@@ -1,5 +1,7 @@
 # SM OS
 
+Versión actual: **2.7.0** — Centro de Control con Mapa de Objetivos y trazabilidad universal.
+
 ## Centro de Control del Proyecto
 
 - Sprint 1: base universal, MONTESCANO y modelo protegido en Supabase.
