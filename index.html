@@ -36,11 +36,26 @@ if(!window.supabase){
     </div>
     <div class="lfield" id="pin-wrap" style="display:none">
       <label id="pin-lbl">PIN</label>
-      <input id="f-pin" type="password" placeholder="••••" maxlength="8" style="letter-spacing:4px;font-size:20px;text-align:center">
+      <div class="otp-boxes" id="otp-boxes">
+        <input class="otp-box" type="password" inputmode="numeric" maxlength="1" data-i="0">
+        <input class="otp-box" type="password" inputmode="numeric" maxlength="1" data-i="1">
+        <input class="otp-box" type="password" inputmode="numeric" maxlength="1" data-i="2">
+        <input class="otp-box" type="password" inputmode="numeric" maxlength="1" data-i="3">
+      </div>
+      <input id="f-pin" type="hidden" value="">
     </div>
     <div class="lerr" id="lerr"></div>
     <button class="lbtn" id="btn-login" style="display:none">Entrar al sistema</button>
   </div>
+</div>
+
+<!-- PRELOADER -->
+<div id="preloader">
+  <div class="pl-logo-wrap">
+    <img class="pl-logo" src="assets/sm-logo.png" alt="">
+    <div class="pl-ring"></div>
+  </div>
+  <div class="pl-text">Cargando SM OS…</div>
 </div>
 
 <!-- APP -->

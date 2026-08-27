@@ -989,3 +989,37 @@ tr:hover td{background:var(--surface2)}
   .control-chart-card{padding:12px}.control-donut-wrap{grid-template-columns:108px minmax(0,1fr);gap:12px}.control-donut{width:104px;height:104px}.control-donut:after{inset:20px}
   .control-bar-row{grid-template-columns:100px minmax(0,1fr)}.control-phase-row{grid-template-columns:95px minmax(0,1fr) 32px}.control-milestone{grid-template-columns:10px minmax(0,1fr)}.control-milestone>.badge{grid-column:2;justify-self:start}
 }
+
+/* ── OTP PIN BOXES ── */
+.otp-boxes{display:flex;gap:10px;justify-content:center}
+.otp-box{--tilt:0deg;width:100%;max-width:56px;height:64px;text-align:center;font-size:26px;font-weight:800;color:var(--ink);background:var(--surface2);border:1.5px solid var(--line2);border-radius:12px;outline:none;transition:border-color .2s,box-shadow .2s,transform .2s}
+.otp-box:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,170,221,.15)}
+.otp-box.filled{border-color:var(--navy);background:var(--surface)}
+.otp-box:nth-child(1){--tilt:-7deg}
+.otp-box:nth-child(2){--tilt:-2deg}
+.otp-box:nth-child(3){--tilt:2deg}
+.otp-box:nth-child(4){--tilt:7deg}
+.otp-box.deal{animation:otpDeal .38s cubic-bezier(.34,1.56,.64,1)}
+@keyframes otpDeal{
+  0%{transform:translateY(-18px) rotate(var(--tilt)) scale(.85);opacity:.35}
+  55%{transform:translateY(3px) rotate(calc(var(--tilt) * -0.35)) scale(1.07)}
+  100%{transform:translateY(0) rotate(0deg) scale(1);opacity:1}
+}
+.otp-box.shake{animation:otpShake .4s}
+@keyframes otpShake{
+  10%,90%{transform:translateX(-2px)}
+  20%,80%{transform:translateX(4px)}
+  30%,50%,70%{transform:translateX(-7px)}
+  40%,60%{transform:translateX(7px)}
+}
+
+/* ── PRELOADER ── */
+#preloader{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:linear-gradient(145deg,#0B2547,#163460);opacity:0;transition:opacity .35s ease}
+#preloader.show{display:flex}
+#preloader.visible{opacity:1}
+.pl-logo-wrap{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.pl-logo{width:56px;height:auto;position:relative;z-index:2;animation:plPulse 1.4s ease-in-out infinite}
+.pl-ring{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--cyan);animation:plSpin .9s linear infinite}
+.pl-text{color:#fff;font-size:13px;font-weight:700;letter-spacing:.04em;opacity:.85}
+@keyframes plPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.75}}
+@keyframes plSpin{to{transform:rotate(360deg)}}

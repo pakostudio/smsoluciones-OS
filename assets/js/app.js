@@ -2752,12 +2752,69 @@ function buildSelector(){
       document.getElementById('pin-wrap').style.display = 'block';
       document.getElementById('btn-login').style.display = 'block';
       document.getElementById('lerr').textContent = '';
-      var pi = document.getElementById('f-pin');
-      pi.value = '';
-      setTimeout(function(){ pi.focus(); }, 80);
+      resetOtpBoxes(true);
     });
     container.appendChild(btn);
   });
+}
+
+function otpBoxes(){ return Array.prototype.slice.call(document.querySelectorAll('.otp-box')); }
+function syncOtpToPin(){
+  var v = otpBoxes().map(function(b){ return b.value; }).join('');
+  document.getElementById('f-pin').value = v;
+}
+function resetOtpBoxes(focusFirst){
+  var boxes = otpBoxes();
+  boxes.forEach(function(b){ b.value=''; b.classList.remove('filled'); });
+  syncOtpToPin();
+  if(focusFirst && boxes[0]) setTimeout(function(){ boxes[0].focus(); }, 80);
+}
+function shakeOtpBoxes(){
+  otpBoxes().forEach(function(b){
+    b.classList.add('shake');
+    setTimeout(function(){ b.classList.remove('shake'); }, 420);
+  });
+}
+function initOtpBoxes(){
+  var boxes = otpBoxes();
+  boxes.forEach(function(box, i){
+    box.addEventListener('input', function(){
+      box.value = box.value.replace(/[^0-9]/g,'').slice(0,1);
+      box.classList.toggle('filled', !!box.value);
+      syncOtpToPin();
+      if(box.value && boxes[i+1]) boxes[i+1].focus();
+      if(i===boxes.length-1 && box.value && boxes.every(function(b){return b.value;})) doLogin();
+    });
+    box.addEventListener('keydown', function(e){
+      if(e.key==='Backspace' && !box.value && boxes[i-1]){ boxes[i-1].focus(); }
+      if(e.key==='Enter') doLogin();
+    });
+    box.addEventListener('paste', function(e){
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g,'');
+      if(!text) return;
+      boxes.forEach(function(b, idx){
+        b.value = text[idx] || '';
+        b.classList.toggle('filled', !!b.value);
+      });
+      syncOtpToPin();
+      var next = boxes[Math.min(text.length,boxes.length-1)];
+      if(next) next.focus();
+      if(text.length>=boxes.length) doLogin();
+    });
+  });
+}
+function showPreloader(){
+  var pl = document.getElementById('preloader');
+  if(!pl) return;
+  pl.classList.add('show');
+  requestAnimationFrame(function(){ pl.classList.add('visible'); });
+}
+function hidePreloader(){
+  var pl = document.getElementById('preloader');
+  if(!pl) return;
+  pl.classList.remove('visible');
+  setTimeout(function(){ pl.classList.remove('show'); }, 350);
 }
 
 function doLogin(){
@@ -2771,14 +2828,15 @@ function doLogin(){
   }
   if(!found){
     document.getElementById('lerr').textContent = 'PIN incorrecto.';
-    document.getElementById('f-pin').value = '';
-    document.getElementById('f-pin').focus();
+    shakeOtpBoxes();
+    resetOtpBoxes(true);
     return;
   }
   activateSession(found,{view:'dashboard',fpid:'',ptab:'tareas',pktab:'dashboard'});
 }
 
 function activateSession(found,state){
+  showPreloader();
   SES = {userId: found.id};
   document.getElementById('lerr').textContent = '';
   document.body.classList.add('logged');
@@ -2796,6 +2854,7 @@ function activateSession(found,state){
   document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===VIEW); });
   render();
   saveSession();
+  setTimeout(hidePreloader, 450);
 }
 
 function restoreSession(){
@@ -2808,7 +2867,7 @@ function restoreSession(){
 }
 
 document.getElementById('btn-login').addEventListener('click', doLogin);
-document.getElementById('f-pin').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+initOtpBoxes();
 function doLogout(){
   if(!confirm('¿Cerrar sesión?')) return;
   clearSession();
@@ -2819,7 +2878,7 @@ function doLogout(){
   buildProjectNav();
   document.getElementById('pin-wrap').style.display = 'none';
   document.getElementById('btn-login').style.display = 'none';
-  document.getElementById('f-pin').value = '';
+  resetOtpBoxes(false);
   document.getElementById('lerr').textContent = '';
   document.querySelectorAll('.usbtn').forEach(function(b){ b.classList.remove('sel'); });
 }
