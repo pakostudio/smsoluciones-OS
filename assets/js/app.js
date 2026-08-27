@@ -68,6 +68,7 @@ var SELUID = ''; // selected user on login
 var PKTAB = 'dashboard';
 var PKWORKTAB = 'todos';
 var PK_FLORIDA_FILTERS = {region:'',tipo:'',etapa:'',busqueda:''};
+var FLTAB = 'tareas';
 var PK_INIT_BUSY = false;
 var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
@@ -1589,8 +1590,10 @@ var PKSCHEMAS = {
   cliente:[['nombre','Nombre','text',true],['empresa','Club / Empresa','text'],['contacto','Contacto','text'],['ciudad','Ciudad','text'],['telefono','Teléfono','text'],['email','Email','email'],['fuente','Fuente','text'],['notas','Notas','textarea']],
   venta:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['monto','Monto total','number',true],['saldo','Saldo pendiente','number'],['estadoVenta','Estado venta','select',true,['EN PROSPECCIÓN','VENTA INCOMPLETA','VENTA CERRADA']],['estadoPago','Estado pago','select',false,['PENDIENTE','PARCIAL','PAGADO']],['formaPago','Forma de pago','text'],['entrega','Entrega','select',false,['NO ENVIADO','ENVIADO','ENTREGADO','POR DEFINIR']],['fechaEntrega','Fecha entrega','text'],['ciudad','Ciudad','text'],['factura','Factura','select',false,['NO','SI']],['notas','Notas','textarea']],
   comodato:[['cliente','Cliente','text',true],['contacto','Contacto','text'],['rep','Rep','text'],['devices','Devices','number',true],['estado','Estado','select',true,['EN USO','DEVUELTO','POR DEVOLVER']],['fechaEntrega','Fecha entrega','text'],['fechaDevolucion','Fecha devolución','text'],['ciudad','Ciudad','text'],['notas','Notas','textarea']],
-  cobranza:[['cliente','Cliente','text',true],['rep','Rep','text'],['monto','Monto total','number'],['saldo','Saldo pendiente','number',true],['estadoVenta','Estado','text'],['accion','Acción sugerida','text']]
+  cobranza:[['cliente','Cliente','text',true],['rep','Rep','text'],['monto','Monto total','number'],['saldo','Saldo pendiente','number',true],['estadoVenta','Estado','text'],['accion','Acción sugerida','text']],
+  floridaObjetivo:[['titulo','Objetivo','text',true],['meta','Meta / KPI','text'],['avance','Avance %','number'],['estado','Estado','select',true,['no_iniciado','en_curso','bloqueado','cumplido']],['responsable','Responsable','text'],['fecha_objetivo','Fecha objetivo','date'],['notas','Notas','textarea']]
 };
+var PK_EXTRA_LABELS = {floridaObjetivo:'Objetivo Florida'};
 function pkProject(){
   return DB.proyectos.find(function(p){ return String(p.nombre||'').toLowerCase()==='prokicks'; }) ||
          DB.proyectos.find(function(p){ return String(p.nombre||'').toLowerCase().indexOf('prokicks')>=0; });
@@ -1691,6 +1694,15 @@ function prokicksHistoryHtml(rows,heading){
   return '<div class="sg"><div class="sc"><div class="sl">Eventos</div><div class="sn">'+items.length+'</div></div><div class="sc g"><div class="sl">Registros</div><div class="sn">'+rows.length+'</div></div><div class="sc y"><div class="sl">Creados</div><div class="sn">'+items.filter(function(i){return i.type==='creado';}).length+'</div></div><div class="sc"><div class="sl">Actualizados</div><div class="sn">'+items.filter(function(i){return i.type==='actualizado';}).length+'</div></div></div>'
     +'<div class="history-grid"><div class="card history-main"><div class="ch"><h3>'+esc(heading||'Bitácora')+'</h3><span class="chip">últimos '+items.length+' eventos</span></div>'+renderActivityTimeline(items,'Todavía no hay historial en esta sección.')+'</div><div class="history-side"><div class="card"><div class="ch"><h3>Últimos movimientos</h3></div><div class="tw history-tw"><table class="history-table"><thead><tr><th>Fecha</th><th>Registro</th><th>Evento</th><th>Resp.</th><th>Detalle</th></tr></thead><tbody>'+(latest||'<tr><td colspan="5">Sin actividad reciente</td></tr>')+'</tbody></table></div></div><div class="card"><div class="ch"><h3>Actividad por usuario</h3></div><div class="tw history-tw"><table class="history-table compact"><thead><tr><th>Usuario</th><th>Eventos</th></tr></thead><tbody>'+userRows+'</tbody></table></div></div></div></div>';
 }
+function floridaTabs(activeKey){
+  var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas','Plan de trabajo','list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
+  return '<nav class="project-tabs" aria-label="Módulos de Florida">'+tabs.map(function(t,i){
+    var isHist = t[0]==='historial';
+    var onclick = isHist ? "nav('floridaHistorial')" : ("FLTAB='"+t[0]+"';nav('florida')");
+    var active = isHist ? activeKey==='historial' : activeKey===t[0];
+    return (i===4?'<span class="project-tab-divider" aria-hidden="true"></span>':'')+'<button class="project-tab '+(active?'active':'')+'" onclick="'+onclick+'" title="'+esc(t[1])+'">'+iconHtml(t[2])+'<span>'+esc(t[1])+'</span></button>';
+  }).join('')+'</nav>';
+}
 function pkScopedTabs(p,activeKey,historialView){
   var mainLabel = 'Plan de trabajo';
   var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas',mainLabel,'list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
@@ -1713,7 +1725,7 @@ function vFloridaHistorial(){
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
   var rows = pkFloridaRows();
-  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Historial de Florida · Darío</h2></div><button class="btn btng" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Volver a Florida</button></div>'+pkScopedTabs(p,'historial','floridaHistorial')+prokicksHistoryHtml(rows,'Bitácora de Florida · Darío');
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Historial de Florida · Darío</h2></div><button class="btn btng" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Volver a Florida</button></div>'+floridaTabs('historial')+prokicksHistoryHtml(rows,'Bitácora de Florida · Darío');
 }
 function vPK(){
   var p=pkProject();
@@ -1729,7 +1741,18 @@ function vFlorida(){
   var p=pkProject();
   if(!p) return '<div class="card"><div class="empty"><div class="ei">⚽</div><p>No existe el proyecto ProKicks.</p></div></div>';
   if(!canUseProkicks()) return '<div class="card"><div class="empty"><div class="ei">🔒</div><p>Este módulo solo está disponible para admin o responsables de ProKicks.</p></div></div>';
-  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div><button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button></div>'+pkScopedTabs(p,'florida','floridaHistorial')+pkFloridaBoard();
+  var validFl=['mando','objetivos','ejecucion','tareas','reporte','kanban','calendario','gantt','pipeline'];
+  if(validFl.indexOf(FLTAB)<0) FLTAB='tareas';
+  var addBtn = (FLTAB==='tareas'||FLTAB==='mando') ? '<button class="btn btnc" onclick="A.pkNewFlorida()">+ Prospecto Florida</button>' : (FLTAB==='objetivos' ? '<button class="btn btnc" onclick="A.pkForm(null,\'floridaObjetivo\')">+ Nuevo objetivo</button>' : '');
+  var body = FLTAB==='objetivos'?floridaObjectivesHtml()
+    : FLTAB==='ejecucion'?floridaExecutionHtml()
+    : FLTAB==='reporte'?floridaReportHtml()
+    : FLTAB==='kanban'?floridaKanbanHtml()
+    : FLTAB==='calendario'?floridaCalendarHtml()
+    : FLTAB==='gantt'?floridaGanttHtml()
+    : FLTAB==='pipeline'?floridaPipelineHtml()
+    : pkFloridaBoard();
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div>'+addBtn+'</div>'+floridaTabs(FLTAB)+body;
 }
 function pkDashboard(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
@@ -1765,6 +1788,26 @@ function pkFloridaRows(){
     return String(d.mercado||'').toLowerCase()==='florida' || /indoor florida/i.test(String(d.fuente||'')) || /florida/i.test(String(d.import_batch||''));
   });
 }
+function pkFloridaSummaryHtml(all){
+  var regions=['South Florida','Central Florida','West Florida','North Florida'];
+  var stages=['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido'];
+  var visited=all.filter(function(r){return pkVal(r,'visitado')==='Sí';}).length;
+  var qualified=all.filter(function(r){return Number(pkVal(r,'potencial')||0)>=8;}).length;
+  var contacted=all.filter(function(r){return pkVal(r,'etapa')&&pkVal(r,'etapa')!=='por_contactar';}).length;
+  var missing=all.filter(function(r){return !pkVal(r,'email')&&!pkVal(r,'telefono');}).length;
+  var f=PK_FLORIDA_FILTERS;
+  var stageCards=stages.map(function(s){
+    var n=all.filter(function(r){return (pkVal(r,'etapa')||'por_contactar')===s;}).length;
+    return '<button class="pkf-stage '+(f.etapa===s?'active':'')+'" onclick="PK_FLORIDA_FILTERS.etapa='+(f.etapa===s?"''":"'"+s+"'")+';render()"><span>'+esc(pkFloridaStageLabel(s))+'</span><strong>'+n+'</strong></button>';
+  }).join('');
+  var regionBars=regions.map(function(region){
+    var n=all.filter(function(r){return pkVal(r,'region')===region;}).length;
+    return '<button class="pkf-region" onclick="PK_FLORIDA_FILTERS.region=\''+region+'\';render()"><span>'+esc(region.replace(' Florida',''))+'</span><div><i style="width:'+Math.round(n/Math.max(all.length,1)*100)+'%"></i></div><strong>'+n+'</strong></button>';
+  }).join('');
+  return '<div class="pkf-hero"><div><span class="pkf-eyebrow">EXPANSIÓN FLORIDA · PARTNER DARÍO SALA</span><h2>Indoor Facilities Pipeline</h2><p>Una sola vista para calificar, visitar y convertir oportunidades en Florida.</p></div><div class="pkf-owner"><span>Responsable operativo</span><strong>Darío Sala</strong><small>Asignación sin acceso automático al CRM</small></div></div>'
+    +'<div class="pkf-kpis"><div><span>Prospectos</span><strong>'+all.length+'</strong><small>Base importada</small></div><div><span>Contactados</span><strong>'+contacted+'</strong><small>'+Math.round(contacted/Math.max(all.length,1)*100)+'% del universo</small></div><div><span>Visitados</span><strong>'+visited+'</strong><small>Pendientes '+(all.length-visited)+'</small></div><div class="success"><span>Potencial 8–10</span><strong>'+qualified+'</strong><small>Prioridad comercial</small></div><div class="warning"><span>Sin email/teléfono</span><strong>'+missing+'</strong><small>Requieren investigación</small></div></div>'
+    +'<div class="pkf-grid"><div class="pkf-card"><div class="pkf-card-head"><h3>Embudo comercial</h3><span>'+all.length+' instalaciones</span></div><div class="pkf-funnel">'+stageCards+'</div></div><div class="pkf-card"><div class="pkf-card-head"><h3>Cobertura regional</h3><span>Florida</span></div><div class="pkf-regions">'+regionBars+'</div></div></div>';
+}
 function pkFloridaBoard(){
   var all=pkFloridaRows(), f=PK_FLORIDA_FILTERS;
   var rows=all.filter(function(r){
@@ -1774,18 +1817,6 @@ function pkFloridaBoard(){
   var regions=['South Florida','Central Florida','West Florida','North Florida'];
   var types=['Indoor Soccer/Futsal','Ice Rink','Field House/Multi-Sport','Other Indoor Sports Venue'];
   var stages=['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido'];
-  var visited=all.filter(function(r){return pkVal(r,'visitado')==='Sí';}).length;
-  var qualified=all.filter(function(r){return Number(pkVal(r,'potencial')||0)>=8;}).length;
-  var contacted=all.filter(function(r){return pkVal(r,'etapa')&&pkVal(r,'etapa')!=='por_contactar';}).length;
-  var missing=all.filter(function(r){return !pkVal(r,'email')&&!pkVal(r,'telefono');}).length;
-  var stageCards=stages.map(function(s){
-    var n=all.filter(function(r){return (pkVal(r,'etapa')||'por_contactar')===s;}).length;
-    return '<button class="pkf-stage '+(f.etapa===s?'active':'')+'" onclick="PK_FLORIDA_FILTERS.etapa='+(f.etapa===s?"''":"'"+s+"'")+';render()"><span>'+esc(pkFloridaStageLabel(s))+'</span><strong>'+n+'</strong></button>';
-  }).join('');
-  var regionBars=regions.map(function(region){
-    var n=all.filter(function(r){return pkVal(r,'region')===region;}).length;
-    return '<button class="pkf-region" onclick="PK_FLORIDA_FILTERS.region=\''+region+'\';render()"><span>'+esc(region.replace(' Florida',''))+'</span><div><i style="width:'+Math.round(n/Math.max(all.length,1)*100)+'%"></i></div><strong>'+n+'</strong></button>';
-  }).join('');
   var regionOptions='<option value="">Todas las regiones</option>'+regions.map(function(x){return '<option '+(f.region===x?'selected':'')+'>'+esc(x)+'</option>';}).join('');
   var typeOptions='<option value="">Todos los tipos</option>'+types.map(function(x){return '<option '+(f.tipo===x?'selected':'')+'>'+esc(x)+'</option>';}).join('');
   var stageOptions='<option value="">Todas las etapas</option>'+stages.map(function(x){return '<option value="'+x+'" '+(f.etapa===x?'selected':'')+'>'+esc(pkFloridaStageLabel(x))+'</option>';}).join('');
@@ -1800,12 +1831,98 @@ function pkFloridaBoard(){
       +'<td><button class="btn btns btnc" onclick="A.pkFloridaEdit(\''+r.id+'\')">Gestionar</button></td></tr>';
   }).join('')||'<tr><td colspan="7"><div class="empty"><p>No hay prospectos con estos filtros.</p></div></td></tr>';
   return '<section class="pkf-board">'
-    +'<div class="pkf-hero"><div><span class="pkf-eyebrow">EXPANSIÓN FLORIDA · PARTNER DARÍO SALA</span><h2>Indoor Facilities Pipeline</h2><p>Una sola vista para calificar, visitar y convertir oportunidades en Florida.</p></div><div class="pkf-owner"><span>Responsable operativo</span><strong>Darío Sala</strong><small>Asignación sin acceso automático al CRM</small></div></div>'
-    +'<div class="pkf-kpis"><div><span>Prospectos</span><strong>'+all.length+'</strong><small>Base importada</small></div><div><span>Contactados</span><strong>'+contacted+'</strong><small>'+Math.round(contacted/Math.max(all.length,1)*100)+'% del universo</small></div><div><span>Visitados</span><strong>'+visited+'</strong><small>Pendientes '+(all.length-visited)+'</small></div><div class="success"><span>Potencial 8–10</span><strong>'+qualified+'</strong><small>Prioridad comercial</small></div><div class="warning"><span>Sin email/teléfono</span><strong>'+missing+'</strong><small>Requieren investigación</small></div></div>'
-    +'<div class="pkf-grid"><div class="pkf-card"><div class="pkf-card-head"><h3>Embudo comercial</h3><span>'+all.length+' instalaciones</span></div><div class="pkf-funnel">'+stageCards+'</div></div><div class="pkf-card"><div class="pkf-card-head"><h3>Cobertura regional</h3><span>Florida</span></div><div class="pkf-regions">'+regionBars+'</div></div></div>'
+    +pkFloridaSummaryHtml(all)
     +'<div class="pkf-toolbar"><input id="pkf_q" type="search" value="'+esc(f.busqueda)+'" placeholder="Buscar instalación, ciudad o contacto"><select id="pkf_region">'+regionOptions+'</select><select id="pkf_tipo">'+typeOptions+'</select><select id="pkf_etapa">'+stageOptions+'</select><button class="btn btnc" onclick="A.pkFloridaApply()">Aplicar</button><button class="btn btng" onclick="A.pkFloridaClear()">Limpiar</button><span>'+rows.length+' de '+all.length+'</span></div>'
     +'<div class="card pkf-table"><div class="tw"><table><thead><tr><th>Instalación</th><th>Región / tipo</th><th>Contacto</th><th>Etapa</th><th>Potencial</th><th>Siguiente acción</th><th></th></tr></thead><tbody>'+table+'</tbody></table></div></div>'
     +'</section>';
+}
+function floridaObjetivoEstadoLabel(v){
+  return ({no_iniciado:'No iniciado',en_curso:'En curso',bloqueado:'Bloqueado',cumplido:'Cumplido'})[v]||'No iniciado';
+}
+function floridaObjetivoBadgeClass(v){
+  return v==='cumplido'?'bg_':v==='bloqueado'?'br_':v==='en_curso'?'by_':'';
+}
+function floridaObjectivesHtml(){
+  var rows=pkRows('floridaObjetivo').slice().sort(function(a,b){return String(a.created_at||'').localeCompare(String(b.created_at||''));});
+  var avg=rows.length?Math.round(rows.reduce(function(s,r){return s+Number(pkVal(r,'avance')||0);},0)/rows.length):0;
+  var cumplidos=rows.filter(function(r){return pkVal(r,'estado')==='cumplido';}).length;
+  var bloqueados=rows.filter(function(r){return pkVal(r,'estado')==='bloqueado';}).length;
+  var cards=rows.map(function(r){
+    var d=r.data||{}, av=Number(d.avance||0);
+    return '<div class="card" style="margin-bottom:10px"><div class="ch"><div><h3 style="margin:0">'+esc(d.titulo||'Objetivo')+'</h3>'+(d.meta?'<div style="font-size:12px;color:var(--muted);margin-top:2px">Meta: '+esc(d.meta)+'</div>':'')+'</div><span class="badge '+floridaObjetivoBadgeClass(d.estado)+'">'+esc(floridaObjetivoEstadoLabel(d.estado))+'</span></div>'
+      +'<div class="control-progress" style="margin:8px 0"><i style="width:'+av+'%"></i></div>'
+      +'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--muted)"><span>'+av+'% de avance</span><span>Responsable: '+esc(d.responsable||'Por asignar')+'</span><span>'+(d.fecha_objetivo?('Fecha objetivo: '+fmt(d.fecha_objetivo)):'Sin fecha objetivo')+'</span></div>'
+      +(d.notas?'<p style="font-size:13px;margin-top:8px">'+esc(d.notas)+'</p>':'')
+      +'<div class="fa" style="margin-top:8px"><button class="btn btns btng" onclick="A.pkEdit(\''+r.id+'\')">Editar</button><button class="btn btns btnd" onclick="A.pkDel(\''+r.id+'\')">Eliminar</button></div></div>';
+  }).join('')||'<div class="card"><div class="empty"><div class="ei">🎯</div><p>Aún no hay objetivos cargados para Florida. Agrega el primero.</p></div></div>';
+  return '<div class="sg"><div class="sc"><div class="sl">Objetivos</div><div class="sn">'+rows.length+'</div></div><div class="sc g"><div class="sl">Cumplidos</div><div class="sn">'+cumplidos+'</div></div><div class="sc r"><div class="sl">Bloqueados</div><div class="sn">'+bloqueados+'</div></div><div class="sc y"><div class="sl">Avance promedio</div><div class="sn">'+avg+'%</div></div></div>'
+    +'<div class="sh"><h3 style="margin:0">Objetivos de Florida · Darío</h3><button class="btn btnc" onclick="A.pkForm(null,\'floridaObjetivo\')">+ Nuevo objetivo</button></div>'
+    +cards;
+}
+function floridaExecutionHtml(){
+  var all=pkFloridaRows();
+  var withDate=all.filter(function(r){return pkVal(r,'proximo_seguimiento');});
+  var overdue=withDate.filter(function(r){return dayDiff(pkVal(r,'proximo_seguimiento'))<0;});
+  var soon=withDate.filter(function(r){var d=dayDiff(pkVal(r,'proximo_seguimiento'));return d>=0&&d<=7;});
+  var rows=all.slice().sort(function(a,b){
+    var da=pkVal(a,'proximo_seguimiento')||'9999', db=pkVal(b,'proximo_seguimiento')||'9999';
+    return String(da).localeCompare(String(db));
+  }).map(function(r){
+    var d=r.data||{}, dd=d.proximo_seguimiento?dayDiff(d.proximo_seguimiento):null;
+    var cl=dd!==null&&dd<0?'is-blocked':'';
+    return '<article class="control-row '+cl+'"><div class="control-action"><button class="control-title" onclick="A.pkFloridaEdit(\''+r.id+'\')">'+esc(d.cliente||'Prospecto')+'</button><div class="control-meta"><span>'+esc(d.region||'Florida')+'</span><span>'+esc(pkFloridaStageLabel(d.etapa))+'</span></div></div>'
+      +'<div class="control-owner"><span class="control-mobile-label">Siguiente acción</span><strong>'+esc(d.siguiente_accion||'Calificar con Darío')+'</strong></div>'
+      +'<div class="control-date"><span class="control-mobile-label">Fecha</span><strong>'+(d.proximo_seguimiento?fmt(d.proximo_seguimiento):'Sin fecha')+'</strong></div>'
+      +'<div class="control-signal '+(dd!==null&&dd<0?'danger':'muted')+'"><span class="control-mobile-label">Estatus</span><strong>'+(dd===null?'Sin fecha':dd<0?(Math.abs(dd)+' día(s) vencido'):dd===0?'Hoy':('en '+dd+' día(s)'))+'</strong></div>'
+      +'<div class="control-row-action"><button class="btn btns btnc" onclick="A.pkFloridaEdit(\''+r.id+'\')">Gestionar</button></div></article>';
+  }).join('')||'<div class="control-empty"><h3>Sin prospectos</h3></div>';
+  return '<section class="control-board"><div class="control-board-head"><div><span class="sl">Ejecución Florida</span><h2>Seguimientos y siguiente acción</h2><p>Vencidos '+overdue.length+' · Próximos 7 días '+soon.length+' · Sin fecha '+(all.length-withDate.length)+'</p></div></div>'+rows+'</section>';
+}
+function floridaCalendarHtml(){
+  var all=pkFloridaRows().filter(function(r){return pkVal(r,'proximo_seguimiento');}).slice().sort(function(a,b){return String(pkVal(a,'proximo_seguimiento')).localeCompare(String(pkVal(b,'proximo_seguimiento')));});
+  var groups={vencidos:[],semana:[],proximos:[]};
+  all.forEach(function(r){var dd=dayDiff(pkVal(r,'proximo_seguimiento')); if(dd<0)groups.vencidos.push(r); else if(dd<=7)groups.semana.push(r); else groups.proximos.push(r);});
+  function list(items,empty){
+    return items.map(function(r){var d=r.data||{}; return '<tr><td><strong>'+esc(d.cliente||'')+'</strong></td><td>'+fmt(d.proximo_seguimiento)+'</td><td>'+esc(d.siguiente_accion||'')+'</td><td><button class="btn btns btnc" onclick="A.pkFloridaEdit(\''+r.id+'\')">Gestionar</button></td></tr>';}).join('')||'<tr><td colspan="4">'+empty+'</td></tr>';
+  }
+  var noDate=pkFloridaRows().length-all.length;
+  return '<div class="sg"><div class="sc r"><div class="sl">Vencidos</div><div class="sn">'+groups.vencidos.length+'</div></div><div class="sc y"><div class="sl">Esta semana</div><div class="sn">'+groups.semana.length+'</div></div><div class="sc g"><div class="sl">Próximos</div><div class="sn">'+groups.proximos.length+'</div></div><div class="sc"><div class="sl">Sin fecha</div><div class="sn">'+noDate+'</div></div></div>'
+    +'<div class="card"><div class="ch"><h3>Vencidos</h3></div><div class="tw"><table><thead><tr><th>Prospecto</th><th>Fecha</th><th>Acción</th><th></th></tr></thead><tbody>'+list(groups.vencidos,'Sin pendientes vencidos')+'</tbody></table></div></div>'
+    +'<div class="card"><div class="ch"><h3>Esta semana</h3></div><div class="tw"><table><thead><tr><th>Prospecto</th><th>Fecha</th><th>Acción</th><th></th></tr></thead><tbody>'+list(groups.semana,'Sin seguimientos esta semana')+'</tbody></table></div></div>'
+    +'<div class="card"><div class="ch"><h3>Próximos</h3></div><div class="tw"><table><thead><tr><th>Prospecto</th><th>Fecha</th><th>Acción</th><th></th></tr></thead><tbody>'+list(groups.proximos,'Sin más seguimientos programados')+'</tbody></table></div></div>';
+}
+function floridaGanttHtml(){
+  var all=pkFloridaRows().filter(function(r){return pkVal(r,'proximo_seguimiento');}).slice().sort(function(a,b){return String(pkVal(a,'proximo_seguimiento')).localeCompare(String(pkVal(b,'proximo_seguimiento')));});
+  var maxAbs=Math.max(1,all.reduce(function(m,r){return Math.max(m,Math.abs(dayDiff(pkVal(r,'proximo_seguimiento'))||0));},1));
+  var rows=all.map(function(r){
+    var d=r.data||{}, dd=dayDiff(d.proximo_seguimiento);
+    var pct=Math.min(100,Math.round(Math.abs(dd)/maxAbs*100));
+    return '<div class="control-row" style="grid-template-columns:1.4fr 2fr .8fr"><div class="control-action"><strong>'+esc(d.cliente||'')+'</strong><div class="control-meta"><span>'+fmt(d.proximo_seguimiento)+'</span></div></div>'
+      +'<div class="control-progress-cell"><div class="control-progress '+(dd<0?'':'')+'"><i style="width:'+pct+'%;background:'+(dd<0?'var(--red)':'var(--cyan)')+'"></i></div></div>'
+      +'<div class="control-signal '+(dd<0?'danger':'muted')+'">'+(dd<0?(Math.abs(dd)+'d vencido'):(dd+'d restantes'))+'</div></div>';
+  }).join('')||'<div class="control-empty"><h3>Sin fechas de seguimiento cargadas</h3></div>';
+  return '<section class="control-board"><div class="control-board-head"><div><span class="sl">Cronograma Florida</span><h2>Seguimientos en el tiempo</h2><p>Ordenado por próxima fecha de seguimiento.</p></div></div>'+rows+'</section>';
+}
+function floridaPipelineHtml(){
+  var all=pkFloridaRows();
+  var hot=all.filter(function(r){return Number(pkVal(r,'potencial')||0)>=8;}).sort(function(a,b){return Number(pkVal(b,'potencial')||0)-Number(pkVal(a,'potencial')||0);});
+  var hotRows=hot.map(function(r){var d=r.data||{};return '<tr><td><strong>'+esc(d.cliente||'')+'</strong></td><td>'+esc(d.region||'')+'</td><td>'+pkStatus(d.etapa||'por_contactar')+'</td><td>'+(d.potencial||'—')+'/10</td><td><button class="btn btns btnc" onclick="A.pkFloridaEdit(\''+r.id+'\')">Gestionar</button></td></tr>';}).join('')||'<tr><td colspan="5">Sin prospectos con potencial 8-10 todavía</td></tr>';
+  return pkFloridaSummaryHtml(all)
+    +'<div class="card"><div class="ch"><h3>Oportunidades prioritarias</h3><span class="chip">potencial 8-10</span></div><div class="tw"><table><thead><tr><th>Instalación</th><th>Región</th><th>Etapa</th><th>Potencial</th><th></th></tr></thead><tbody>'+hotRows+'</tbody></table></div></div>';
+}
+function floridaKanbanHtml(){
+  var all=pkFloridaRows();
+  var stages=['por_contactar','contactado','demo_agendada','propuesta_enviada','negociacion','cerrado','perdido'];
+  var cols=stages.map(function(s){
+    var items=all.filter(function(r){return (pkVal(r,'etapa')||'por_contactar')===s;});
+    var cards=items.map(function(r){var d=r.data||{};return '<div class="card" style="padding:10px;margin-bottom:8px"><strong style="font-size:13px">'+esc(d.cliente||'')+'</strong><div style="font-size:11px;color:var(--muted);margin:3px 0">'+esc(d.contacto||'Por investigar')+'</div><div style="display:flex;justify-content:space-between;align-items:center"><span class="pkf-score '+(Number(d.potencial||0)>=8?'hot':'')+'" style="padding:2px 6px;font-size:11px">'+(d.potencial||'—')+'/10</span><button class="btn btns btng" onclick="A.pkFloridaEdit(\''+r.id+'\')">Ver</button></div></div>';}).join('')||'<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin prospectos</div>';
+    return '<div class="kanban-col"><div class="ch"><h4 style="margin:0;font-size:13px">'+esc(pkFloridaStageLabel(s))+'</h4><span class="chip">'+items.length+'</span></div>'+cards+'</div>';
+  }).join('');
+  return '<div class="kanban-board" style="display:grid;grid-template-columns:repeat(7,minmax(180px,1fr));gap:10px;overflow-x:auto">'+cols+'</div>';
+}
+function floridaReportHtml(){
+  var all=pkFloridaRows();
+  return pkFloridaSummaryHtml(all);
 }
 
 function projectAccessField(p){
@@ -2713,7 +2830,7 @@ var A = {
       if(typ==='select') return FSL(key,lbl,opts.map(function(o){return [o,o];}),val);
       return FLD(key,lbl,typ,val);
     }).join('');
-    var title = (row?'Editar ':'Nuevo ')+((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||tipo);
+    var title = (row?'Editar ':'Nuevo ')+((PKTABS.find(function(t){return t[0]===tipo;})||[])[1]||PK_EXTRA_LABELS[tipo]||tipo);
     var deleteBtn = row ? '<button class="btn btnd" onclick="mClose();A.pkDel(\''+row.id+'\')">Eliminar</button>' : '';
     mOpen(title,'<div class="fg">'+fields+'<div class="fa">'+deleteBtn+'<button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.pkSave(\''+(row?row.id:'')+'\',\''+tipo+'\')">Guardar</button></div></div>',true);
   },
