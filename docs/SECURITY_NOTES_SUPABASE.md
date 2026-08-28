@@ -38,3 +38,24 @@ Visible solo para administradores desde Ayuda → "Errores recientes".
 Nota pendiente: esta tabla, como el resto del modelo actual, seguirá siendo de acceso amplio (anon) hasta
 que se implemente Supabase Auth con roles reales — es la misma limitación estructural señalada arriba,
 no una nueva.
+
+## Pendiente grande — Migración a Supabase Auth + Passkeys (siguiente fase de seguridad)
+
+Hoy el login es un sistema casero de usuario + PIN guardado en la tabla `usuarios`, no Supabase Auth real.
+Eso significa que la seguridad completa de la app depende de las políticas RLS `using(true)` (anon/authenticated
+sin distinción) — no hay una capa de autenticación real por debajo.
+
+Plan recomendado, en orden:
+1. Migrar el login a **Supabase Auth** con roles reales (admin, coordinador, colaborador, cliente),
+   reemplazando el sistema de PIN casero.
+2. Reescribir las políticas RLS por tabla usando esos roles reales, en vez de `using(true)` para todo.
+3. Una vez ahí, agregar **passkeys** (WebAuthn/FIDO2 — huella o Face ID del celular) como método de login.
+   Supabase Auth los soporta de forma nativa. No se pueden agregar antes del paso 1 — necesitan Auth real
+   debajo para tener sentido.
+
+Por qué importa: las passkeys eliminan el robo/phishing de contraseñas de raíz (no existe una clave que
+robar, cada dispositivo tiene su propia llave criptográfica). Es la mejora de login más fuerte disponible
+hoy, pero solo rinde su valor completo después de la migración a Auth — antes de eso sería una mejora
+cosmética sobre un sistema que sigue siendo inseguro por debajo.
+
+Este es, a la fecha, el pendiente de seguridad más grande de SM OS — más que cualquier tabla o vista suelta.
