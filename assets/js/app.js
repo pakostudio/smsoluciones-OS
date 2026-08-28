@@ -58,6 +58,36 @@ try{
   if(sentryDsn && window.Sentry) Sentry.init({dsn:sentryDsn,sendDefaultPii:false,tracesSampleRate:.05,beforeSend:scrubTelemetry});
 }catch(e){}
 
+/* ── REGISTRO DE ERRORES (sin depender de un servicio externo) ──
+   Cada error real del navegador se guarda en la tabla client_errors de Supabase.
+   No requiere Sentry ni ninguna cuenta nueva; los admins lo revisan desde
+   Ayuda → "Errores recientes". Limitado a 8 envíos por sesión para no saturar. */
+var CLIENT_ERROR_COUNT = 0;
+function logClientError(message,stack){
+  try{
+    if(CLIENT_ERROR_COUNT>=8) return;
+    CLIENT_ERROR_COUNT++;
+    var clean = scrubTelemetry({message:String(message||'').slice(0,500), stack:String(stack||'').slice(0,2000)});
+    var payload = {
+      message: clean.message,
+      stack: clean.stack,
+      view: (typeof VIEW!=='undefined' ? VIEW : ''),
+      usuario_id: (typeof SES!=='undefined' && SES ? SES.userId : null),
+      user_agent: navigator.userAgent,
+      url: location.href
+    };
+    var p = sb.from('client_errors').insert(payload);
+    if(p && p.catch) p.catch(function(){});
+  }catch(e){}
+}
+window.addEventListener('error', function(ev){
+  logClientError(ev.message, ev.error && ev.error.stack ? ev.error.stack : '');
+});
+window.addEventListener('unhandledrejection', function(ev){
+  var r = ev.reason;
+  logClientError(r && r.message ? r.message : String(r), r && r.stack ? r.stack : '');
+});
+
 /* ── STATE ── */
 var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[],prokicks_records:[],prokicks_settings:[],notification_preferences:[],usage_events:[],proyecto_usuarios:[]};
 var SES = null;  // {userId}
@@ -1380,7 +1410,7 @@ function vAY(){
   var groups={}; qs.forEach(function(x){(groups[x.cat]=groups[x.cat]||[]).push(x);});
   var chips=Object.keys(groups).map(function(k){return '<button class="help-chip" onclick="A.helpCat(this.textContent)">'+esc(k)+'</button>';}).join('');
   var items=qs.map(function(x,i){return '<details class="faq-item" data-cat="'+esc(x.cat)+'" data-q="'+esc((x.q+' '+x.a+' '+x.cat).toLowerCase())+'"><summary><span>'+esc(x.q)+'</span><small>'+esc(x.cat)+'</small></summary><p>'+esc(x.a)+'</p></details>';}).join('');
-  return '<div class="sh"><div><h2>Centro de Soporte SM OS</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">FAQ operativo, buenas prácticas y manual descargable. Sin IA, sin costo y sin respuestas improvisadas.</div></div><a class="btn btnc" href="docs/Manual_SM_OS.pdf" download>Descargar manual PDF</a></div>'
+  return '<div class="sh"><div><h2>Centro de Soporte SM OS</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">FAQ operativo, buenas prácticas y manual descargable. Sin IA, sin costo y sin respuestas improvisadas.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+(adm()?'<button class="btn btng" onclick="A.showClientErrors()">'+iconHtml('bug')+' Errores recientes</button>':'')+'<a class="btn btnc" href="docs/Manual_SM_OS.pdf" download>Descargar manual PDF</a></div></div>'
     +'<div class="help-hero card"><div><div class="help-eyebrow">Guía rápida</div><h3>Resuelve dudas de operación sin depender de soporte.</h3><p>Usa el buscador para encontrar instrucciones sobre Centro de mando, tareas, historial, reportes, acciones masivas y modo cliente.</p></div><div class="help-kpis"><span>FAQ interno</span><strong>'+qs.length+'</strong><small>respuestas listas</small></div></div>'
     +'<div class="card help-card"><div class="help-search"><i data-lucide="search"></i><input id="help-search" type="search" placeholder="¿Qué necesitas hacer? Ej. cambiar responsable, reporte, modo cliente" oninput="A.helpSearch(this.value)"></div><div class="help-chips"><button class="help-chip active" onclick="A.helpCat(\'\')">Todo</button>'+chips+'</div><div id="help-empty" class="empty" style="display:none">No encontré una respuesta con ese término. Prueba con: reporte, responsable, historial, vencidas, modo cliente.</div><div class="faq-list" id="faq-list">'+items+'</div></div>'
     +'<div class="card help-card"><div class="ch"><h3>Manual descargable</h3><span class="chip">PDF</span></div><p class="muted-copy">El manual incluye primeros pasos, Centro de mando, plan de trabajo, historial, reportes, acciones masivas, modo cliente y buenas prácticas para reuniones.</p><a class="btn btng" href="docs/Manual_SM_OS.pdf" download>Descargar Manual_SM_OS.pdf</a></div>';
@@ -2812,6 +2842,20 @@ var A = {
     var data={estado:fv('es'),descripcion:buildDesc(t.descripcion,{accion:fv('sa'),seguimiento:fv('ps')})};
     if(crmEnabled()){data.siguiente_accion=fv('sa')||null;data.fecha_proximo_seguimiento=fv('ps')||null;data.ultima_actividad=new Date().toISOString();}
     await upd('tareas',id,data);mClose();await refresh();toast('Avance registrado ✓','g');
+  },
+  showClientErrors: async function(){
+    if(!adm()){ toast('Solo administradores','r'); return; }
+    mOpen('Errores recientes del navegador','<div class="empty"><p>Cargando…</p></div>',true);
+    var r = await sb.from('client_errors').select('*').order('created_at',{ascending:false}).limit(50);
+    if(r.error){ document.getElementById('mbody').innerHTML = '<div class="empty"><p>No se pudo cargar: '+esc(r.error.message)+'</p></div>'; return; }
+    var rows = r.data||[];
+    if(!rows.length){ document.getElementById('mbody').innerHTML = '<div class="empty"><div class="ei">✓</div><p>Sin errores registrados. Todo tranquilo.</p></div>'; return; }
+    var html = '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Últimos '+rows.length+' errores capturados automáticamente en el navegador de cualquier usuario (máx. 8 por sesión para no saturar).</p>'
+      + rows.map(function(e){
+        var who = e.usuario_id ? uNm(e.usuario_id) : 'Anónimo/sesión no iniciada';
+        return '<details class="faq-item"><summary><span>'+esc(e.message||'(sin mensaje)')+'</span><small>'+fmtdt(e.created_at)+' · '+esc(e.view||'')+' · '+esc(who)+'</small></summary><p style="white-space:pre-wrap;font-family:monospace;font-size:12px">'+esc(e.stack||'(sin stack)')+'</p></details>';
+      }).join('');
+    document.getElementById('mbody').innerHTML = html;
   },
   floridaFaq: function(){
     var faq = [

@@ -1,0 +1,27 @@
+# Historial de versiones — SM OS
+
+Registro cronológico de cada versión, del más antiguo al más reciente. El detalle completo de cada una vive en `docs/changelog/`.
+
+- [SM OS 1.5 — Refactor seguro para GitHub](docs/changelog/VERSION_NOTES_SM_OS_1_5.md)
+- [SM OS 2.0 — Control Ejecutivo](docs/changelog/VERSION_NOTES_SM_OS_2_0.md)
+- [SM OS 2.0.2 — Hotfix permisos edición rápida](docs/changelog/VERSION_NOTES_SM_OS_2_0_2.md)
+- [SM OS 2.0.3 — Hotfix layout Historial](docs/changelog/VERSION_NOTES_SM_OS_2_0_3.md)
+- [SM OS 2.1 — Centro de Mando Ejecutivo](docs/changelog/VERSION_NOTES_SM_OS_2_1.md)
+- [SM OS 2.2 — Automatizaciones operativas y reporte ejecutivo mejorado](docs/changelog/VERSION_NOTES_SM_OS_2_2.md)
+- [SM OS 2.2.1 — Privacidad Cliente](docs/changelog/VERSION_NOTES_SM_OS_2_2_1.md)
+- [SM OS 2.2.2 — Hotfix privacidad cliente reforzado](docs/changelog/VERSION_NOTES_SM_OS_2_2_2.md)
+- [SM OS 2.2.3 — Hotfix privacidad sidebar](docs/changelog/VERSION_NOTES_SM_OS_2_2_3.md)
+- [SM OS 2.3 — Filtros clicables + acciones masivas](docs/changelog/VERSION_NOTES_SM_OS_2_3.md)
+- [SM OS 2.3.1 — Hotfix acción masiva Sin acción](docs/changelog/VERSION_NOTES_SM_OS_2_3_1.md)
+- [SM OS 2.3.2 — Ajuste visual premium](docs/changelog/VERSION_NOTES_SM_OS_2_3_2.md)
+- [SM OS 2.3.3 - Centro de Ayuda y Manual](docs/changelog/VERSION_NOTES_SM_OS_2_3_3.md)
+- [SM OS 2.4 — Creación guiada de proyecto](docs/changelog/VERSION_NOTES_SM_OS_2_4.md)
+- [SM OS 2.4.1 — Hotfix ancho tablero operativo](docs/changelog/VERSION_NOTES_SM_OS_2_4_1.md)
+- [SM OS 2.4.2 — Hotfix OFUNAM ancho tablero](docs/changelog/VERSION_NOTES_SM_OS_2_4_2.md)
+- [SM OS 2.4.3 — Hotfix ancho tablero definitivo](docs/changelog/VERSION_NOTES_SM_OS_2_4_3.md)
+- [SM OS 2.4.4 — Hotfix ancho final](docs/changelog/VERSION_NOTES_SM_OS_2_4_4.md)
+- [SM OS 2.4.5 — Fix final OFUNAM ancho](docs/changelog/VERSION_NOTES_SM_OS_2_4_5.md)
+- [SM OS 2.4.6 — Eliminar tarea visible](docs/changelog/VERSION_NOTES_SM_OS_2_4_6.md)
+- [SM OS 2.5.0](docs/changelog/VERSION_NOTES_SM_OS_2_5.md)
+- [SM OS 2.6.0](docs/changelog/VERSION_NOTES_SM_OS_2_6.md)
+- [SM OS 2.7.0 — Mapa de Objetivos](docs/changelog/VERSION_NOTES_SM_OS_2_7.md)

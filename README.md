@@ -20,6 +20,13 @@ node tests/run-all.mjs
 
 Revisa la sintaxis de `assets/js/app.js` y corre TODOS los tests de `tests/*.test.mjs` de un jalón. Si algo truena, el comando termina con código de error y una lista de qué falló — no se hace push hasta que quede todo en verde. Cuando se agregue o cambie una función importante (navegación, permisos, un módulo nuevo), conviene sumar un `tests/*.test.mjs` que verifique que sigue ahí, así una regresión futura se detecta sola en vez de descubrirse en producción.
 
+## Documentación
+
+- `README.md` — este archivo, la referencia general.
+- `CHANGELOG.md` — índice cronológico de todas las versiones (el detalle de cada una vive en `docs/changelog/`).
+- `docs/SECURITY_NOTES_SUPABASE.md` — hallazgos y decisiones de seguridad en Supabase.
+- `docs/DEPLOY_CHECKLIST.md` — checklist manual de validación post-deploy.
+
 ## Archivos necesarios
 
 - index.html
