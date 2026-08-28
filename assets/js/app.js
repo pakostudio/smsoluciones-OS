@@ -1772,7 +1772,8 @@ function vFlorida(){
     : FLTAB==='gantt'?floridaGanttHtml()
     : FLTAB==='pipeline'?floridaPipelineHtml()
     : pkFloridaBoard();
-  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div>'+addBtn+'</div>'+floridaTabs(FLTAB)+body;
+  var helpBtn = '<button class="btn btng" onclick="A.floridaFaq()" title="Guía de ayuda paso a paso">'+iconHtml('help-circle')+' Ayuda</button>';
+  return '<div class="sh"><div style="display:flex;align-items:center;gap:10px"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><h2>Florida · Darío</h2></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+addBtn+helpBtn+'</div></div>'+floridaTabs(FLTAB)+body;
 }
 function pkDashboard(){
   var st=pkSetting(), ventas=pkRows('venta'), comodatos=pkRows('comodato'), prospectos=pkRows('prospecto');
@@ -2811,6 +2812,25 @@ var A = {
     var data={estado:fv('es'),descripcion:buildDesc(t.descripcion,{accion:fv('sa'),seguimiento:fv('ps')})};
     if(crmEnabled()){data.siguiente_accion=fv('sa')||null;data.fecha_proximo_seguimiento=fv('ps')||null;data.ultima_actividad=new Date().toISOString();}
     await upd('tareas',id,data);mClose();await refresh();toast('Avance registrado ✓','g');
+  },
+  floridaFaq: function(){
+    var faq = [
+      ['🎯 Centro de Control','Aquí ves el resumen general de Florida en un vistazo: cuántos prospectos hay en total, cuántos están en cada etapa del embudo (por contactar, contactados, con demo, en negociación, ganados, descartados) y un desglose por región (South, Central, West, North Florida). Úsalo como tu punto de partida cada vez que entres al módulo, para saber "¿cómo va Florida hoy?" antes de meterte al detalle.'],
+      ['🏆 Objetivos','Aquí defines y das seguimiento a las metas de Florida. Da clic en "+ Nuevo objetivo" para crear una meta (por ejemplo "Visitar 20 clubes este mes"). Puedes elegir una Métrica automática (el sistema calcula el avance solo, comparando contra tus prospectos reales: visitados, contactados, potencial alto, ganados, o total de prospectos) o dejarla en "manual" y capturar tú mismo el % de avance. Cada tarjeta muestra el estado (No iniciado, En curso, Bloqueado, Cumplido), el responsable y la fecha objetivo. Usa el botón Editar para actualizar el avance o el estado, y Eliminar si ya no aplica.'],
+      ['⚡ Ejecución','Esta es tu vista operativa del día a día: qué prospectos tienen un seguimiento próximo o vencido, para que sepas a quién llamarle o visitarle hoy. Si un seguimiento ya venció, aparecerá marcado para que no se te pase.'],
+      ['📋 Plan de trabajo','Es la lista completa de todos los prospectos de Florida, con su etapa, contacto, siguiente acción y fecha de seguimiento. Aquí das clic en "+ Prospecto Florida" para agregar uno nuevo, o entras a uno existente para editarlo, cambiar su etapa o agregarle notas.'],
+      ['📊 Reporte','Un resumen ejecutivo de todo lo avanzado: números totales, el embudo completo y el desglose por región, pensado para compartir o revisar de un vistazo cómo va el proyecto en general (es similar al Centro de Control pero enfocado en el reporte final).'],
+      ['🗂️ Kanban','Los mismos prospectos, pero organizados visualmente en columnas por etapa (Por contactar → Contactado → Demo → Propuesta → Negociación → Ganado / Descartado). Es útil para ver de un vistazo en qué parte del proceso está cada prospecto y detectar cuellos de botella.'],
+      ['📅 Calendario','Muestra tus próximos seguimientos organizados por fecha, para planear tu semana o mes: qué días tienes llamadas, visitas o entregas de propuesta pendientes.'],
+      ['📈 Gantt','Una línea de tiempo visual de tus prospectos y sus fechas clave, útil para ver la duración y traslape de tus procesos de venta a lo largo del tiempo.'],
+      ['🔀 Pipeline','Vista tipo embudo de ventas: cuántos prospectos hay en cada etapa y qué porcentaje representan del total, para entender qué tan "lleno" está tu embudo y dónde se te están cayendo prospectos.'],
+      ['🕘 Historial','La bitácora completa de todo lo que ha pasado en Florida: cada cambio, cada registro nuevo, cada actualización, en orden cronológico. Úsalo si necesitas revisar "¿qué pasó con este prospecto?" o auditar el trabajo realizado.'],
+      ['❓ ¿Cómo empiezo?','1) Entra a "Plan de trabajo" y agrega tus prospectos con el botón "+ Prospecto Florida". 2) Ve a "Objetivos" y crea tus metas del mes. 3) Cada día revisa "Ejecución" para ver a quién le toca seguimiento. 4) Actualiza la etapa de cada prospecto conforme avanza (puedes hacerlo desde Plan de trabajo o arrastrando en Kanban, si está disponible). 5) Usa "Reporte" y "Centro de Control" para ver tu avance general cuando quieras.']
+    ];
+    var html = '<div style="display:flex;flex-direction:column;gap:14px">'+faq.map(function(f){
+      return '<div class="card" style="padding:14px 16px"><div style="font-weight:700;margin-bottom:6px;font-size:15px">'+f[0]+'</div><div style="color:var(--muted);font-size:14px;line-height:1.55">'+f[1]+'</div></div>';
+    }).join('')+'</div>';
+    mOpen('Guía de Florida · Darío — paso a paso', html, true);
   },
   pkNew: function(){ A.pkForm(null, PKTAB); },
   pkNewFlorida: function(){
