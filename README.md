@@ -26,6 +26,7 @@ Revisa la sintaxis de `assets/js/app.js` y corre TODOS los tests de `tests/*.tes
 - `CHANGELOG.md` — índice cronológico de todas las versiones (el detalle de cada una vive en `docs/changelog/`).
 - `docs/SECURITY_NOTES_SUPABASE.md` — hallazgos y decisiones de seguridad en Supabase.
 - `docs/DEPLOY_CHECKLIST.md` — checklist manual de validación post-deploy.
+- `docs/MAPA_DE_ACCESOS.md` — dónde está todo (GitHub, Vercel, Supabase): organizaciones, proyectos, cómo entrar. Revisar primero ante cualquier problema de acceso.
 
 ## Archivos necesarios
 
