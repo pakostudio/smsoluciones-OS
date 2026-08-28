@@ -10,6 +10,16 @@ Versión actual: **2.7.0** — Centro de Control con Mapa de Objetivos y trazabi
 
 CRM ligero para SM Soluciones. Funciona como app estática en GitHub Pages y usa Supabase como base de datos.
 
+## Antes de hacer push (obligatorio)
+
+Corre siempre este comando antes de subir un cambio a `main` (que despliega directo a producción en Vercel):
+
+```bash
+node tests/run-all.mjs
+```
+
+Revisa la sintaxis de `assets/js/app.js` y corre TODOS los tests de `tests/*.test.mjs` de un jalón. Si algo truena, el comando termina con código de error y una lista de qué falló — no se hace push hasta que quede todo en verde. Cuando se agregue o cambie una función importante (navegación, permisos, un módulo nuevo), conviene sumar un `tests/*.test.mjs` que verifique que sigue ahí, así una regresión futura se detecta sola en vez de descubrirse en producción.
+
 ## Archivos necesarios
 
 - index.html
