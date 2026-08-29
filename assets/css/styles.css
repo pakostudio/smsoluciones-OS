@@ -966,13 +966,16 @@ tr:hover td{background:var(--surface2)}
 .operational-table.objective-table th:nth-child(4){width:10%!important}
 .operational-table.objective-table th:nth-child(5){width:7%!important}
 .operational-table.objective-table th:nth-child(6){width:9%!important}
-.operational-table.objective-table th:nth-child(7){width:72px!important}
+.operational-table.objective-table th:nth-child(7){width:64px!important;text-align:center}
 .operational-table.objective-table td:nth-child(1)>button{display:block;width:100%;line-height:1.25}
 .operational-table.objective-table td:nth-child(1)>div{clear:both;line-height:1.3}
 .operational-table.objective-table td:nth-child(3),.operational-table.objective-table td:nth-child(6){overflow-wrap:anywhere}
-.operational-table.objective-table .compact-actions{display:flex;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center;justify-content:center;gap:6px}
-.operational-table.objective-table .compact-action{display:grid;width:30px;height:30px;min-width:30px;padding:0;border-radius:8px;place-items:center;transition:background .18s,border-color .18s,color .18s}
-.operational-table.objective-table .compact-action svg{width:14px;height:14px}
+.operational-table.objective-table .compact-actions{display:flex;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center;justify-content:center;gap:3px}
+.operational-table.objective-table .compact-action{display:grid;width:24px;height:24px;min-width:24px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;box-shadow:none;place-items:center;transition:background .18s,border-color .18s,color .18s}
+.operational-table.objective-table .compact-action.btnc{border-color:transparent;background:transparent;color:#0284c7;box-shadow:none}
+.operational-table.objective-table .compact-action.btng{border-color:transparent;background:transparent;color:#64748b}
+.operational-table.objective-table .compact-action:hover{border-color:#dbe5ee;background:#f1f5f9;color:#075985}
+.operational-table.objective-table .compact-action svg{width:13px;height:13px}
 .operational-table.objective-table .compact-action:focus-visible{outline:3px solid rgba(14,165,233,.28);outline-offset:2px}
 .operational-table.objective-table .objective-next-action{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.35}
 @media(max-width:1050px){.operational-table.objective-table{min-width:820px!important}.operational-table.objective-table th:nth-child(5),.operational-table.objective-table td:nth-child(5){display:none}.operational-table.objective-table th:nth-child(1){width:31%!important}.operational-table.objective-table th:nth-child(3){width:34%!important}}
