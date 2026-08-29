@@ -33,7 +33,7 @@ for (const selector of [
   '.objective-matrix'
 ]) assert.ok(css.includes(selector), `${selector} debe tener estilos`);
 
-assert.match(html, /styles\.css\?v=2\.7\.0|styles\.css\?v=2\.8\.[01]/);
-assert.match(html, /app\.js\?v=2\.7\.0|app\.js\?v=2\.8\.[01]/);
+assert.match(html, /styles\.css\?v=2\.7\.0|styles\.css\?v=2\.8\.[012]/);
+assert.match(html, /app\.js\?v=2\.7\.0|app\.js\?v=2\.8\.[012]/);
 
 console.log('Project Control Sprint 4 objective traceability tests: OK');

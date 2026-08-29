@@ -957,6 +957,25 @@ tr:hover td{background:var(--surface2)}
 .prokicks-work-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 7px;padding:0 2px}.prokicks-work-head h2{margin:0;color:var(--ink);font-size:18px;line-height:1.1}.prokicks-work-head small{display:block;margin-top:3px;color:var(--muted);font-size:9px}.prokicks-work-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}.prokicks-work-actions .btn{min-height:34px;padding:6px 10px}.florida-direct{display:inline-flex;align-items:center;gap:6px;border:1px solid #99f6e4;background:#ecfdf5;color:#047857;font-weight:900}.florida-direct:hover{border-color:#2dd4bf;background:#d1fae5}.florida-direct span{display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#047857;color:#fff;font-size:9px}.front-panel{margin:0 0 7px;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.front-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:6px 11px;cursor:pointer;list-style:none}.front-panel>summary::-webkit-details-marker{display:none}.front-panel>summary>span,.front-panel>summary>b{display:flex;align-items:center;gap:7px}.front-panel>summary svg{width:14px;height:14px}.front-panel>summary strong{color:var(--ink);font-size:10px}.front-panel>summary small{color:var(--muted);font-size:9px}.front-panel>summary>b{color:#0369a1;font-size:9px}.front-panel>summary>b svg{transition:transform .18s}.front-panel[open]>summary{border-bottom:1px solid var(--line);background:#f8fafc}.front-panel[open]>summary>b svg{transform:rotate(180deg)}.front-panel .front-strip{margin:0;padding:8px;background:#f8fafc}.prokicks-utility-bar{display:flex;justify-content:flex-end;gap:6px;margin:0 0 7px}.prokicks-utility-bar .btn{min-height:30px;padding:5px 10px;font-size:12px}.project-shell .board-filter-panel{margin-bottom:7px}.project-shell .board-filter-panel>summary{min-height:36px;padding:6px 11px}
 @media(max-width:760px){.prokicks-work-head{align-items:flex-start;flex-direction:column}.prokicks-work-actions{width:100%;justify-content:flex-start}.prokicks-work-actions .btn{flex:1 1 auto;justify-content:center}.front-panel>summary small{display:none}}
 
+/* SM OS 2.8.2 — Tablero compacto de objetivos estratégicos */
+.operational-table.objective-table{min-width:900px!important;table-layout:fixed}
+.operational-table.objective-table th,.operational-table.objective-table td{padding:9px 10px;vertical-align:middle}
+.operational-table.objective-table th:nth-child(1){width:30%!important}
+.operational-table.objective-table th:nth-child(2){width:9%!important}
+.operational-table.objective-table th:nth-child(3){width:31%!important}
+.operational-table.objective-table th:nth-child(4){width:10%!important}
+.operational-table.objective-table th:nth-child(5){width:7%!important}
+.operational-table.objective-table th:nth-child(6){width:9%!important}
+.operational-table.objective-table th:nth-child(7){width:72px!important}
+.operational-table.objective-table td:nth-child(1)>button{display:block;width:100%;line-height:1.25}
+.operational-table.objective-table td:nth-child(1)>div{clear:both;line-height:1.3}
+.operational-table.objective-table td:nth-child(3),.operational-table.objective-table td:nth-child(6){overflow-wrap:anywhere}
+.operational-table.objective-table .compact-actions{display:flex;align-items:center;justify-content:center;gap:6px}
+.operational-table.objective-table .compact-action{display:grid;width:30px;height:30px;min-width:30px;padding:0;border-radius:8px;place-items:center;transition:background .18s,border-color .18s,color .18s}
+.operational-table.objective-table .compact-action svg{width:14px;height:14px}
+.operational-table.objective-table .compact-action:focus-visible{outline:3px solid rgba(14,165,233,.28);outline-offset:2px}
+@media(max-width:1050px){.operational-table.objective-table{min-width:820px!important}.operational-table.objective-table th:nth-child(5),.operational-table.objective-table td:nth-child(5){display:none}.operational-table.objective-table th:nth-child(1){width:31%!important}.operational-table.objective-table th:nth-child(3){width:34%!important}}
+
 /* SM OS 2.6.0 — Dashboard visual universal del Centro de Control */
 .control-dashboard{display:grid;gap:10px;margin-bottom:12px;min-width:0}
 .control-dashboard-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:12px 14px;background:linear-gradient(135deg,#fff,#f8fafc);border:1px solid var(--line);border-radius:12px}

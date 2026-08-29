@@ -355,6 +355,7 @@ var PROKICKS_PLAN = [
 ];
 function isOfunamProject(p){ return !!p && /ofunam/i.test(String(p.nombre||'')); }
 function isProkicksProject(p){ return !!p && /prokicks/i.test(String(p.nombre||'')); }
+function isObjectivesBoard(p){ return !!p && /^objetivos$/i.test(String(descVal(p,'Vista')||'')); }
 function taskProject(t){ return t ? xid(DB.proyectos,t.proyecto_id) : null; }
 function configuredProjectGroups(p){
   var m = String(p&&p.descripcion||'').match(/(?:^|\n)\s*Frentes\s*:\s*([^\n]+)/i);
@@ -1025,6 +1026,7 @@ function boardFiltersHtml(tasks,filtered,p){
 }
 function operationalBoard(p,limit){
   var ofunamBoard = isOfunamProject(p);
+  var objectivesBoard = isObjectivesBoard(p);
   var showCommentCol = false; // SM OS 2.4.4: ocultar Último comentario en tableros operativos para evitar desborde
   var tasks = projectTasks(p.id).sort(function(a,b){
     var ga = taskGroup(a), gb = taskGroup(b);
@@ -1040,8 +1042,11 @@ function operationalBoard(p,limit){
     var h=crmHealth(t), lc=lastComment(t), cCount=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).length;
     var pk=isProkicksProject(p);
     var alert = '<span class="sem"><span class="dot '+h.cl+'"></span>'+esc(h.txt)+'</span>';
+    var actionButtons = objectivesBoard
+      ? '<div class="operational-actions compact-actions"><button class="btn btns btnc compact-action" aria-label="Editar rápido" title="Editar rápido" onclick="A.quickEdit(\''+t.id+'\')">'+iconHtml('pencil')+'</button><button class="btn btns btng compact-action" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('clipboard-list')+'</button></div>'
+      : '<div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div>';
     return '<tr>'
-      +(ofunamBoard?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
+      +((ofunamBoard||objectivesBoard)?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
       +'<td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;cursor:pointer;text-align:left" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted);margin-top:3px">Inicio '+fmt(t.fecha_inicio)+' · Término '+fmt(t.fecha_vencimiento)+'</div></td>'
       +'<td>'+bSt(t.estado)+'</td>'
       +'<td>'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
@@ -1049,15 +1054,16 @@ function operationalBoard(p,limit){
       +'<td>'+esc(boardOwnerName(t,p))+'</td>'
       +'<td>'+alert+'</td>'
       +(showCommentCol?'<td style="min-width:190px">'+(lc?'<div style="font-size:12px;color:var(--ink)">'+esc(String(humanComment(lc.texto)||'').slice(0,70))+'</div><div style="font-size:11px;color:var(--muted)">'+cCount+' comentario(s)</div>':'<span style="color:var(--muted)">Sin comentarios</span>')+'</td>':'')
-      +'<td><div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div></td>'
+      +'<td>'+actionButtons+'</td>'
       +'</tr>';
   }).join('');
   var fronts=groupsForProject(p);
   var frontStrip=isProkicksProject(p)?'<details class="front-panel"><summary><span>'+iconHtml('layers-3')+'<strong>Frentes de trabajo</strong><small>'+fronts.length+' frentes · '+tasks.length+' tareas visibles</small></span><b>Administrar '+iconHtml('chevron-down')+'</b></summary><div class="front-strip">'+fronts.map(function(g,i){var count=tasks.filter(function(t){return taskGroup(t)===g;}).length;return '<div class="front-summary"><strong>'+esc(g)+'</strong><span class="badge bx_">'+count+'</span><button class="btn btng" onclick="A.pkTaskForFront(\''+p.id+'\','+i+')">+ Tarea</button></div>';}).join('')+'</div></details>':'';
-  var tableClass = 'operational-table' + (ofunamBoard ? ' ofunam-table' : '');
+  var tableClass = 'operational-table' + (ofunamBoard ? ' ofunam-table' : '') + (objectivesBoard ? ' objective-table' : '');
   var commentHead = showCommentCol ? '<th>Último comentario</th>' : '';
-  var groupHead = ofunamBoard ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
-  return filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+(isProkicksProject(p)?'Tarea':'Registro')+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  var groupHead = (ofunamBoard||objectivesBoard) ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
+  var itemHead = objectivesBoard ? 'Objetivo' : (isProkicksProject(p)?'Tarea':'Registro');
+  return filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+itemHead+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 
 function controlProgress(t){
@@ -1361,12 +1367,13 @@ function projectCard(p,compact){
 function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
-  var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : 'Registros');
+  var objectivesWorkspace = isObjectivesBoard(p);
+  var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : (isObjectivesBoard(p) ? 'Objetivos estratégicos' : 'Registros'));
   var floridaCount=isProkicksProject(p)?pkFloridaRows().length:0;
-  var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Registro</button>';
+  var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ '+(objectivesWorkspace?'Objetivo':'Registro')+'</button>';
   var pkUtilityBar = isProkicksProject(p) ? '<div class="prokicks-utility-bar"><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">'+iconHtml('layers-3')+' Frentes</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">'+iconHtml('plus')+' Tarea</button></div>' : '';
   var compactOfunamHead = '<div class="compact-board-summary"><div><h2>'+mainTitle+'</h2><div class="compact-board-metrics"><span class="metric">Registros <strong>'+s.tasks.length+'</strong></span><span class="metric">Sin acción <strong>'+s.noNext+'</strong></span><span class="metric">Riesgos <strong>'+(s.overdue+s.noNext)+'</strong></span><span class="metric">Resp. <strong>'+esc(uNm(p.owner_id))+'</strong></span></div></div>'+mainButton+'</div>';
-  var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">Registros</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
+  var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">'+(objectivesWorkspace?'Objetivos':'Registros')+'</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>';
   var prokicksHead='<div class="prokicks-work-head"><div><h2>'+mainTitle+'</h2><small>'+s.tasks.length+' tareas · '+(s.overdue+s.noNext)+' requieren atención</small></div>'+mainButton+'</div>';
   var board = (isProkicksProject(p) ? prokicksHead : (isOfunamProject(p) ? compactOfunamHead : regularHead)) + pkUtilityBar + operationalBoard(p);
