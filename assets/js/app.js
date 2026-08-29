@@ -1067,7 +1067,7 @@ function operationalBoard(p,limit){
   var commentHead = showCommentCol ? '<th>Último comentario</th>' : '';
   var groupHead = (ofunamBoard||objectivesBoard) ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
   var itemHead = objectivesBoard ? 'Objetivo' : (isProkicksProject(p)?'Tarea':'Registro');
-  var actionsHead = objectivesBoard ? 'Acc.' : 'Acciones';
+  var actionsHead = 'Acciones';
   return filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+itemHead+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>'+actionsHead+'</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 

@@ -966,7 +966,7 @@ tr:hover td{background:var(--surface2)}
 .operational-table.objective-table th:nth-child(4){width:10%!important}
 .operational-table.objective-table th:nth-child(5){width:7%!important}
 .operational-table.objective-table th:nth-child(6){width:9%!important}
-.operational-table.objective-table th:nth-child(7){width:64px!important;text-align:center}
+.operational-table.objective-table th:nth-child(7){width:78px!important;text-align:center}
 .operational-table.objective-table td:nth-child(1)>button{display:block;width:100%;line-height:1.25}
 .operational-table.objective-table td:nth-child(1)>div{clear:both;line-height:1.3}
 .operational-table.objective-table td:nth-child(3),.operational-table.objective-table td:nth-child(6){overflow-wrap:anywhere}

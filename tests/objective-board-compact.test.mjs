@@ -22,11 +22,11 @@ assert.match(app, /class="objective-next-action"/);
 assert.match(app, /FLD\('ti','Objetivo'/);
 assert.match(app, /Editar objetivo':'Nuevo objetivo'/);
 assert.match(app, /isObj\?ti:fv\('gr'\)/);
-assert.match(app, /objectivesBoard \? 'Acc\.'/);
+assert.match(app, /var actionsHead = 'Acciones'/);
 assert.match(css, /width:24px;height:24px/);
 assert.match(css, /background:transparent/);
-assert.match(html, /styles\.css\?v=2\.8\.4/);
-assert.match(html, /app\.js\?v=2\.8\.4/);
+assert.match(html, /styles\.css\?v=2\.8\.5/);
+assert.match(html, /app\.js\?v=2\.8\.5/);
 assert.doesNotMatch(app, /MONTESCANO/i);
 
 console.log('Objective board compact UX tests: OK');
