@@ -1042,6 +1042,10 @@ function operationalBoard(p,limit){
     var h=crmHealth(t), lc=lastComment(t), cCount=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).length;
     var pk=isProkicksProject(p);
     var alert = '<span class="sem"><span class="dot '+h.cl+'"></span>'+esc(h.txt)+'</span>';
+    var nextLabel = nextAction(t)||'Sin siguiente acción';
+    var nextCell = objectivesBoard
+      ? '<span class="objective-next-action" title="'+esc(nextLabel)+'">'+esc(nextLabel)+'</span>'
+      : esc(nextLabel);
     var actionButtons = objectivesBoard
       ? '<div class="operational-actions compact-actions"><button class="btn btns btnc compact-action" aria-label="Editar rápido" title="Editar rápido" onclick="A.quickEdit(\''+t.id+'\')">'+iconHtml('pencil')+'</button><button class="btn btns btng compact-action" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('clipboard-list')+'</button></div>'
       : '<div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div>';
@@ -1049,7 +1053,7 @@ function operationalBoard(p,limit){
       +((ofunamBoard||objectivesBoard)?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
       +'<td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;cursor:pointer;text-align:left" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted);margin-top:3px">Inicio '+fmt(t.fecha_inicio)+' · Término '+fmt(t.fecha_vencimiento)+'</div></td>'
       +'<td>'+bSt(t.estado)+'</td>'
-      +'<td>'+esc(nextAction(t)||'Sin siguiente acción')+'</td>'
+      +'<td>'+nextCell+'</td>'
       +'<td>'+fmt(followDate(t)||t.fecha_proximo_seguimiento)+'</td>'
       +'<td>'+esc(boardOwnerName(t,p))+'</td>'
       +'<td>'+alert+'</td>'
@@ -2452,6 +2456,7 @@ var A = {
     var uO = DB.usuarios.map(function(u){return [u.id,u.nombre];});
     var selectedProject=xid(DB.proyectos,p2);
     var isPk=isProkicksProject(selectedProject);
+    var isObj=isObjectivesBoard(selectedProject);
     var gO = groupsForProject(selectedProject).map(function(g){return [g,g];});
     var crm = crmEnabled();
     var crmH = '<div style="border-top:1px solid var(--line);padding-top:13px"><h3 style="margin-bottom:10px">Contacto y control</h3>'
@@ -2478,18 +2483,18 @@ var A = {
         +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
         +'<div class="fr2">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+'</div>'
       :'<div class="fr2">'+FSL('pi','Proyecto',pO,p2)+FSL('oi','Responsable',uO,t&&t.owner_id||SES.userId)+'</div>'
-        +'<div class="fr2">'+FLD('ti','Registro / prospecto','text',t&&t.titulo)+FSL('gr','Grupo',gO,t?taskGroup(t):'General')+'</div>'
+        +(isObj?FLD('ti','Objetivo','text',t&&t.titulo):'<div class="fr2">'+FLD('ti','Registro / prospecto','text',t&&t.titulo)+FSL('gr','Grupo',gO,t?taskGroup(t):'General')+'</div>')
         +FTA('dc','Notas / descripción libre',t&&stripDescFields(t.descripcion))
         +'<div class="fr2">'+FSL('pr','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t&&t.prioridad||'media')+FSL('es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t&&t.estado||'pendiente')+'</div>'
         +'<div class="fr3">'+FLD('fi','Inicio','date',t&&t.fecha_inicio||today())+FLD('fv','Vencimiento','date',t&&t.fecha_vencimiento||pd(7))+FLD('he','Horas estimadas','number',t&&t.horas_estimadas||'8')+'</div>'
         +(t?FLD('hr','Horas reales','number',t&&t.horas_reales||'0'):'');
-    mOpen(t?'Editar tarea':'Nueva tarea',
+    mOpen(isObj?(t?'Editar objetivo':'Nuevo objetivo'):(t?'Editar tarea':'Nueva tarea'),
       '<div class="fg">'
       +mainFields
       +traceH
       +pkH
       +(isPk?'':crmH)
-      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">Guardar tarea</button></div>'
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._st(\''+( id||'')+'\')">'+(isObj?'Guardar objetivo':'Guardar tarea')+'</button></div>'
       +'</div>');
     PK_NEW_FRONT='';
   },
@@ -2499,8 +2504,9 @@ var A = {
     if(id && !canEditTask(old)){ toast('No tienes permisos para editar esta tarea','r'); return; }
     var selectedProject=xid(DB.proyectos,fv('pi'));
     var isPk=isProkicksProject(selectedProject);
+    var isObj=isObjectivesBoard(selectedProject);
     var collabs=isPk?Array.prototype.map.call(document.querySelectorAll('[data-pk-collab]:checked'),function(el){return el.value;}):[];
-    var desc = buildDesc(fv('dc'),{grupo:isPk?'':fv('gr'),frente:isPk?fv('fr'):'',responsableInterno:isPk?fv('ri'):'',colaboradoresInternos:isPk?collabs.join(' | '):'',objetivo:fv('ob'),entregable:fv('en'),kpi:fv('kp'),meta:fv('mt'),cta:isPk?fv('ct'):'',email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
+    var desc = buildDesc(fv('dc'),{grupo:isPk?'':(isObj?ti:fv('gr')),frente:isPk?fv('fr'):'',responsableInterno:isPk?fv('ri'):'',colaboradoresInternos:isPk?collabs.join(' | '):'',objetivo:fv('ob'),entregable:fv('en'),kpi:fv('kp'),meta:fv('mt'),cta:isPk?fv('ct'):'',email:fv('emx'),tel:fv('tel'),dir:fv('dir'),gancho:fv('ga'),instrumento:fv('ins'),accion:fv('sa'),seguimiento:fv('ps'),etapa:fv('ec'),probabilidad:fv('pb'),monto:fv('me')});
     var data = {proyecto_id:fv('pi'),owner_id:fv('oi'),titulo:ti,descripcion:desc,prioridad:fv('pr'),estado:fv('es'),fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,horas_estimadas:Number(fv('he'))||0,horas_reales:Number(fv('hr'))||0};
     if(id && old && !adm()){
       data.proyecto_id = old.proyecto_id;
@@ -2515,7 +2521,7 @@ var A = {
       data.ultima_actividad = new Date().toISOString();
     }
     var r = id ? await upd('tareas',id,data) : await ins('tareas',data);
-    if(r){mClose();await refresh();toast(id?'Tarea actualizada':'Tarea creada ✓','g');}
+    if(r){mClose();await refresh();toast(isObj?(id?'Objetivo actualizado':'Objetivo creado ✓'):(id?'Tarea actualizada':'Tarea creada ✓'),'g');}
   },
   qe: function(id){
     var t=xid(DB.tareas,id); if(!t) return;

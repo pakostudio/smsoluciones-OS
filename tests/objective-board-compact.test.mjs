@@ -16,8 +16,14 @@ assert.match(app, /objectivesWorkspace\?'Objetivo':'Registro'/);
 assert.match(app, /objectivesWorkspace\?'Objetivos':'Registros'/);
 assert.match(css, /\.operational-table\.objective-table/);
 assert.match(css, /\.compact-action:focus-visible/);
-assert.match(html, /styles\.css\?v=2\.8\.2/);
-assert.match(html, /app\.js\?v=2\.8\.2/);
+assert.match(css, /flex-direction:row!important/);
+assert.match(css, /-webkit-line-clamp:2/);
+assert.match(app, /class="objective-next-action"/);
+assert.match(app, /FLD\('ti','Objetivo'/);
+assert.match(app, /Editar objetivo':'Nuevo objetivo'/);
+assert.match(app, /isObj\?ti:fv\('gr'\)/);
+assert.match(html, /styles\.css\?v=2\.8\.3/);
+assert.match(html, /app\.js\?v=2\.8\.3/);
 assert.doesNotMatch(app, /MONTESCANO/i);
 
 console.log('Objective board compact UX tests: OK');
