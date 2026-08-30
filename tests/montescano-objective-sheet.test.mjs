@@ -7,7 +7,8 @@ const migration = fs.readFileSync(new URL('../migrations/2026-08-29-montescano-o
 const uxMigration = fs.readFileSync(new URL('../migrations/2026-08-30-montescano-objective-sheet-ux.sql', import.meta.url), 'utf8');
 
 assert.match(app, /isMontescanoObjectiveTask/);
-assert.match(app, />Gestionar<\/button>/);
+assert.match(app, /strategic-manage-btn" aria-label="Gestionar objetivo" title="Gestionar objetivo"/);
+assert.match(app, /iconHtml\('pencil'\)/);
 assert.match(app, /Ficha Estratégica del Objetivo/);
 assert.match(app, /\['bloqueada','Bloqueada'\]/);
 for (const section of ['Objetivo','Medición','Iniciativas','Plan de acción','Avances','Entregables \/ evidencias','Bloqueos \/ riesgos','Decisiones','Próximo paso']) {
@@ -34,6 +35,7 @@ assert.match(app, /OBJ_DECISION::/);
 assert.match(app, /strategicRecords/);
 assert.match(css, /\.strategic-sheet/);
 assert.match(css, /\.strategic-manage-btn/);
+assert.match(css, /\.strategic-manage-btn\{display:grid;width:28px;height:28px/);
 assert.match(css, /\.strategic-section-body/);
 assert.match(css, /@media\(max-width:760px\)/);
 assert.match(migration, /add column if not exists tipo text/);

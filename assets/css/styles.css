@@ -979,7 +979,10 @@ tr:hover td{background:var(--surface2)}
 .operational-table.objective-table .compact-action:focus-visible{outline:3px solid rgba(14,165,233,.28);outline-offset:2px}
 .operational-table.objective-table .objective-next-action{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;line-height:1.35}
 .operational-table.objective-table .strategic-action{display:flex;justify-content:center}
-.operational-table.objective-table .strategic-manage-btn{width:auto;min-width:62px;padding:5px 9px;white-space:nowrap}
+.operational-table.objective-table .strategic-manage-btn{display:grid;width:28px;height:28px;min-width:28px;padding:0;border-color:transparent;border-radius:7px;background:transparent;color:#0284c7;box-shadow:none;place-items:center}
+.operational-table.objective-table .strategic-manage-btn:hover{border-color:#dbe5ee;background:#f1f5f9;color:#075985}
+.operational-table.objective-table .strategic-manage-btn svg{width:14px;height:14px}
+.operational-table.objective-table .strategic-manage-btn:focus-visible{outline:3px solid rgba(14,165,233,.28);outline-offset:2px}
 @media(max-width:1050px){.operational-table.objective-table{min-width:820px!important}.operational-table.objective-table th:nth-child(5),.operational-table.objective-table td:nth-child(5){display:none}.operational-table.objective-table th:nth-child(1){width:31%!important}.operational-table.objective-table th:nth-child(3){width:34%!important}}
 
 /* SM OS 2.9.0 — Ficha Estrategica del Objetivo */

@@ -263,6 +263,10 @@ function smCreationPlan(){
 }
 
 function projectDescription(p){ return stripProjectMeta(p&&p.descripcion)||cNm(p&&p.cliente_id); }
+function projectDescriptionNeedsToggle(p){
+  var text=projectDescription(p);
+  return /[\r\n]/.test(text)||text.length>90;
+}
 function projectAlertCount(pid){ return getAlerts().filter(function(a){return a.projectId===pid;}).length; }
 function userPrefs(id){ return DB.notification_preferences.find(function(p){return p.user_id===id;})||{email:'',email_enabled:true,browser_enabled:true,daily_digest:true,digest_hour:8,timezone:'America/Mexico_City'}; }
 function trackEvent(name,props){
@@ -1108,7 +1112,7 @@ function operationalBoard(p,limit){
       ? '<span class="objective-next-action" title="'+esc(nextLabel)+'">'+esc(nextLabel)+'</span>'
       : esc(nextLabel);
     var actionButtons = isMontescanoObjectiveTask(t)
-      ? '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" onclick="A.objectiveSheet(\''+t.id+'\')">Gestionar</button></div>'
+      ? '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.objectiveSheet(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>'
       : objectivesBoard
       ? '<div class="operational-actions compact-actions"><button class="btn btns btnc compact-action" aria-label="Editar rápido" title="Editar rápido" onclick="A.quickEdit(\''+t.id+'\')">'+iconHtml('pencil')+'</button><button class="btn btns btng compact-action" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('clipboard-list')+'</button></div>'
       : '<div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div>';
@@ -1457,7 +1461,7 @@ function projectWorkspace(p){
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
   return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
-    +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div><button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button></div></div>'
+    +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div>'+(projectDescriptionNeedsToggle(p)?'<button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button>':'')+'</div></div>'
     +projectTabs(p)
     +body+'</div>';
 }
