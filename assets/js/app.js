@@ -1034,13 +1034,23 @@ function isMontescanoObjectiveTask(t){
 function strategicInitiatives(tid){
   return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='iniciativa'&&!s.parent_id;}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
 }
+function strategicStages(tid,initiativeId){
+  return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='etapa'&&s.parent_id===initiativeId;}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
+}
 function strategicActions(tid,initiativeId){
-  return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='accion'&&s.parent_id===initiativeId;}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
+  var stageIds=strategicStages(tid,initiativeId).map(function(s){return s.id;});
+  return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='accion'&&(s.parent_id===initiativeId||stageIds.indexOf(s.parent_id)>=0);}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
 }
 function strategicStateProgress(row){ return row.estado==='terminada'?100:(row.estado==='en_proceso'?50:0); }
-function strategicInitiativeProgress(row){
-  var actions=strategicActions(row.tarea_id,row.id);
+function strategicStateLabel(state){return ({pendiente:'No iniciada',en_proceso:'En curso',bloqueada:'Bloqueada',terminada:'Completada'})[state]||'No iniciada';}
+function strategicStageProgress(row){
+  var actions=DB.subtareas.filter(function(s){return s.tarea_id===row.tarea_id&&s.tipo==='accion'&&s.parent_id===row.id;});
   return actions.length?Math.round(actions.reduce(function(sum,a){return sum+strategicStateProgress(a);},0)/actions.length):strategicStateProgress(row);
+}
+function strategicInitiativeProgress(row){
+  var stages=strategicStages(row.tarea_id,row.id), direct=DB.subtareas.filter(function(s){return s.tarea_id===row.tarea_id&&s.tipo==='accion'&&s.parent_id===row.id;}), parts=[];
+  stages.forEach(function(s){parts.push(strategicStageProgress(s));});direct.forEach(function(a){parts.push(strategicStateProgress(a));});
+  return parts.length?Math.round(parts.reduce(function(sum,p){return sum+p;},0)/parts.length):strategicStateProgress(row);
 }
 function strategicObjectiveProgress(tid){
   var initiatives=strategicInitiatives(tid);
@@ -1062,12 +1072,18 @@ function strategicRecords(tid,prefix){
 function strategicSignal(t){
   var blocked=strategicRecords(t.id,OBJECTIVE_BLOCKER_PREFIX).some(function(b){return b.state!=='resuelto'&&b.state!=='cancelado';});
   var decision=strategicRecords(t.id,OBJECTIVE_DECISION_PREFIX).some(function(d){return d.state==='pendiente';});
-  var pct=strategicObjectiveProgress(t.id);
-  if(blocked)return {cl:'dr',label:'Bloqueado'};
-  if(decision)return {cl:'dy',label:'Decisión pendiente'};
-  if(pct===100||t.estado==='terminada')return {cl:'dg',label:'Completado'};
-  if(t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0)return {cl:'dr',label:'Vencido'};
+  if(blocked||t.control_bloqueado||(t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0))return {cl:'dr',label:'En riesgo'};
+  if(decision)return {cl:'dy',label:'Atención'};
   return {cl:'dg',label:'En control'};
+}
+function strategicParentLabel(row){
+  if(!row||!row.parent_id)return 'Sin vínculo';
+  var parent=xid(DB.subtareas,row.parent_id);if(!parent)return 'Sin vínculo';
+  if(parent.tipo==='etapa'){var initiative=xid(DB.subtareas,parent.parent_id);return (initiative?initiative.titulo+' · ':'')+parent.titulo;}
+  return parent.titulo;
+}
+function strategicSection(num,title,body,open){
+  return '<details class="strategic-section" '+(open?'open':'')+'><summary class="strategic-section-head"><div><b>'+num+'</b><h3>'+title+'</h3></div><span class="strategic-toggle">Ver detalle</span></summary><div class="strategic-section-body">'+body+'</div></details>';
 }
 function operationalBoard(p,limit){
   var ofunamBoard = isOfunamProject(p);
@@ -2662,23 +2678,28 @@ var A = {
     var blockers=strategicRecords(id,OBJECTIVE_BLOCKER_PREFIX);
     var decisions=strategicRecords(id,OBJECTIVE_DECISION_PREFIX);
     var owners=DB.usuarios.map(function(u){return[u.id,u.nombre];}), pct=strategicObjectiveProgress(id), signal=strategicSignal(t);
-    var initiativeHtml=initiatives.map(function(i){var ip=strategicInitiativeProgress(i);return '<article class="strategic-item"><div><strong>'+esc(i.titulo)+'</strong><p>'+esc(i.descripcion||'Sin descripción')+'</p><small>'+esc(uNm(i.owner_id))+' · '+fmt(i.fecha_vencimiento)+' · '+esc((i.estado||'pendiente').replace('_',' '))+'</small></div><div class="strategic-progress"><span>'+ip+'%</span><div class="pb"><div class="pf" style="width:'+ip+'%"></div></div></div><button class="btn btns btng" onclick="A.editStrategicInitiative(\''+i.id+'\')">Editar</button></article>';}).join('')||'<div class="strategic-empty">Sin iniciativas registradas.</div>';
-    var actionHtml=actions.map(function(x){var a=x.row;return '<div class="strategic-table-row"><div><strong>'+esc(a.titulo)+'</strong><small>'+esc(x.initiative.titulo)+'</small></div><span>'+esc(uNm(a.owner_id))+'</span><span>'+fmt(a.fecha_vencimiento)+'</span><span>'+bSt(a.estado)+'</span><span>'+esc(a.siguiente_accion||'Por definir')+'</span><button class="btn btns btng" onclick="A.editStrategicAction(\''+a.id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Las acciones aparecerán cuando se agreguen a una iniciativa.</div>';
-    var advanceHtml=advances.map(function(c){var a=strategicAdvance(c);return '<div class="strategic-history"><time>'+fmtdt(c.created_at)+'</time><div><strong>'+(a&&a.pct!==undefined?esc(a.pct)+'% de avance':'Seguimiento')+'</strong><p>'+esc(a?a.comment:humanComment(c.texto))+'</p>'+(a&&a.evidence?'<a href="'+esc(a.evidence)+'" target="_blank" rel="noopener">Abrir evidencia</a>':'')+'</div></div>';}).join('')||'<div class="strategic-empty">Sin avances registrados.</div>';
-    var evidenceHtml=evidence.map(function(e){return '<div class="strategic-list-row"><div><strong>'+esc(e.nombre)+'</strong><small>'+esc(e.tipo||'Evidencia')+' · v'+esc(e.version||'1')+'</small></div>'+(e.url?'<a class="btn btns btng" href="'+esc(e.url)+'" target="_blank" rel="noopener">Abrir</a>':'')+'</div>';}).join('')||'<div class="strategic-empty">Sin entregables o evidencias.</div>';
+    var initiativeHtml=initiatives.map(function(i){
+      var ip=strategicInitiativeProgress(i),stages=strategicStages(id,i.id);
+      var stageHtml=stages.map(function(s){return '<div class="strategic-stage"><div><strong>'+esc(s.titulo)+'</strong><p>'+esc(s.entregable_esperado||'Entregable por definir')+'</p><small>'+esc(uNm(s.owner_id))+' · '+fmt(s.fecha_vencimiento)+' · '+strategicStateLabel(s.estado)+'</small></div><div class="strategic-progress"><span>'+strategicStageProgress(s)+'%</span><div class="pb"><div class="pf" style="width:'+strategicStageProgress(s)+'%"></div></div></div><button class="btn btns btng" onclick="A.editStrategicStage(\''+s.id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty compact">Todavía no hay etapas.</div>';
+      return '<article class="strategic-initiative"><div class="strategic-initiative-head"><div><strong>'+esc(i.titulo)+'</strong><p>'+esc(i.descripcion||'Qué buscamos lograr: por definir')+'</p><small>'+esc(uNm(i.owner_id))+' · '+fmt(i.fecha_inicio)+' a '+fmt(i.fecha_vencimiento)+' · '+strategicStateLabel(i.estado)+'</small></div><div class="strategic-progress"><span>'+ip+'%</span><div class="pb"><div class="pf" style="width:'+ip+'%"></div></div></div><button class="btn btns btng" onclick="A.editStrategicInitiative(\''+i.id+'\')">Editar</button></div><div class="strategic-subhead"><span>Etapas</span><button class="btn btns btng" onclick="A.newStrategicStage(\''+id+'\',\''+i.id+'\')">+ Etapa</button></div>'+stageHtml+'</article>';
+    }).join('')||'<div class="strategic-empty">Agrega una iniciativa importante para comenzar la ejecución.</div>';
+    var actionHtml=actions.map(function(x){var a=x.row;return '<div class="strategic-table-row"><div><strong>'+esc(a.titulo)+'</strong><small>'+esc(strategicParentLabel(a))+'</small></div><span>'+esc(uNm(a.owner_id))+'</span><span>'+fmt(a.fecha_vencimiento)+'</span><span>'+strategicStateLabel(a.estado)+'</span><span>'+esc(a.siguiente_accion||'Por definir')+'</span><button class="btn btns btng" onclick="A.editStrategicAction(\''+a.id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Aquí aparecerán las tareas concretas de las iniciativas.</div>';
+    var advanceHtml=advances.map(function(c){var a=strategicAdvance(c),achieved=a?(a.achieved||a.comment||'Sin detalle'):humanComment(c.texto),next=a&&a.next?a.next:'Por definir';return '<div class="strategic-history"><time>'+fmtdt(c.created_at)+'</time><div><strong>'+(a&&a.pct!==undefined&&a.pct!==null?esc(a.pct)+'% de avance':'Avance registrado')+'</strong><p><b>Qué se logró:</b> '+esc(achieved)+'</p><p><b>Qué sigue:</b> '+esc(next)+'</p>'+(a&&a.evidence?'<a href="'+esc(a.evidence)+'" target="_blank" rel="noopener">Abrir evidencia</a>':'')+'</div></div>';}).join('')||'<div class="strategic-empty">Sin avances registrados.</div>';
+    var evidenceHtml=evidence.map(function(e){var linked=e.subtarea_id?xid(DB.subtareas,e.subtarea_id):null;return '<div class="strategic-list-row"><div><strong>'+esc(e.nombre)+'</strong><small>'+esc(e.tipo||'Evidencia')+(linked?' · Pertenece a: '+esc(linked.titulo):' · Sin vínculo específico')+'</small></div>'+(e.url?'<a class="btn btns btng" href="'+esc(e.url)+'" target="_blank" rel="noopener">Abrir</a>':'')+'</div>';}).join('')||'<div class="strategic-empty">Sin entregables o evidencias.</div>';
     var blockerHtml=blockers.map(function(b){return '<div class="strategic-list-row"><div><strong>'+esc(b.description)+'</strong><small>'+esc(uNm(b.ownerId))+' · '+fmt(b.date)+' · '+esc((b.state||'abierto').replace('_',' '))+'</small></div><button class="btn btns btng" onclick="A.editStrategicBlocker(\''+b.id+'\',\''+id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Sin bloqueos o riesgos registrados.</div>';
-    var decisionHtml=decisions.map(function(d){return '<div class="strategic-list-row"><div><strong>'+esc(d.decision)+'</strong><small>'+fmt(d.date)+' · '+esc(uNm(d.ownerId))+' · '+esc((d.state||'pendiente').replace('_',' '))+'</small>'+(d.comment?'<p>'+esc(d.comment)+'</p>':'')+'</div><button class="btn btns btng" onclick="A.editStrategicDecision(\''+d.id+'\',\''+id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Sin decisiones registradas.</div>';
-    mOpen('Ficha Estratégica del Objetivo',
-      '<div class="strategic-sheet"><header class="strategic-hero"><div><span>MONTESCANO · Objetivo estratégico</span><h2>'+esc(t.titulo)+'</h2></div><div class="strategic-hero-progress"><strong>'+pct+'%</strong><span class="sem"><i class="dot '+signal.cl+'"></i>'+signal.label+'</span></div></header>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>01</b><h3>Objetivo</h3></div><button class="btn btns btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar objetivo</button></div><div class="fr2">'+FLD('so_name','Nombre', 'text',t.titulo)+FSL('so_owner','Responsable',owners,t.owner_id)+'</div>'+FTA('so_desc','Descripción',stripDescFields(t.descripcion))+'<div class="fr3">'+FSL('so_priority','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t.prioridad)+FSL('so_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],t.control_bloqueado?'bloqueada':(t.estado==='terminada'?'terminada':(t.estado==='pendiente'?'pendiente':'en_proceso')))+FLD('so_start','Fecha de inicio','date',t.fecha_inicio||'')+'</div><div class="fr2">'+FLD('so_due','Fecha de término','date',t.fecha_vencimiento||'')+'<div></div></div></section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>02</b><h3>Medición</h3></div><span class="strategic-derived">Avance calculado desde iniciativas y acciones</span></div><div class="fr2">'+FLD('so_baseline','Línea base','text',descVal(t,'Linea base')||descVal(t,'Línea base')||'')+FLD('so_target','Meta','text',descVal(t,'Meta')||'')+'</div><div class="fr2">'+FLD('so_current','Resultado actual','text',descVal(t,'Resultado actual')||'')+FLD('so_kpi','KPI principal','text',descVal(t,'KPI')||'')+'</div><div class="strategic-measure"><div><span>% de avance</span><strong>'+pct+'%</strong></div><div><span>Semáforo / estado</span><strong><i class="dot '+signal.cl+'"></i>'+signal.label+'</strong></div></div></section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>03</b><h3>Iniciativas</h3></div><button class="btn btns btng" onclick="A.newStrategicInitiative(\''+id+'\')">+ Iniciativa</button></div><div class="strategic-items">'+initiativeHtml+'</div></section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>04</b><h3>Plan de acción</h3></div>'+(initiatives.length?'<button class="btn btns btng" onclick="A.newStrategicAction(\''+id+'\')">+ Acción</button>':'')+'</div><div class="strategic-table-head"><span>Acción</span><span>Responsable</span><span>Fecha</span><span>Estado</span><span>Siguiente acción</span><span></span></div><div class="strategic-table">'+actionHtml+'</div></section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>05</b><h3>Avances</h3></div><button class="btn btns btng" onclick="A.newStrategicAdvance(\''+id+'\')">+ Avance</button></div><div class="strategic-history-list">'+advanceHtml+'</div></section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>06</b><h3>Entregables / evidencias</h3></div><button class="btn btns btng" onclick="A.newStrategicEvidence(\''+id+'\')">+ Evidencia</button></div>'+evidenceHtml+'</section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>07</b><h3>Bloqueos / riesgos</h3></div><button class="btn btns btng" onclick="A.newStrategicBlocker(\''+id+'\')">+ Bloqueo</button></div>'+blockerHtml+'</section>'
-      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>08</b><h3>Decisiones</h3></div><button class="btn btns btng" onclick="A.newStrategicDecision(\''+id+'\')">+ Decisión</button></div>'+decisionHtml+'</section>'
-      +'<section class="strategic-section strategic-next"><div class="strategic-section-head"><div><b>09</b><h3>Próximo paso</h3></div></div><div class="fr3">'+FLD('so_next','Próxima acción','text',nextAction(t)||'')+FSL('so_next_owner','Responsable',owners,t.owner_id)+FLD('so_follow','Fecha de seguimiento','date',followDate(t)||'')+'</div></section>'
+    var decisionHtml=decisions.map(function(d){return '<div class="strategic-list-row"><div><strong>'+esc(d.decision)+'</strong><small>'+fmt(d.date)+' · '+esc(uNm(d.ownerId))+(d.kind?' · '+esc(d.kind):'')+'</small>'+(d.comment?'<p>'+esc(d.comment)+'</p>':'')+'</div><button class="btn btns btng" onclick="A.editStrategicDecision(\''+d.id+'\',\''+id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Sin decisiones registradas.</div>';
+    var objectiveBody='<div class="strategic-toolbar"><span>Información general del objetivo.</span><button class="btn btns btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar objetivo</button></div><div class="fr2">'+FLD('so_name','Nombre','text',t.titulo)+FSL('so_owner','Responsable',owners,t.owner_id)+'</div>'+FTA('so_desc','Descripción',stripDescFields(t.descripcion))+'<div class="fr3">'+FSL('so_priority','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t.prioridad)+FSL('so_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],t.control_bloqueado?'bloqueada':(t.estado==='terminada'?'terminada':(t.estado==='pendiente'?'pendiente':'en_proceso')))+FLD('so_start','Fecha de inicio','date',t.fecha_inicio||'')+'</div><div class="fr2">'+FLD('so_due','Fecha de término','date',t.fecha_vencimiento||'')+'<div></div></div>';
+    var measureBody='<div class="strategic-derived">El avance se calcula con iniciativas, etapas y tareas.</div><div class="fr2">'+FLD('so_baseline','Punto de partida','text',descVal(t,'Linea base')||descVal(t,'Línea base')||'')+FLD('so_target','Meta','text',descVal(t,'Meta')||'')+'</div><div class="fr2">'+FLD('so_current','Resultado actual','text',descVal(t,'Resultado actual')||'')+FLD('so_kpi','KPI principal','text',descVal(t,'KPI')||'')+'</div><div class="strategic-measure"><div><span>% de avance</span><strong>'+pct+'%</strong></div><div><span>Estado del objetivo</span><strong><i class="dot '+signal.cl+'"></i>'+signal.label+'</strong></div></div>';
+    mOpen('Ficha Estratégica del Objetivo','<div class="strategic-sheet"><header class="strategic-hero"><div><span>MONTESCANO · Objetivo estratégico</span><h2>'+esc(t.titulo)+'</h2></div><div class="strategic-hero-progress"><strong>'+pct+'%</strong><span class="sem"><i class="dot '+signal.cl+'"></i>'+signal.label+'</span></div></header>'
+      +strategicSection('01','Objetivo',objectiveBody,true)
+      +strategicSection('02','Medición',measureBody,true)
+      +strategicSection('03','Iniciativas','<div class="strategic-toolbar"><span>Proyectos importantes que ayudan a cumplir el objetivo.</span><button class="btn btns btng" onclick="A.newStrategicInitiative(\''+id+'\')">+ Iniciativa</button></div><div class="strategic-items">'+initiativeHtml+'</div>',true)
+      +strategicSection('04','Plan de acción','<div class="strategic-toolbar"><span>Tareas concretas que nacen de una iniciativa o etapa.</span>'+(initiatives.length?'<button class="btn btns btng" onclick="A.newStrategicAction(\''+id+'\')">+ Tarea</button>':'')+'</div><div class="strategic-table-head"><span>Acción</span><span>Responsable</span><span>Fecha</span><span>Estado</span><span>Siguiente paso</span><span></span></div><div class="strategic-table">'+actionHtml+'</div>',true)
+      +strategicSection('05','Avances','<div class="strategic-toolbar"><span>Bitácora sencilla de lo logrado y lo que sigue.</span><button class="btn btns btng" onclick="A.newStrategicAdvance(\''+id+'\')">+ Avance</button></div><div class="strategic-history-list">'+advanceHtml+'</div>',false)
+      +strategicSection('06','Entregables / evidencias','<div class="strategic-toolbar"><span>Documentos y resultados vinculados con una iniciativa o etapa.</span><button class="btn btns btng" onclick="A.newStrategicEvidence(\''+id+'\')">+ Evidencia</button></div>'+evidenceHtml,false)
+      +strategicSection('07','Bloqueos / riesgos','<div class="strategic-toolbar"><span>Lo que está frenando el avance.</span><button class="btn btns btng" onclick="A.newStrategicBlocker(\''+id+'\')">+ Bloqueo</button></div>'+blockerHtml,false)
+      +strategicSection('08','Decisiones','<div class="strategic-toolbar"><span>Acuerdos que cambian o confirman el rumbo.</span><button class="btn btns btng" onclick="A.newStrategicDecision(\''+id+'\')">+ Decisión</button></div>'+decisionHtml,false)
+      +strategicSection('09','Próximo paso','<div class="fr3">'+FLD('so_next','Próxima acción','text',nextAction(t)||'')+FSL('so_next_owner','Responsable',owners,t.owner_id)+FLD('so_follow','Fecha de seguimiento','date',followDate(t)||'')+'</div>',true)
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button><button class="btn btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar ficha</button></div></div>',true);
   },
   saveStrategicObjective: async function(id){
@@ -2694,21 +2715,34 @@ var A = {
   editStrategicInitiative: function(id){var s=xid(DB.subtareas,id);if(s)A.strategicInitiativeForm(s.tarea_id,id);},
   strategicInitiativeForm: function(tid,id){
     var s=id?xid(DB.subtareas,id):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
-    mOpen(id?'Editar iniciativa':'Nueva iniciativa','<div class="fg">'+FLD('si_name','Nombre','text',s&&s.titulo||'')+FTA('si_desc','Descripción',s&&s.descripcion||'')+'<div class="fr3">'+FSL('si_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FLD('si_date','Fecha','date',s&&s.fecha_vencimiento||'')+FSL('si_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicInitiative(\''+tid+'\',\''+(id||'')+'\')">Guardar iniciativa</button></div></div>');
+    mOpen(id?'Editar iniciativa':'Nueva iniciativa','<div class="fg"><p class="strategic-form-help">Una iniciativa es un proyecto importante, no una tarea pequeña.</p>'+FLD('si_name','Nombre','text',s&&s.titulo||'')+FTA('si_desc','Qué buscamos lograr',s&&s.descripcion||'')+'<div class="fr2">'+FSL('si_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FSL('si_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div><div class="fr2">'+FLD('si_start','Fecha de inicio','date',s&&s.fecha_inicio||'')+FLD('si_due','Fecha de término','date',s&&s.fecha_vencimiento||'')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicInitiative(\''+tid+'\',\''+(id||'')+'\')">Guardar iniciativa</button></div></div>');
   },
   saveStrategicInitiative: async function(tid,id){
     var name=fv('si_name').trim();if(!name){toast('Nombre requerido','r');return;}
-    var data={tarea_id:tid,tipo:'iniciativa',parent_id:null,titulo:name,descripcion:fv('si_desc'),owner_id:fv('si_owner'),fecha_vencimiento:fv('si_date')||null,estado:fv('si_state')};
+    var data={tarea_id:tid,tipo:'iniciativa',parent_id:null,titulo:name,descripcion:fv('si_desc'),owner_id:fv('si_owner'),fecha_inicio:fv('si_start')||null,fecha_vencimiento:fv('si_due')||null,estado:fv('si_state')};
     var r=id?await upd('subtareas',id,data):await ins('subtareas',data);if(!r)return;
     await loadAll();await A.syncStrategicProgress(tid);A.objectiveSheet(tid);toast('Iniciativa guardada ✓','g');
+  },
+  newStrategicStage: function(tid,initiativeId){A.strategicStageForm(tid,initiativeId,'');},
+  editStrategicStage: function(id){var s=xid(DB.subtareas,id);if(s)A.strategicStageForm(s.tarea_id,s.parent_id,id);},
+  strategicStageForm: function(tid,initiativeId,id){
+    var s=id?xid(DB.subtareas,id):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
+    mOpen(id?'Editar etapa':'Nueva etapa','<div class="fg"><p class="strategic-form-help">Divide la iniciativa en pasos claros con un entregable esperado.</p>'+FLD('ss_name','Nombre de la etapa','text',s&&s.titulo||'')+FTA('ss_deliverable','Entregable esperado',s&&s.entregable_esperado||'')+'<div class="fr3">'+FSL('ss_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FLD('ss_due','Fecha compromiso','date',s&&s.fecha_vencimiento||'')+FSL('ss_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicStage(\''+tid+'\',\''+initiativeId+'\',\''+(id||'')+'\')">Guardar etapa</button></div></div>');
+  },
+  saveStrategicStage: async function(tid,initiativeId,id){
+    var name=fv('ss_name').trim();if(!name){toast('Nombre de etapa requerido','r');return;}
+    var data={tarea_id:tid,tipo:'etapa',parent_id:initiativeId,titulo:name,entregable_esperado:fv('ss_deliverable').trim()||null,owner_id:fv('ss_owner'),fecha_vencimiento:fv('ss_due')||null,estado:fv('ss_state')};
+    var r=id?await upd('subtareas',id,data):await ins('subtareas',data);if(!r)return;
+    await loadAll();await A.syncStrategicProgress(tid);A.objectiveSheet(tid);toast('Etapa guardada ✓','g');
   },
   newStrategicAction: function(tid){
     var initiatives=strategicInitiatives(tid);if(!initiatives.length){toast('Primero crea una iniciativa','r');return;}A.strategicActionForm(tid,'',initiatives[0].id);
   },
   editStrategicAction: function(id){var s=xid(DB.subtareas,id);if(s)A.strategicActionForm(s.tarea_id,id,s.parent_id);},
   strategicActionForm: function(tid,id,parentId){
-    var s=id?xid(DB.subtareas,id):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];}),iO=strategicInitiatives(tid).map(function(i){return[i.id,i.titulo];});
-    mOpen(id?'Editar acción':'Nueva acción','<div class="fg">'+FSL('sa_parent','Iniciativa',iO,parentId)+FLD('sa_name','Acción','text',s&&s.titulo||'')+FTA('sa_desc','Descripción',s&&s.descripcion||'')+'<div class="fr3">'+FSL('sa_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FLD('sa_date','Fecha','date',s&&s.fecha_vencimiento||'')+FSL('sa_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div>'+FLD('sa_next','Siguiente acción','text',s&&s.siguiente_accion||'')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicAction(\''+tid+'\',\''+(id||'')+'\')">Guardar acción</button></div></div>');
+    var s=id?xid(DB.subtareas,id):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];}),iO=[];
+    strategicInitiatives(tid).forEach(function(i){iO.push([i.id,'Iniciativa · '+i.titulo]);strategicStages(tid,i.id).forEach(function(st){iO.push([st.id,'Etapa · '+st.titulo]);});});
+    mOpen(id?'Editar tarea':'Nueva tarea','<div class="fg">'+FSL('sa_parent','Iniciativa o etapa',iO,parentId)+FLD('sa_name','Acción','text',s&&s.titulo||'')+FTA('sa_desc','Descripción',s&&s.descripcion||'')+'<div class="fr3">'+FSL('sa_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FLD('sa_date','Fecha','date',s&&s.fecha_vencimiento||'')+FSL('sa_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div>'+FLD('sa_next','Siguiente paso','text',s&&s.siguiente_accion||'')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicAction(\''+tid+'\',\''+(id||'')+'\')">Guardar tarea</button></div></div>');
   },
   saveStrategicAction: async function(tid,id){
     var name=fv('sa_name').trim();if(!name){toast('Acción requerida','r');return;}
@@ -2722,27 +2756,29 @@ var A = {
     await upd('tareas',tid,{control_avance:pct,estado:state});await loadAll();
   },
   newStrategicAdvance: function(tid){
-    mOpen('Registrar avance','<div class="fg"><div class="fr2">'+FLD('sav_pct','% de avance','number','')+FLD('sav_evidence','Evidencia (URL, opcional)','url','')+'</div>'+FTA('sav_comment','Comentario','')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicAdvance(\''+tid+'\')">Guardar avance</button></div></div>');
+    mOpen('Registrar avance','<div class="fg"><p class="strategic-form-help">Cuenta brevemente qué cambió desde el último seguimiento.</p><div class="fr2">'+FLD('sav_pct','% de avance','number','')+FLD('sav_evidence','Evidencia (URL, opcional)','url','')+'</div>'+FTA('sav_achieved','Qué se logró','')+FTA('sav_next','Qué sigue','')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicAdvance(\''+tid+'\')">Guardar avance</button></div></div>');
   },
   saveStrategicAdvance: async function(tid){
-    var comment=fv('sav_comment').trim(),raw=fv('sav_pct'),pct=raw===''?null:Math.max(0,Math.min(100,Number(raw)));if(!comment){toast('Comentario requerido','r');return;}
-    var payload={pct:pct,comment:comment,evidence:fv('sav_evidence').trim()||null};
+    var achieved=fv('sav_achieved').trim(),raw=fv('sav_pct'),pct=raw===''?null:Math.max(0,Math.min(100,Number(raw)));if(!achieved){toast('Indica qué se logró','r');return;}
+    var payload={pct:pct,achieved:achieved,next:fv('sav_next').trim()||null,evidence:fv('sav_evidence').trim()||null};
     var r=await ins('comentarios',{tarea_id:tid,usuario_id:SES.userId,texto:OBJECTIVE_ADVANCE_PREFIX+JSON.stringify(payload)});if(!r)return;
     await loadAll();A.objectiveSheet(tid);toast('Avance registrado ✓','g');
   },
   newStrategicEvidence: function(tid){
-    mOpen('Agregar evidencia','<div class="fg"><div class="fr2">'+FLD('sev_name','Nombre')+FLD('sev_type','Tipo')+'</div>'+FLD('sev_url','URL o enlace','url')+FLD('sev_version','Versión','text','1.0')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicEvidence(\''+tid+'\')">Guardar evidencia</button></div></div>');
+    var links=[];strategicInitiatives(tid).forEach(function(i){links.push([i.id,'Iniciativa · '+i.titulo]);strategicStages(tid,i.id).forEach(function(s){links.push([s.id,'Etapa · '+s.titulo]);});});
+    if(!links.length){toast('Primero crea una iniciativa','r');return;}
+    mOpen('Agregar entregable o evidencia','<div class="fg">'+FSL('sev_link','Pertenece a',links,links[0][0])+'<div class="fr2">'+FLD('sev_name','Nombre')+FSL('sev_type','Tipo',[['Documento','Documento'],['Archivo','Archivo'],['Reporte','Reporte'],['Base de datos','Base de datos'],['Presentación','Presentación'],['Evidencia de resultado','Evidencia de resultado']],'Documento')+'</div>'+FLD('sev_url','Enlace al archivo','url')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicEvidence(\''+tid+'\')">Guardar</button></div></div>');
   },
   saveStrategicEvidence: async function(tid){
     if(!fv('sev_name').trim()||!fv('sev_url').trim()){toast('Nombre y URL requeridos','r');return;}
-    var r=await ins('entregables',{tarea_id:tid,usuario_id:SES.userId,nombre:fv('sev_name').trim(),url:fv('sev_url').trim(),tipo:fv('sev_type').trim(),version:fv('sev_version').trim()||'1'});if(!r)return;
+    var r=await ins('entregables',{tarea_id:tid,subtarea_id:fv('sev_link')||null,usuario_id:SES.userId,nombre:fv('sev_name').trim(),url:fv('sev_url').trim(),tipo:fv('sev_type'),version:'1'});if(!r)return;
     await loadAll();A.objectiveSheet(tid);toast('Evidencia guardada ✓','g');
   },
   newStrategicBlocker: function(tid){A.strategicBlockerForm(tid,'');},
   editStrategicBlocker: function(id,tid){A.strategicBlockerForm(tid,id);},
   strategicBlockerForm: function(tid,id){
     var b=id?strategicRecords(tid,OBJECTIVE_BLOCKER_PREFIX).find(function(x){return x.id===id;}):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
-    mOpen(id?'Editar bloqueo':'Nuevo bloqueo','<div class="fg">'+FTA('sb_desc','Descripción',b&&b.description||'')+'<div class="fr3">'+FSL('sb_owner','Responsable de resolverlo',uO,b&&b.ownerId||SES.userId)+FLD('sb_date','Fecha compromiso','date',b&&b.date||'')+FSL('sb_state','Estado',[['abierto','Abierto'],['en_atencion','En atención'],['resuelto','Resuelto'],['cancelado','Cancelado']],b&&b.state||'abierto')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicBlocker(\''+tid+'\',\''+(id||'')+'\')">Guardar bloqueo</button></div></div>');
+    mOpen(id?'Editar bloqueo':'Nuevo bloqueo','<div class="fg">'+FTA('sb_desc','Qué está frenando el avance',b&&b.description||'')+'<div class="fr3">'+FSL('sb_owner','Responsable de resolverlo',uO,b&&b.ownerId||SES.userId)+FLD('sb_date','Fecha compromiso','date',b&&b.date||'')+FSL('sb_state','Estado',[['abierto','Abierto'],['en_atencion','En atención'],['resuelto','Resuelto'],['cancelado','Cancelado']],b&&b.state||'abierto')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicBlocker(\''+tid+'\',\''+(id||'')+'\')">Guardar bloqueo</button></div></div>');
   },
   saveStrategicBlocker: async function(tid,id){
     var desc=fv('sb_desc').trim();if(!desc){toast('Descripción requerida','r');return;}
@@ -2755,11 +2791,11 @@ var A = {
   editStrategicDecision: function(id,tid){A.strategicDecisionForm(tid,id);},
   strategicDecisionForm: function(tid,id){
     var d=id?strategicRecords(tid,OBJECTIVE_DECISION_PREFIX).find(function(x){return x.id===id;}):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
-    mOpen(id?'Editar decisión':'Nueva decisión','<div class="fg">'+FTA('sd_decision','Decisión',d&&d.decision||'')+'<div class="fr3">'+FLD('sd_date','Fecha','date',d&&d.date||'')+FSL('sd_owner','Responsable',uO,d&&d.ownerId||SES.userId)+FSL('sd_state','Estado',[['pendiente','Pendiente'],['aprobada','Aprobada'],['rechazada','Rechazada'],['cancelada','Cancelada']],d&&d.state||'aprobada')+'</div>'+FTA('sd_comment','Comentario',d&&d.comment||'')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicDecision(\''+tid+'\',\''+(id||'')+'\')">Guardar decisión</button></div></div>');
+    mOpen(id?'Editar decisión':'Nueva decisión','<div class="fg"><div class="fr2">'+FSL('sd_kind','Tipo de decisión',[['Continuar','Continuar'],['Corregir','Corregir'],['Escalar','Escalar'],['Detener','Detener']],d&&d.kind||'Continuar')+FLD('sd_date','Fecha','date',d&&d.date||today())+'</div>'+FTA('sd_decision','Qué se decidió',d&&d.decision||'')+FSL('sd_owner','Responsable',uO,d&&d.ownerId||SES.userId)+FTA('sd_comment','Motivo / comentario',d&&d.comment||'')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicDecision(\''+tid+'\',\''+(id||'')+'\')">Guardar decisión</button></div></div>');
   },
   saveStrategicDecision: async function(tid,id){
     var decision=fv('sd_decision').trim();if(!decision){toast('Decisión requerida','r');return;}
-    var payload={date:fv('sd_date')||null,decision:decision,ownerId:fv('sd_owner'),comment:fv('sd_comment').trim()||null,state:fv('sd_state')};
+    var payload={date:fv('sd_date')||null,decision:decision,kind:fv('sd_kind'),ownerId:fv('sd_owner'),comment:fv('sd_comment').trim()||null,state:'aprobada'};
     var data={tarea_id:tid,usuario_id:SES.userId,texto:OBJECTIVE_DECISION_PREFIX+JSON.stringify(payload)};
     var r=id?await upd('comentarios',id,{texto:data.texto}):await ins('comentarios',data);if(!r)return;
     await loadAll();A.objectiveSheet(tid);toast('Decisión guardada ✓','g');

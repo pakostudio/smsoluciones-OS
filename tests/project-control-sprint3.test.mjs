@@ -34,7 +34,7 @@ for (const selector of [
 
 assert.match(css, /@media\(max-width:1080px\)/);
 assert.match(css, /@media\(max-width:620px\)/);
-assert.match(html, /styles\.css\?v=2\.(?:6|7)\.0|styles\.css\?v=2\.8\.[0-5]|styles\.css\?v=2\.9\.[01]/);
-assert.match(html, /app\.js\?v=2\.(?:6|7)\.0|app\.js\?v=2\.8\.[0-5]|app\.js\?v=2\.9\.[01]/);
+assert.match(html, /styles\.css\?v=2\.(?:6|7)\.0|styles\.css\?v=2\.8\.[0-5]|styles\.css\?v=2\.(?:9\.[01]|10\.0)/);
+assert.match(html, /app\.js\?v=2\.(?:6|7)\.0|app\.js\?v=2\.8\.[0-5]|app\.js\?v=2\.(?:9\.[01]|10\.0)/);
 
 console.log('Project Control Sprint 3 dashboard tests: OK');

@@ -1064,3 +1064,39 @@ tr:hover td{background:var(--surface2)}
 .access-check input{accent-color:var(--cyan);width:15px;height:15px}
 .kanban-col{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-width:180px}
 .strategic-hero h2{color:#fff}
+
+/* SM OS 2.10.0 — ficha estratégica clara y progresiva (solo MONTESCANO) */
+.strategic-section{padding:0;overflow:hidden}
+.strategic-section-head{min-height:50px;margin:0;padding:12px 14px;cursor:pointer;list-style:none;user-select:none}
+.strategic-section-head::-webkit-details-marker{display:none}
+.strategic-section-head:focus-visible{outline:3px solid rgba(14,165,233,.25);outline-offset:-3px}
+.strategic-toggle{color:var(--muted);font-size:10px;font-weight:700;white-space:nowrap}
+.strategic-toggle::after{content:' ▾';color:#0284c7}
+.strategic-section:not([open]) .strategic-toggle{font-size:0}
+.strategic-section:not([open]) .strategic-toggle::before{content:'Abrir';font-size:10px}
+.strategic-section:not([open]) .strategic-toggle::after{content:' ▸';font-size:10px}
+.strategic-section-body{padding:0 14px 14px}
+.strategic-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:var(--muted);font-size:10px}
+.strategic-toolbar>span{line-height:1.4}
+.strategic-derived{margin-bottom:10px;text-align:left}
+.strategic-form-help{margin:0;padding:10px 12px;border-radius:8px;background:#f0f9ff;color:#075985;font-size:11px;line-height:1.45}
+.strategic-initiative{overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
+.strategic-initiative-head{display:grid;grid-template-columns:minmax(0,1fr) 105px auto;gap:12px;align-items:center;padding:12px}
+.strategic-initiative-head strong,.strategic-stage strong{color:var(--ink);font-size:11px}
+.strategic-initiative-head p,.strategic-stage p{margin:4px 0;color:var(--text);font-size:10px;line-height:1.4}
+.strategic-initiative-head small,.strategic-stage small{display:block;color:var(--muted);font-size:9px;line-height:1.35}
+.strategic-subhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#f8fafc}
+.strategic-subhead>span{color:var(--muted);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.strategic-stage{display:grid;grid-template-columns:minmax(0,1fr) 95px auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:#fff}
+.strategic-stage:last-child{border-bottom:0}
+.strategic-empty.compact{padding:10px;border:0;border-radius:0;background:#fff}
+.strategic-history p b{color:var(--ink)}
+@media(max-width:760px){
+  .strategic-sheet{gap:9px}.strategic-hero{padding:13px 14px}.strategic-hero h2{font-size:16px}
+  .strategic-section-head{min-height:46px;padding:10px 11px}.strategic-section-body{padding:0 11px 11px}
+  .strategic-toolbar{align-items:flex-start;flex-direction:column}.strategic-toolbar .btn{width:100%}
+  .strategic-initiative-head,.strategic-stage{grid-template-columns:minmax(0,1fr) 74px}
+  .strategic-initiative-head>.btn,.strategic-stage>.btn{grid-column:1/-1;justify-self:start}
+  .strategic-initiative-head small,.strategic-stage small{overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){.strategic-sheet *{scroll-behavior:auto!important;transition:none!important}}
