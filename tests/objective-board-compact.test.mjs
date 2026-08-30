@@ -25,8 +25,7 @@ assert.match(app, /isObj\?ti:fv\('gr'\)/);
 assert.match(app, /var actionsHead = 'Acciones'/);
 assert.match(css, /width:24px;height:24px/);
 assert.match(css, /background:transparent/);
-assert.match(html, /styles\.css\?v=2\.8\.5/);
-assert.match(html, /app\.js\?v=2\.8\.5/);
-assert.doesNotMatch(app, /MONTESCANO/i);
+assert.match(html, /styles\.css\?v=2\.9\.0/);
+assert.match(html, /app\.js\?v=2\.9\.0/);
 
 console.log('Objective board compact UX tests: OK');

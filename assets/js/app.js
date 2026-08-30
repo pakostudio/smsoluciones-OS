@@ -396,7 +396,7 @@ function taskGroup(t){
   return cleanGroupName(descVal(t,'Grupo') || groupFromHeader(t) || (isOfunamProject(p)&&/—/.test(t&&t.titulo||'')?'Embajadas':'General'), p);
 }
 function stripDescFields(desc){
-  var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado','Frente','Responsable interno','Colaboradores internos','Objetivo','Entregable','KPI','Meta','CTA'];
+  var keys = ['Grupo','Email','Telefono','Teléfono','Direccion','Dirección','Gancho','Instrumento','Siguiente accion','Siguiente acción','Proximo seguimiento','Próximo seguimiento','Etapa','Probabilidad','Monto estimado','Frente','Responsable interno','Colaboradores internos','Objetivo','Entregable','KPI','Meta','Linea base','Línea base','Resultado actual','CTA'];
   var lines = String(desc||'').split(/\r?\n/);
   return lines.filter(function(line){
     return !keys.some(function(k){ return new RegExp('^'+k+'\\s*:','i').test(line); });
@@ -414,7 +414,7 @@ function buildDesc(base,fields){
   var lines = [];
   var specs=[
     ['grupo','Grupo'],['frente','Frente'],['responsableInterno','Responsable interno'],['colaboradoresInternos','Colaboradores internos'],
-    ['objetivo','Objetivo'],['entregable','Entregable'],['kpi','KPI'],['meta','Meta'],['cta','CTA'],
+    ['objetivo','Objetivo'],['entregable','Entregable'],['kpi','KPI'],['meta','Meta'],['lineaBase','Linea base',['Línea base']],['resultadoActual','Resultado actual'],['cta','CTA'],
     ['email','Email'],['tel','Telefono',['Teléfono']],['dir','Direccion',['Dirección']],['gancho','Gancho'],['instrumento','Instrumento'],
     ['accion','Siguiente accion',['Siguiente acción']],['seguimiento','Proximo seguimiento',['Próximo seguimiento']],
     ['etapa','Etapa'],['probabilidad','Probabilidad'],['monto','Monto estimado']
@@ -1024,6 +1024,51 @@ function boardFiltersHtml(tasks,filtered,p){
     +'<div><div class="board-filter-count">'+filtered.length+' de '+tasks.length+'</div><button class="btn btns btng" onclick="A.clearBoardFilters()">Limpiar</button></div>'
     +'</div></details>';
 }
+var OBJECTIVE_ADVANCE_PREFIX='OBJ_ADVANCE::';
+var OBJECTIVE_BLOCKER_PREFIX='OBJ_BLOCKER::';
+var OBJECTIVE_DECISION_PREFIX='OBJ_DECISION::';
+function isMontescanoObjectiveTask(t){
+  var p=taskProject(t);
+  return !!p&&/^MONTESCANO$/i.test(String(p.nombre||''))&&isObjectivesBoard(p);
+}
+function strategicInitiatives(tid){
+  return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='iniciativa'&&!s.parent_id;}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
+}
+function strategicActions(tid,initiativeId){
+  return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='accion'&&s.parent_id===initiativeId;}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
+}
+function strategicStateProgress(row){ return row.estado==='terminada'?100:(row.estado==='en_proceso'?50:0); }
+function strategicInitiativeProgress(row){
+  var actions=strategicActions(row.tarea_id,row.id);
+  return actions.length?Math.round(actions.reduce(function(sum,a){return sum+strategicStateProgress(a);},0)/actions.length):strategicStateProgress(row);
+}
+function strategicObjectiveProgress(tid){
+  var initiatives=strategicInitiatives(tid);
+  return initiatives.length?Math.round(initiatives.reduce(function(sum,i){return sum+strategicInitiativeProgress(i);},0)/initiatives.length):0;
+}
+function strategicAdvance(c){
+  var raw=String(c&&c.texto||'');
+  if(raw.indexOf(OBJECTIVE_ADVANCE_PREFIX)!==0)return null;
+  try{return JSON.parse(raw.slice(OBJECTIVE_ADVANCE_PREFIX.length));}catch(e){return null;}
+}
+function strategicRecord(c,prefix){
+  var raw=String(c&&c.texto||'');
+  if(raw.indexOf(prefix)!==0)return null;
+  try{var data=JSON.parse(raw.slice(prefix.length));data.id=c.id;data.created_at=c.created_at;return data;}catch(e){return null;}
+}
+function strategicRecords(tid,prefix){
+  return DB.comentarios.filter(function(c){return c.tarea_id===tid;}).map(function(c){return strategicRecord(c,prefix);}).filter(Boolean);
+}
+function strategicSignal(t){
+  var blocked=strategicRecords(t.id,OBJECTIVE_BLOCKER_PREFIX).some(function(b){return b.state!=='resuelto'&&b.state!=='cancelado';});
+  var decision=strategicRecords(t.id,OBJECTIVE_DECISION_PREFIX).some(function(d){return d.state==='pendiente';});
+  var pct=strategicObjectiveProgress(t.id);
+  if(blocked)return {cl:'dr',label:'Bloqueado'};
+  if(decision)return {cl:'dy',label:'Decisión pendiente'};
+  if(pct===100||t.estado==='terminada')return {cl:'dg',label:'Completado'};
+  if(t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0)return {cl:'dr',label:'Vencido'};
+  return {cl:'dg',label:'En control'};
+}
 function operationalBoard(p,limit){
   var ofunamBoard = isOfunamProject(p);
   var objectivesBoard = isObjectivesBoard(p);
@@ -1046,7 +1091,9 @@ function operationalBoard(p,limit){
     var nextCell = objectivesBoard
       ? '<span class="objective-next-action" title="'+esc(nextLabel)+'">'+esc(nextLabel)+'</span>'
       : esc(nextLabel);
-    var actionButtons = objectivesBoard
+    var actionButtons = isMontescanoObjectiveTask(t)
+      ? '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" onclick="A.objectiveSheet(\''+t.id+'\')">Gestionar</button></div>'
+      : objectivesBoard
       ? '<div class="operational-actions compact-actions"><button class="btn btns btnc compact-action" aria-label="Editar rápido" title="Editar rápido" onclick="A.quickEdit(\''+t.id+'\')">'+iconHtml('pencil')+'</button><button class="btn btns btng compact-action" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('clipboard-list')+'</button></div>'
       : '<div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div>';
     return '<tr>'
@@ -2605,6 +2652,117 @@ var A = {
     if(note)await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:'Centro de Control · '+note});
     await logTaskActivity(id,'Centro de Control: avance '+data.control_avance+'%'+(blocked?' · bloqueo activo':'')+(decision?' · decisión requerida':''));
     mClose();await refresh();toast('Ejecución actualizada ✓','g');
+  },
+  objectiveSheet: function(id){
+    var t=xid(DB.tareas,id); if(!t||!isMontescanoObjectiveTask(t))return;
+    var initiatives=strategicInitiatives(id), actions=[];
+    initiatives.forEach(function(i){strategicActions(id,i.id).forEach(function(a){actions.push({row:a,initiative:i});});});
+    var advances=DB.comentarios.filter(function(c){var tx=String(c.texto||'');return c.tarea_id===id&&tx.indexOf(OBJECTIVE_BLOCKER_PREFIX)!==0&&tx.indexOf(OBJECTIVE_DECISION_PREFIX)!==0;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
+    var evidence=DB.entregables.filter(function(e){return e.tarea_id===id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
+    var blockers=strategicRecords(id,OBJECTIVE_BLOCKER_PREFIX);
+    var decisions=strategicRecords(id,OBJECTIVE_DECISION_PREFIX);
+    var owners=DB.usuarios.map(function(u){return[u.id,u.nombre];}), pct=strategicObjectiveProgress(id), signal=strategicSignal(t);
+    var initiativeHtml=initiatives.map(function(i){var ip=strategicInitiativeProgress(i);return '<article class="strategic-item"><div><strong>'+esc(i.titulo)+'</strong><p>'+esc(i.descripcion||'Sin descripción')+'</p><small>'+esc(uNm(i.owner_id))+' · '+fmt(i.fecha_vencimiento)+' · '+esc((i.estado||'pendiente').replace('_',' '))+'</small></div><div class="strategic-progress"><span>'+ip+'%</span><div class="pb"><div class="pf" style="width:'+ip+'%"></div></div></div><button class="btn btns btng" onclick="A.editStrategicInitiative(\''+i.id+'\')">Editar</button></article>';}).join('')||'<div class="strategic-empty">Sin iniciativas registradas.</div>';
+    var actionHtml=actions.map(function(x){var a=x.row;return '<div class="strategic-table-row"><div><strong>'+esc(a.titulo)+'</strong><small>'+esc(x.initiative.titulo)+'</small></div><span>'+esc(uNm(a.owner_id))+'</span><span>'+fmt(a.fecha_vencimiento)+'</span><span>'+bSt(a.estado)+'</span><span>'+esc(a.siguiente_accion||'Por definir')+'</span><button class="btn btns btng" onclick="A.editStrategicAction(\''+a.id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Las acciones aparecerán cuando se agreguen a una iniciativa.</div>';
+    var advanceHtml=advances.map(function(c){var a=strategicAdvance(c);return '<div class="strategic-history"><time>'+fmtdt(c.created_at)+'</time><div><strong>'+(a&&a.pct!==undefined?esc(a.pct)+'% de avance':'Seguimiento')+'</strong><p>'+esc(a?a.comment:humanComment(c.texto))+'</p>'+(a&&a.evidence?'<a href="'+esc(a.evidence)+'" target="_blank" rel="noopener">Abrir evidencia</a>':'')+'</div></div>';}).join('')||'<div class="strategic-empty">Sin avances registrados.</div>';
+    var evidenceHtml=evidence.map(function(e){return '<div class="strategic-list-row"><div><strong>'+esc(e.nombre)+'</strong><small>'+esc(e.tipo||'Evidencia')+' · v'+esc(e.version||'1')+'</small></div>'+(e.url?'<a class="btn btns btng" href="'+esc(e.url)+'" target="_blank" rel="noopener">Abrir</a>':'')+'</div>';}).join('')||'<div class="strategic-empty">Sin entregables o evidencias.</div>';
+    var blockerHtml=blockers.map(function(b){return '<div class="strategic-list-row"><div><strong>'+esc(b.description)+'</strong><small>'+esc(uNm(b.ownerId))+' · '+fmt(b.date)+' · '+esc((b.state||'abierto').replace('_',' '))+'</small></div><button class="btn btns btng" onclick="A.editStrategicBlocker(\''+b.id+'\',\''+id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Sin bloqueos o riesgos registrados.</div>';
+    var decisionHtml=decisions.map(function(d){return '<div class="strategic-list-row"><div><strong>'+esc(d.decision)+'</strong><small>'+fmt(d.date)+' · '+esc(uNm(d.ownerId))+' · '+esc((d.state||'pendiente').replace('_',' '))+'</small>'+(d.comment?'<p>'+esc(d.comment)+'</p>':'')+'</div><button class="btn btns btng" onclick="A.editStrategicDecision(\''+d.id+'\',\''+id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Sin decisiones registradas.</div>';
+    mOpen('Ficha Estratégica del Objetivo',
+      '<div class="strategic-sheet"><header class="strategic-hero"><div><span>MONTESCANO · Objetivo estratégico</span><h2>'+esc(t.titulo)+'</h2></div><div class="strategic-hero-progress"><strong>'+pct+'%</strong><span class="sem"><i class="dot '+signal.cl+'"></i>'+signal.label+'</span></div></header>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>01</b><h3>Objetivo</h3></div><button class="btn btns btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar objetivo</button></div><div class="fr2">'+FLD('so_name','Nombre', 'text',t.titulo)+FSL('so_owner','Responsable',owners,t.owner_id)+'</div>'+FTA('so_desc','Descripción',stripDescFields(t.descripcion))+'<div class="fr3">'+FSL('so_priority','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t.prioridad)+FSL('so_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],t.control_bloqueado?'bloqueada':(t.estado==='terminada'?'terminada':(t.estado==='pendiente'?'pendiente':'en_proceso')))+FLD('so_start','Fecha de inicio','date',t.fecha_inicio||'')+'</div><div class="fr2">'+FLD('so_due','Fecha de término','date',t.fecha_vencimiento||'')+'<div></div></div></section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>02</b><h3>Medición</h3></div><span class="strategic-derived">Avance calculado desde iniciativas y acciones</span></div><div class="fr2">'+FLD('so_baseline','Línea base','text',descVal(t,'Linea base')||descVal(t,'Línea base')||'')+FLD('so_target','Meta','text',descVal(t,'Meta')||'')+'</div><div class="fr2">'+FLD('so_current','Resultado actual','text',descVal(t,'Resultado actual')||'')+FLD('so_kpi','KPI principal','text',descVal(t,'KPI')||'')+'</div><div class="strategic-measure"><div><span>% de avance</span><strong>'+pct+'%</strong></div><div><span>Semáforo / estado</span><strong><i class="dot '+signal.cl+'"></i>'+signal.label+'</strong></div></div></section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>03</b><h3>Iniciativas</h3></div><button class="btn btns btng" onclick="A.newStrategicInitiative(\''+id+'\')">+ Iniciativa</button></div><div class="strategic-items">'+initiativeHtml+'</div></section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>04</b><h3>Plan de acción</h3></div>'+(initiatives.length?'<button class="btn btns btng" onclick="A.newStrategicAction(\''+id+'\')">+ Acción</button>':'')+'</div><div class="strategic-table-head"><span>Acción</span><span>Responsable</span><span>Fecha</span><span>Estado</span><span>Siguiente acción</span><span></span></div><div class="strategic-table">'+actionHtml+'</div></section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>05</b><h3>Avances</h3></div><button class="btn btns btng" onclick="A.newStrategicAdvance(\''+id+'\')">+ Avance</button></div><div class="strategic-history-list">'+advanceHtml+'</div></section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>06</b><h3>Entregables / evidencias</h3></div><button class="btn btns btng" onclick="A.newStrategicEvidence(\''+id+'\')">+ Evidencia</button></div>'+evidenceHtml+'</section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>07</b><h3>Bloqueos / riesgos</h3></div><button class="btn btns btng" onclick="A.newStrategicBlocker(\''+id+'\')">+ Bloqueo</button></div>'+blockerHtml+'</section>'
+      +'<section class="strategic-section"><div class="strategic-section-head"><div><b>08</b><h3>Decisiones</h3></div><button class="btn btns btng" onclick="A.newStrategicDecision(\''+id+'\')">+ Decisión</button></div>'+decisionHtml+'</section>'
+      +'<section class="strategic-section strategic-next"><div class="strategic-section-head"><div><b>09</b><h3>Próximo paso</h3></div></div><div class="fr3">'+FLD('so_next','Próxima acción','text',nextAction(t)||'')+FSL('so_next_owner','Responsable',owners,t.owner_id)+FLD('so_follow','Fecha de seguimiento','date',followDate(t)||'')+'</div></section>'
+      +'<div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button><button class="btn btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar ficha</button></div></div>',true);
+  },
+  saveStrategicObjective: async function(id){
+    var t=xid(DB.tareas,id);if(!t||!isMontescanoObjectiveTask(t))return;
+    var desc=buildDesc(fv('so_desc'),{grupo:taskGroup(t),objetivo:descVal(t,'Objetivo'),entregable:descVal(t,'Entregable'),kpi:fv('so_kpi'),meta:fv('so_target'),lineaBase:fv('so_baseline'),resultadoActual:fv('so_current'),accion:fv('so_next'),seguimiento:fv('so_follow')});
+    var selectedState=fv('so_state'),blocked=selectedState==='bloqueada';
+    var data={titulo:fv('so_name').trim(),descripcion:desc,owner_id:fv('so_owner'),prioridad:fv('so_priority'),estado:blocked?'en_proceso':selectedState,fecha_inicio:fv('so_start')||null,fecha_vencimiento:fv('so_due')||null,siguiente_accion:fv('so_next')||null,fecha_proximo_seguimiento:fv('so_follow')||null,control_avance:strategicObjectiveProgress(id),control_bloqueado:blocked,control_bloqueo_resumen:blocked?(t.control_bloqueo_resumen||'Bloqueo estratégico'):null};
+    if(!data.titulo){toast('Nombre requerido','r');return;}
+    var saved=await upd('tareas',id,data);if(!saved)return;
+    await loadAll();A.objectiveSheet(id);toast('Ficha estratégica guardada ✓','g');
+  },
+  newStrategicInitiative: function(tid){ A.strategicInitiativeForm(tid,''); },
+  editStrategicInitiative: function(id){var s=xid(DB.subtareas,id);if(s)A.strategicInitiativeForm(s.tarea_id,id);},
+  strategicInitiativeForm: function(tid,id){
+    var s=id?xid(DB.subtareas,id):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
+    mOpen(id?'Editar iniciativa':'Nueva iniciativa','<div class="fg">'+FLD('si_name','Nombre','text',s&&s.titulo||'')+FTA('si_desc','Descripción',s&&s.descripcion||'')+'<div class="fr3">'+FSL('si_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FLD('si_date','Fecha','date',s&&s.fecha_vencimiento||'')+FSL('si_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicInitiative(\''+tid+'\',\''+(id||'')+'\')">Guardar iniciativa</button></div></div>');
+  },
+  saveStrategicInitiative: async function(tid,id){
+    var name=fv('si_name').trim();if(!name){toast('Nombre requerido','r');return;}
+    var data={tarea_id:tid,tipo:'iniciativa',parent_id:null,titulo:name,descripcion:fv('si_desc'),owner_id:fv('si_owner'),fecha_vencimiento:fv('si_date')||null,estado:fv('si_state')};
+    var r=id?await upd('subtareas',id,data):await ins('subtareas',data);if(!r)return;
+    await loadAll();await A.syncStrategicProgress(tid);A.objectiveSheet(tid);toast('Iniciativa guardada ✓','g');
+  },
+  newStrategicAction: function(tid){
+    var initiatives=strategicInitiatives(tid);if(!initiatives.length){toast('Primero crea una iniciativa','r');return;}A.strategicActionForm(tid,'',initiatives[0].id);
+  },
+  editStrategicAction: function(id){var s=xid(DB.subtareas,id);if(s)A.strategicActionForm(s.tarea_id,id,s.parent_id);},
+  strategicActionForm: function(tid,id,parentId){
+    var s=id?xid(DB.subtareas,id):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];}),iO=strategicInitiatives(tid).map(function(i){return[i.id,i.titulo];});
+    mOpen(id?'Editar acción':'Nueva acción','<div class="fg">'+FSL('sa_parent','Iniciativa',iO,parentId)+FLD('sa_name','Acción','text',s&&s.titulo||'')+FTA('sa_desc','Descripción',s&&s.descripcion||'')+'<div class="fr3">'+FSL('sa_owner','Responsable',uO,s&&s.owner_id||SES.userId)+FLD('sa_date','Fecha','date',s&&s.fecha_vencimiento||'')+FSL('sa_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['terminada','Completada']],s&&s.estado||'pendiente')+'</div>'+FLD('sa_next','Siguiente acción','text',s&&s.siguiente_accion||'')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicAction(\''+tid+'\',\''+(id||'')+'\')">Guardar acción</button></div></div>');
+  },
+  saveStrategicAction: async function(tid,id){
+    var name=fv('sa_name').trim();if(!name){toast('Acción requerida','r');return;}
+    var data={tarea_id:tid,tipo:'accion',parent_id:fv('sa_parent'),titulo:name,descripcion:fv('sa_desc'),owner_id:fv('sa_owner'),fecha_vencimiento:fv('sa_date')||null,estado:fv('sa_state'),siguiente_accion:fv('sa_next')||null};
+    var r=id?await upd('subtareas',id,data):await ins('subtareas',data);if(!r)return;
+    await loadAll();await A.syncStrategicProgress(tid);A.objectiveSheet(tid);toast('Acción guardada ✓','g');
+  },
+  syncStrategicProgress: async function(tid){
+    var t=xid(DB.tareas,tid);if(!t)return;var pct=strategicObjectiveProgress(tid),state=t.estado;
+    if(pct===100)state='terminada';else if(pct>0&&state==='pendiente')state='en_proceso';
+    await upd('tareas',tid,{control_avance:pct,estado:state});await loadAll();
+  },
+  newStrategicAdvance: function(tid){
+    mOpen('Registrar avance','<div class="fg"><div class="fr2">'+FLD('sav_pct','% de avance','number','')+FLD('sav_evidence','Evidencia (URL, opcional)','url','')+'</div>'+FTA('sav_comment','Comentario','')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicAdvance(\''+tid+'\')">Guardar avance</button></div></div>');
+  },
+  saveStrategicAdvance: async function(tid){
+    var comment=fv('sav_comment').trim(),raw=fv('sav_pct'),pct=raw===''?null:Math.max(0,Math.min(100,Number(raw)));if(!comment){toast('Comentario requerido','r');return;}
+    var payload={pct:pct,comment:comment,evidence:fv('sav_evidence').trim()||null};
+    var r=await ins('comentarios',{tarea_id:tid,usuario_id:SES.userId,texto:OBJECTIVE_ADVANCE_PREFIX+JSON.stringify(payload)});if(!r)return;
+    await loadAll();A.objectiveSheet(tid);toast('Avance registrado ✓','g');
+  },
+  newStrategicEvidence: function(tid){
+    mOpen('Agregar evidencia','<div class="fg"><div class="fr2">'+FLD('sev_name','Nombre')+FLD('sev_type','Tipo')+'</div>'+FLD('sev_url','URL o enlace','url')+FLD('sev_version','Versión','text','1.0')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicEvidence(\''+tid+'\')">Guardar evidencia</button></div></div>');
+  },
+  saveStrategicEvidence: async function(tid){
+    if(!fv('sev_name').trim()||!fv('sev_url').trim()){toast('Nombre y URL requeridos','r');return;}
+    var r=await ins('entregables',{tarea_id:tid,usuario_id:SES.userId,nombre:fv('sev_name').trim(),url:fv('sev_url').trim(),tipo:fv('sev_type').trim(),version:fv('sev_version').trim()||'1'});if(!r)return;
+    await loadAll();A.objectiveSheet(tid);toast('Evidencia guardada ✓','g');
+  },
+  newStrategicBlocker: function(tid){A.strategicBlockerForm(tid,'');},
+  editStrategicBlocker: function(id,tid){A.strategicBlockerForm(tid,id);},
+  strategicBlockerForm: function(tid,id){
+    var b=id?strategicRecords(tid,OBJECTIVE_BLOCKER_PREFIX).find(function(x){return x.id===id;}):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
+    mOpen(id?'Editar bloqueo':'Nuevo bloqueo','<div class="fg">'+FTA('sb_desc','Descripción',b&&b.description||'')+'<div class="fr3">'+FSL('sb_owner','Responsable de resolverlo',uO,b&&b.ownerId||SES.userId)+FLD('sb_date','Fecha compromiso','date',b&&b.date||'')+FSL('sb_state','Estado',[['abierto','Abierto'],['en_atencion','En atención'],['resuelto','Resuelto'],['cancelado','Cancelado']],b&&b.state||'abierto')+'</div><div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicBlocker(\''+tid+'\',\''+(id||'')+'\')">Guardar bloqueo</button></div></div>');
+  },
+  saveStrategicBlocker: async function(tid,id){
+    var desc=fv('sb_desc').trim();if(!desc){toast('Descripción requerida','r');return;}
+    var payload={description:desc,ownerId:fv('sb_owner'),date:fv('sb_date')||null,state:fv('sb_state')};
+    var data={tarea_id:tid,usuario_id:SES.userId,texto:OBJECTIVE_BLOCKER_PREFIX+JSON.stringify(payload)};
+    var r=id?await upd('comentarios',id,{texto:data.texto}):await ins('comentarios',data);if(!r)return;
+    await loadAll();A.objectiveSheet(tid);toast('Bloqueo guardado ✓','g');
+  },
+  newStrategicDecision: function(tid){A.strategicDecisionForm(tid,'');},
+  editStrategicDecision: function(id,tid){A.strategicDecisionForm(tid,id);},
+  strategicDecisionForm: function(tid,id){
+    var d=id?strategicRecords(tid,OBJECTIVE_DECISION_PREFIX).find(function(x){return x.id===id;}):null,uO=DB.usuarios.map(function(u){return[u.id,u.nombre];});
+    mOpen(id?'Editar decisión':'Nueva decisión','<div class="fg">'+FTA('sd_decision','Decisión',d&&d.decision||'')+'<div class="fr3">'+FLD('sd_date','Fecha','date',d&&d.date||'')+FSL('sd_owner','Responsable',uO,d&&d.ownerId||SES.userId)+FSL('sd_state','Estado',[['pendiente','Pendiente'],['aprobada','Aprobada'],['rechazada','Rechazada'],['cancelada','Cancelada']],d&&d.state||'aprobada')+'</div>'+FTA('sd_comment','Comentario',d&&d.comment||'')+'<div class="fa"><button class="btn btng" onclick="A.objectiveSheet(\''+tid+'\')">Cancelar</button><button class="btn btnc" onclick="A.saveStrategicDecision(\''+tid+'\',\''+(id||'')+'\')">Guardar decisión</button></div></div>');
+  },
+  saveStrategicDecision: async function(tid,id){
+    var decision=fv('sd_decision').trim();if(!decision){toast('Decisión requerida','r');return;}
+    var payload={date:fv('sd_date')||null,decision:decision,ownerId:fv('sd_owner'),comment:fv('sd_comment').trim()||null,state:fv('sd_state')};
+    var data={tarea_id:tid,usuario_id:SES.userId,texto:OBJECTIVE_DECISION_PREFIX+JSON.stringify(payload)};
+    var r=id?await upd('comentarios',id,{texto:data.texto}):await ins('comentarios',data);if(!r)return;
+    await loadAll();A.objectiveSheet(tid);toast('Decisión guardada ✓','g');
   },
   manageTask: function(id){
     var t=xid(DB.tareas,id); if(!t)return;
