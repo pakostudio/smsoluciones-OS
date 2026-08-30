@@ -1063,3 +1063,4 @@ tr:hover td{background:var(--surface2)}
 .access-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
 .access-check input{accent-color:var(--cyan);width:15px;height:15px}
 .kanban-col{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-width:180px}
+.strategic-hero h2{color:#fff}
