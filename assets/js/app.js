@@ -265,7 +265,7 @@ function smCreationPlan(){
 function projectDescription(p){ return stripProjectMeta(p&&p.descripcion)||cNm(p&&p.cliente_id); }
 function projectDescriptionNeedsToggle(p){
   var text=projectDescription(p);
-  return /[\r\n]/.test(text)||text.length>90;
+  return text.length>90;
 }
 function projectAlertCount(pid){ return getAlerts().filter(function(a){return a.projectId===pid;}).length; }
 function userPrefs(id){ return DB.notification_preferences.find(function(p){return p.user_id===id;})||{email:'',email_enabled:true,browser_enabled:true,daily_digest:true,digest_hour:8,timezone:'America/Mexico_City'}; }
