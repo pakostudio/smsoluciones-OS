@@ -117,6 +117,10 @@ var PROJECT_QUERY = '';
 var PROJECT_DESC_EXPANDED = false;
 var BOARD_FILTERS = {estado:'',accion:'',seguimiento:'',responsable:''};
 var CONTROL_FILTERS = {estado:'',responsable:'',area:'',foco:''};
+// SM OS 2.10.6: modo de vista por usuario en proyectos con Centro de Control estratégico.
+// 'mine' = solo lo del usuario en sesión (default para usuarios no admin), 'all' = resumen del proyecto completo.
+// Los administradores nunca quedan acotados por este modo (siempre ven todo, como antes).
+var WORKSPACE_MODE = 'mine';
 var CLIENT_PROJECT_FOCUS = true; // Privacidad cliente: al estar dentro de un proyecto, la navegación lateral solo muestra ese proyecto.
 
 /* ── UTILS ── */
@@ -868,8 +872,19 @@ document.querySelector('.main').addEventListener('click',function(){if(document.
 
 /* ══ VIEWS ══════════════════════════════════════════════════ */
 
-function projectTasks(pid){
+function projectTasksBase(pid){
   return DB.tareas.filter(function(t){ return t.proyecto_id===pid && !isGroupHeader(t) && (adm() || t.owner_id===SES.userId || myProjs().some(function(p){return p.id===pid;})); });
+}
+function projectUsesWorkspaceMode(p){
+  return !!p && !adm() && isObjectivesBoard(p);
+}
+function projectTasks(pid){
+  var base = projectTasksBase(pid);
+  if(WORKSPACE_MODE==='mine' && !adm()){
+    var p = xid(DB.proyectos,pid);
+    if(isObjectivesBoard(p)) return base.filter(function(t){ return t.owner_id===SES.userId; });
+  }
+  return base;
 }
 function projectStats(p){
   var tasks = projectTasks(p.id);
@@ -1451,6 +1466,16 @@ function projectCard(p,compact){
     +(compact?'':'<div style="margin-top:12px">'+projectTree(p,3)+'</div>')
     +'</div>';
 }
+function workspaceModeSwitchHtml(p){
+  if(!projectUsesWorkspaceMode(p)) return '';
+  var owners = [];
+  projectTasksBase(p.id).forEach(function(t){var o=boardOwnerName(t,p); if(o && owners.indexOf(o)<0) owners.push(o);});
+  if(owners.length<2) return '';
+  return '<div class="workspace-mode-switch" role="tablist" aria-label="Modo de vista">'
+    +'<button type="button" class="wm-btn'+(WORKSPACE_MODE==='mine'?' active':'')+'" onclick="A.setWorkspaceMode(\'mine\')">'+iconHtml('user')+' Mi trabajo</button>'
+    +'<button type="button" class="wm-btn'+(WORKSPACE_MODE==='all'?' active':'')+'" onclick="A.setWorkspaceMode(\'all\')">'+iconHtml('layout-grid')+' Resumen del proyecto</button>'
+    +'</div>';
+}
 function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
@@ -1485,6 +1510,7 @@ function projectWorkspace(p){
     : board;
   return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div>'+(projectDescriptionNeedsToggle(p)?'<button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button>':'')+'</div></div>'
+    +workspaceModeSwitchHtml(p)
     +projectTabs(p)
     +body+'</div>';
 }
@@ -2338,6 +2364,12 @@ var A = {
   },
   clearBoardFilters: function(){
     BOARD_FILTERS={estado:'',accion:'',seguimiento:'',responsable:''};
+    render();
+  },
+  setWorkspaceMode: function(mode){
+    WORKSPACE_MODE = mode==='all' ? 'all' : 'mine';
+    BOARD_FILTERS={estado:'',accion:'',seguimiento:'',responsable:''};
+    CONTROL_FILTERS={estado:'',responsable:'',area:'',foco:''};
     render();
   },
   pkManageFronts: function(pid){
