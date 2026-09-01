@@ -1099,10 +1099,23 @@ function operationalBoard(p,limit){
     return dayDiff(a.fecha_proximo_seguimiento||a.fecha_vencimiento||pd(999))-dayDiff(b.fecha_proximo_seguimiento||b.fecha_vencimiento||pd(999));
   });
   var allTasks = tasks.slice();
+  var ownerTabs = '';
+  if(objectivesBoard){
+    var boardOwners = [];
+    allTasks.forEach(function(t){var o=boardOwnerName(t,p); if(o && boardOwners.indexOf(o)<0) boardOwners.push(o);});
+    boardOwners.sort(function(a,b){return a.localeCompare(b,'es');});
+    if(boardOwners.length>1){
+      var activeOwner = BOARD_FILTERS.responsable;
+      ownerTabs = '<div class="owner-tabs" role="tablist" aria-label="Frentes por responsable">'
+        +'<button type="button" class="owner-tab'+(activeOwner?'':' active')+'" data-owner="" onclick="A.setOwnerTab(this)">Todos</button>'
+        +boardOwners.map(function(o){return '<button type="button" class="owner-tab'+(activeOwner===o?' active':'')+'" data-owner="'+esc(o)+'" onclick="A.setOwnerTab(this)">'+esc(o)+'</button>';}).join('')
+        +'</div>';
+    }
+  }
   tasks = boardFilterTasks(tasks,p);
   if(limit) tasks = tasks.slice(0,limit);
   var filterBar = boardFiltersHtml(allTasks,tasks,p);
-  if(!tasks.length) return filterBar+'<div class="empty"><p>Sin registros con esos filtros</p></div>';
+  if(!tasks.length) return ownerTabs+filterBar+'<div class="empty"><p>Sin registros con esos filtros</p></div>';
   var rows = tasks.map(function(t){
     var h=crmHealth(t), lc=lastComment(t), cCount=DB.comentarios.filter(function(c){return c.tarea_id===t.id;}).length;
     var pk=isProkicksProject(p);
@@ -1133,7 +1146,7 @@ function operationalBoard(p,limit){
   var groupHead = (ofunamBoard||objectivesBoard) ? '' : '<th>'+(isProkicksProject(p)?'Frente':'Grupo')+'</th>';
   var itemHead = objectivesBoard ? 'Objetivo' : (isProkicksProject(p)?'Tarea':'Registro');
   var actionsHead = 'Acciones';
-  return filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+itemHead+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>'+actionsHead+'</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  return ownerTabs+filterBar+frontStrip+'<div class="card sticky-board" style="padding:0"><div class="tw"><table class="'+tableClass+'"><thead><tr>'+groupHead+'<th>'+itemHead+'</th><th>Estado</th><th>Siguiente acción</th><th>Seguimiento</th><th>Resp.</th><th>Alerta</th>'+commentHead+'<th>'+actionsHead+'</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 
 function controlProgress(t){
@@ -2307,6 +2320,9 @@ var A = {
   setBoardFilter: function(key,value){
     BOARD_FILTERS[key]=value||'';
     render();
+  },
+  setOwnerTab: function(el){
+    A.setBoardFilter('responsable', el && el.getAttribute('data-owner') || '');
   },
   clearBoardFilters: function(){
     BOARD_FILTERS={estado:'',accion:'',seguimiento:'',responsable:''};
