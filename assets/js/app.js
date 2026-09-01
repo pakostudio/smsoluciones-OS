@@ -1106,9 +1106,13 @@ function operationalBoard(p,limit){
     boardOwners.sort(function(a,b){return a.localeCompare(b,'es');});
     if(boardOwners.length>1){
       var activeOwner = BOARD_FILTERS.responsable;
-      ownerTabs = '<div class="owner-tabs" role="tablist" aria-label="Frentes por responsable">'
-        +'<button type="button" class="owner-tab'+(activeOwner?'':' active')+'" data-owner="" onclick="A.setOwnerTab(this)">Todos</button>'
-        +boardOwners.map(function(o){return '<button type="button" class="owner-tab'+(activeOwner===o?' active':'')+'" data-owner="'+esc(o)+'" onclick="A.setOwnerTab(this)">'+esc(o)+'</button>';}).join('')
+      var ownerStat=function(list){
+        var risk=list.filter(function(t){return crmHealth(t).cl==='dr';}).length;
+        return '<small>'+list.length+' objetivo'+(list.length===1?'':'s')+(risk?' · '+risk+' en riesgo':'')+'</small>';
+      };
+      ownerTabs = '<div class="owner-tabs" role="tablist" aria-label="Resumen por responsable">'
+        +'<button type="button" class="owner-tab'+(activeOwner?'':' active')+'" data-owner="" onclick="A.setOwnerTab(this)"><strong>Todos</strong>'+ownerStat(allTasks)+'</button>'
+        +boardOwners.map(function(o){var list=allTasks.filter(function(t){return boardOwnerName(t,p)===o;}); return '<button type="button" class="owner-tab'+(activeOwner===o?' active':'')+'" data-owner="'+esc(o)+'" onclick="A.setOwnerTab(this)"><strong>'+esc(o)+'</strong>'+ownerStat(list)+'</button>';}).join('')
         +'</div>';
     }
   }
@@ -1451,12 +1455,20 @@ function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
   var objectivesWorkspace = isObjectivesBoard(p);
+  var headResponsable = uNm(p.owner_id);
+  if(objectivesWorkspace && BOARD_FILTERS.responsable){
+    var headFiltered = boardFilterTasks(projectTasks(p.id),p);
+    s = {tasks:headFiltered,
+      noNext: headFiltered.filter(function(t){return crmEnabled() && t.estado!=='terminada' && !nextAction(t);}).length,
+      overdue: headFiltered.filter(function(t){return t.estado!=='terminada'&&t.fecha_vencimiento&&dayDiff(t.fecha_vencimiento)<0;}).length};
+    headResponsable = BOARD_FILTERS.responsable;
+  }
   var mainTitle = isProkicksProject(p) ? 'Plan de trabajo ProKicks' : (isOfunamProject(p) ? 'Grupos y registros' : (isObjectivesBoard(p) ? 'Objetivos estratégicos' : 'Registros'));
   var floridaCount=isProkicksProject(p)?pkFloridaRows().length:0;
   var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ '+(objectivesWorkspace?'Objetivo':'Registro')+'</button>';
   var pkUtilityBar = isProkicksProject(p) ? '<div class="prokicks-utility-bar"><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">'+iconHtml('layers-3')+' Frentes</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">'+iconHtml('plus')+' Tarea</button></div>' : '';
   var compactOfunamHead = '<div class="compact-board-summary"><div><h2>'+mainTitle+'</h2><div class="compact-board-metrics"><span class="metric">Registros <strong>'+s.tasks.length+'</strong></span><span class="metric">Sin acción <strong>'+s.noNext+'</strong></span><span class="metric">Riesgos <strong>'+(s.overdue+s.noNext)+'</strong></span><span class="metric">Resp. <strong>'+esc(uNm(p.owner_id))+'</strong></span></div></div>'+mainButton+'</div>';
-  var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">'+(objectivesWorkspace?'Objetivos':'Registros')+'</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(uNm(p.owner_id))+'</div></div></div>'
+  var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">'+(objectivesWorkspace?'Objetivos':'Registros')+'</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(headResponsable)+'</div></div></div>'
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>';
   var prokicksHead='<div class="prokicks-work-head"><div><h2>'+mainTitle+'</h2><small>'+s.tasks.length+' tareas · '+(s.overdue+s.noNext)+' requieren atención</small></div>'+mainButton+'</div>';
   var board = (isProkicksProject(p) ? prokicksHead : (isOfunamProject(p) ? compactOfunamHead : regularHead)) + pkUtilityBar + operationalBoard(p);
