@@ -6,7 +6,7 @@ const css = fs.readFileSync(new URL('../assets/css/styles.css', import.meta.url)
 const migration = fs.readFileSync(new URL('../migrations/2026-08-29-montescano-objective-sheet.sql', import.meta.url), 'utf8');
 const uxMigration = fs.readFileSync(new URL('../migrations/2026-08-30-montescano-objective-sheet-ux.sql', import.meta.url), 'utf8');
 
-assert.match(app, /isMontescanoObjectiveTask/);
+assert.match(app, /isStrategicObjectiveTask/);
 assert.match(app, /strategic-manage-btn" aria-label="Gestionar objetivo" title="Gestionar objetivo"/);
 assert.match(app, /iconHtml\('pencil'\)/);
 assert.match(app, /Ficha Estratégica del Objetivo/);

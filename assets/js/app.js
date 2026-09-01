@@ -151,7 +151,7 @@ function canEditTask(t){
 function iconHtml(name){ return '<i data-lucide="'+esc(name||'folder')+'"></i>'; }
 function hydrateIcons(){ try{ if(window.lucide) window.lucide.createIcons(); }catch(e){} }
 function projectMetaLine(desc,key){ var m=String(desc||'').match(new RegExp('^\\s*'+key+'\\s*:\\s*(.+)$','im')); return m?m[1].trim():''; }
-function stripProjectMeta(desc){ return String(desc||'').split(/\r?\n/).filter(function(line){return !/^\s*(Categoria|Categoría|Icono|Color|Frentes)\s*:/i.test(line);}).join('\n').trim(); }
+function stripProjectMeta(desc){ return String(desc||'').split(/\r?\n/).filter(function(line){return !/^\s*(Categoria|Categoría|Icono|Color|Frentes|Vista)\s*:/i.test(line);}).join('\n').trim(); }
 function suggestProjectVisual(name,desc){
   var s=(String(name||'')+' '+String(desc||'')).toLowerCase();
   if(/wings|restaurante|parrilla|comida/.test(s)) return {category:'Restaurante',icon:'utensils',color:'#D97706'};
@@ -1031,9 +1031,9 @@ function boardFiltersHtml(tasks,filtered,p){
 var OBJECTIVE_ADVANCE_PREFIX='OBJ_ADVANCE::';
 var OBJECTIVE_BLOCKER_PREFIX='OBJ_BLOCKER::';
 var OBJECTIVE_DECISION_PREFIX='OBJ_DECISION::';
-function isMontescanoObjectiveTask(t){
+function isStrategicObjectiveTask(t){
   var p=taskProject(t);
-  return !!p&&/^MONTESCANO$/i.test(String(p.nombre||''))&&isObjectivesBoard(p);
+  return isObjectivesBoard(p);
 }
 function strategicInitiatives(tid){
   return DB.subtareas.filter(function(s){return s.tarea_id===tid&&s.tipo==='iniciativa'&&!s.parent_id;}).sort(function(a,b){return String(a.fecha_vencimiento||'9999').localeCompare(String(b.fecha_vencimiento||'9999'));});
@@ -1111,10 +1111,8 @@ function operationalBoard(p,limit){
     var nextCell = objectivesBoard
       ? '<span class="objective-next-action" title="'+esc(nextLabel)+'">'+esc(nextLabel)+'</span>'
       : esc(nextLabel);
-    var actionButtons = isMontescanoObjectiveTask(t)
+    var actionButtons = objectivesBoard
       ? '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.objectiveSheet(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>'
-      : objectivesBoard
-      ? '<div class="operational-actions compact-actions"><button class="btn btns btnc compact-action" aria-label="Editar rápido" title="Editar rápido" onclick="A.quickEdit(\''+t.id+'\')">'+iconHtml('pencil')+'</button><button class="btn btns btng compact-action" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('clipboard-list')+'</button></div>'
       : '<div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div>';
     return '<tr>'
       +((ofunamBoard||objectivesBoard)?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
@@ -2402,6 +2400,7 @@ var A = {
       +(p?'':'<div class="guided-create"><div class="fld"><label>Tipo de creación</label><select id="f_create_mode" onchange="A.previewProjectCreation()"><option value="vacio">Proyecto vacío</option><option value="template">Usar plantilla</option><option value="guided">Creación guiada</option></select></div><div id="guided-create-options"></div><div id="guided-create-preview" class="guided-preview"></div></div>')
       +FLD('nm','Nombre del proyecto','text',p&&p.nombre)
       +FTA('dc','Descripción',p&&projectDescription(p))
+      +'<label class="access-check" style="margin:-4px 0 8px" title="Habilita el Centro de Control estratégico (Objetivo → Iniciativa → Etapa → Tarea) para este proyecto" aria-label="Habilitar Centro de Control estratégico para este proyecto"><input type="checkbox" id="f_objectives" '+(p&&isObjectivesBoard(p)?'checked':'')+'> Centro de Control estratégico (Objetivos)</label>'
       +projectVisualFields(visual)
       +'<div class="fr3">'+FLD('fi','Inicio','date',p&&p.fecha_inicio||today())+FLD('fv','Vencimiento','date',p&&p.fecha_vencimiento||pd(90))+FLD('bud','Presupuesto','number',p&&p.presupuesto||'')+'</div>'
       +'<div class="fr2">'+FSL('pi','Etapa',[['prospecto','Prospecto'],['propuesta','Propuesta'],['negociacion','Negociación'],['ejecucion','Ejecución'],['cerrado_ganado','Ganado'],['cerrado_perdido','Perdido']],p&&p.pipeline||'propuesta')+FSL('es','Estado',[['activo','Activo'],['pausado','Pausado'],['cerrado','Cerrado']],p&&p.estado||'activo')+'</div>'
@@ -2437,6 +2436,8 @@ var A = {
     var projectDesc=buildProjectDescription(fv('dc'),visual.category,visual.icon,visual.color);
     var savedFronts=id?configuredProjectGroups(xid(DB.proyectos,id)):(creationPlan.fronts||[]);
     if(savedFronts.length)projectDesc+='\nFrentes: '+savedFronts.join(' | ');
+    var wantsObjectives=!!(document.getElementById('f_objectives')&&document.getElementById('f_objectives').checked);
+    if(wantsObjectives)projectDesc+='\nVista: objetivos';
     var data = {cliente_id:fv('ci'),owner_id:fv('oi'),nombre:nm,descripcion:projectDesc,fecha_inicio:fv('fi')||null,fecha_vencimiento:fv('fv')||null,presupuesto:Number(fv('bud'))||0,pipeline:fv('pi'),estado:fv('es'),drive_url:fv('dr')||null};
     var r = id ? await upd('proyectos',id,data) : await ins('proyectos',data);
     if(r && !id && creationPlan.tasks && creationPlan.tasks.length){
@@ -2674,7 +2675,8 @@ var A = {
     mClose();await refresh();toast('Ejecución actualizada ✓','g');
   },
   objectiveSheet: function(id){
-    var t=xid(DB.tareas,id); if(!t||!isMontescanoObjectiveTask(t))return;
+    var t=xid(DB.tareas,id); if(!t||!isStrategicObjectiveTask(t))return;
+    var op=taskProject(t);
     var initiatives=strategicInitiatives(id), actions=[];
     initiatives.forEach(function(i){strategicActions(id,i.id).forEach(function(a){actions.push({row:a,initiative:i});});});
     var advances=DB.comentarios.filter(function(c){var tx=String(c.texto||'');return c.tarea_id===id&&tx.indexOf(OBJECTIVE_BLOCKER_PREFIX)!==0&&tx.indexOf(OBJECTIVE_DECISION_PREFIX)!==0;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
@@ -2694,7 +2696,7 @@ var A = {
     var decisionHtml=decisions.map(function(d){return '<div class="strategic-list-row"><div><strong>'+esc(d.decision)+'</strong><small>'+fmt(d.date)+' · '+esc(uNm(d.ownerId))+(d.kind?' · '+esc(d.kind):'')+'</small>'+(d.comment?'<p>'+esc(d.comment)+'</p>':'')+'</div><button class="btn btns btng" onclick="A.editStrategicDecision(\''+d.id+'\',\''+id+'\')">Editar</button></div>';}).join('')||'<div class="strategic-empty">Sin decisiones registradas.</div>';
     var objectiveBody='<div class="strategic-toolbar"><span>Información general del objetivo.</span><button class="btn btns btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar objetivo</button></div><div class="fr2">'+FLD('so_name','Nombre','text',t.titulo)+FSL('so_owner','Responsable',owners,t.owner_id)+'</div>'+FTA('so_desc','Descripción',stripDescFields(t.descripcion))+'<div class="fr3">'+FSL('so_priority','Prioridad',[['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']],t.prioridad)+FSL('so_state','Estado',[['pendiente','No iniciada'],['en_proceso','En curso'],['bloqueada','Bloqueada'],['terminada','Completada']],t.control_bloqueado?'bloqueada':(t.estado==='terminada'?'terminada':(t.estado==='pendiente'?'pendiente':'en_proceso')))+FLD('so_start','Fecha de inicio','date',t.fecha_inicio||'')+'</div><div class="fr2">'+FLD('so_due','Fecha de término','date',t.fecha_vencimiento||'')+'<div></div></div>';
     var measureBody='<div class="strategic-derived">El avance se calcula con iniciativas, etapas y tareas.</div><div class="fr2">'+FLD('so_baseline','Punto de partida','text',descVal(t,'Linea base')||descVal(t,'Línea base')||'')+FLD('so_target','Meta','text',descVal(t,'Meta')||'')+'</div><div class="fr2">'+FLD('so_current','Resultado actual','text',descVal(t,'Resultado actual')||'')+FLD('so_kpi','KPI principal','text',descVal(t,'KPI')||'')+'</div><div class="strategic-measure"><div><span>% de avance</span><strong>'+pct+'%</strong></div><div><span>Estado del objetivo</span><strong><i class="dot '+signal.cl+'"></i>'+signal.label+'</strong></div></div>';
-    mOpen('Ficha Estratégica del Objetivo','<div class="strategic-sheet"><header class="strategic-hero"><div><span>MONTESCANO · Objetivo estratégico</span><h2>'+esc(t.titulo)+'</h2></div><div class="strategic-hero-progress"><strong>'+pct+'%</strong><span class="sem"><i class="dot '+signal.cl+'"></i>'+signal.label+'</span></div></header>'
+    mOpen('Ficha Estratégica del Objetivo','<div class="strategic-sheet"><header class="strategic-hero"><div><span>'+esc(op?op.nombre:'')+' · Objetivo estratégico</span><h2>'+esc(t.titulo)+'</h2></div><div class="strategic-hero-progress"><strong>'+pct+'%</strong><span class="sem"><i class="dot '+signal.cl+'"></i>'+signal.label+'</span></div></header>'
       +strategicSection('01','Objetivo',objectiveBody,true)
       +strategicSection('02','Medición',measureBody,true)
       +strategicSection('03','Iniciativas','<div class="strategic-toolbar"><span>Proyectos importantes que ayudan a cumplir el objetivo.</span><button class="btn btns btng" onclick="A.newStrategicInitiative(\''+id+'\')">+ Iniciativa</button></div><div class="strategic-items">'+initiativeHtml+'</div>',true)
@@ -2707,7 +2709,7 @@ var A = {
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cerrar</button><button class="btn btnc" onclick="A.saveStrategicObjective(\''+id+'\')">Guardar ficha</button></div></div>',true);
   },
   saveStrategicObjective: async function(id){
-    var t=xid(DB.tareas,id);if(!t||!isMontescanoObjectiveTask(t))return;
+    var t=xid(DB.tareas,id);if(!t||!isStrategicObjectiveTask(t))return;
     var desc=buildDesc(fv('so_desc'),{grupo:taskGroup(t),objetivo:descVal(t,'Objetivo'),entregable:descVal(t,'Entregable'),kpi:fv('so_kpi'),meta:fv('so_target'),lineaBase:fv('so_baseline'),resultadoActual:fv('so_current'),accion:fv('so_next'),seguimiento:fv('so_follow')});
     var selectedState=fv('so_state'),blocked=selectedState==='bloqueada';
     var data={titulo:fv('so_name').trim(),descripcion:desc,owner_id:fv('so_owner'),prioridad:fv('so_priority'),estado:blocked?'en_proceso':selectedState,fecha_inicio:fv('so_start')||null,fecha_vencimiento:fv('so_due')||null,siguiente_accion:fv('so_next')||null,fecha_proximo_seguimiento:fv('so_follow')||null,control_avance:strategicObjectiveProgress(id),control_bloqueado:blocked,control_bloqueo_resumen:blocked?(t.control_bloqueo_resumen||'Bloqueo estratégico'):null};

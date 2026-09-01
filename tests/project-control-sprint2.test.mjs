@@ -33,8 +33,8 @@ for (const legacy of ['tareas','reporte','historial','kanban','calendario','gant
 assert.match(css, /\.control-row\{/);
 assert.match(css, /@media\(max-width:620px\)/);
 assert.match(css, /\.control-row\{grid-template-columns:1fr 1fr/);
-assert.match(html, /styles\.css\?v=2\.(?:5|6|7)\.0|styles\.css\?v=2\.8\.[0-5]|styles\.css\?v=2\.(?:9\.[01]|10\.[0-2])/);
-assert.match(html, /app\.js\?v=2\.(?:5|6|7)\.0|app\.js\?v=2\.8\.[0-5]|app\.js\?v=2\.(?:9\.[01]|10\.[0-2])/);
+assert.match(html, /styles\.css\?v=2\.(?:5|6|7)\.0|styles\.css\?v=2\.8\.[0-5]|styles\.css\?v=2\.(?:9\.[01]|10\.[0-3])/);
+assert.match(html, /app\.js\?v=2\.(?:5|6|7)\.0|app\.js\?v=2\.8\.[0-5]|app\.js\?v=2\.(?:9\.[01]|10\.[0-3])/);
 
 const boardStart = app.indexOf('function projectExecutionBoardHtml(p)');
 const boardEnd = app.indexOf('function projectReportHtml', boardStart);
