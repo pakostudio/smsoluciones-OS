@@ -1148,7 +1148,7 @@ function operationalBoard(p,limit){
     // del nombre del proyecto), así que aplica también a cualquier proyecto que se cree en el futuro.
     var actionButtons = objectivesBoard
       ? '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.objectiveSheet(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>'
-      : '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar" title="Gestionar" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>';
+      : '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar" title="Gestionar" onclick="A.td(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>';
     return '<tr>'
       +((ofunamBoard||objectivesBoard)?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
       +'<td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;cursor:pointer;text-align:left" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted);margin-top:3px">Inicio '+fmt(t.fecha_inicio)+' · Término '+fmt(t.fecha_vencimiento)+'</div></td>'
@@ -2868,46 +2868,6 @@ var A = {
     var data={tarea_id:tid,usuario_id:SES.userId,texto:OBJECTIVE_DECISION_PREFIX+JSON.stringify(payload)};
     var r=id?await upd('comentarios',id,{texto:data.texto}):await ins('comentarios',data);if(!r)return;
     await loadAll();A.objectiveSheet(tid);toast('Decisión guardada ✓','g');
-  },
-  manageTask: function(id){
-    var t=xid(DB.tareas,id); if(!t)return;
-    var p=taskProject(t), comments=DB.comentarios.filter(function(c){return c.tarea_id===id;}).sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
-    var contactFields=[
-      ['Responsable',descVal(t,'Responsable contacto')],['Cargo',descVal(t,'Cargo')||descVal(t,'Cargo institucional')],
-      ['Email',descVal(t,'Email')],['Teléfono',descVal(t,'Telefono')||descVal(t,'Teléfono')],
-      ['Correos de respaldo',descVal(t,'Correos de respaldo')||descVal(t,'Correo de respaldo')||descVal(t,'Correo de respaldo Embajada')],
-      ['Correo institucional',descVal(t,'Correo institucional')],['Correo OFUNAM',descVal(t,'Correo OFUNAM en copia')],
-      ['Uso recomendado',descVal(t,'Uso recomendado')]
-    ].filter(function(x){return x[1];});
-    var contacts=contactFields.length?'<div class="crmgrid">'+contactFields.map(function(x){return '<div class="crmcell"><div class="dl">'+esc(x[0])+'</div><div class="dv">'+esc(x[1])+'</div></div>';}).join('')+'</div>':'<div class="hbar">Sin datos de contacto adicionales.</div>';
-    var timeline=comments.length?comments.map(function(c){return '<div class="pkw-log-item"><div class="pkw-log-meta">'+fmtdt(c.created_at)+' · '+esc(uNm(c.usuario_id))+'</div>'+esc(humanComment(c.texto))+'</div>';}).join(''):'<div class="hbar">Todavía no hay actividades registradas.</div>';
-    var owner=isProkicksProject(p)?pkInternalOwner(t):uNm(t.owner_id);
-    mOpen('Gestionar · '+t.titulo,
-      '<div class="fg">'
-      +'<div class="hbar" style="justify-content:space-between;flex-wrap:wrap"><span>'+bSt(t.estado)+' '+sem(t)+'</span><span>'+esc(pNm(t.proyecto_id))+' · '+esc(owner)+'</span></div>'
-      +'<div class="fr2">'+FSL('mg_es','Estado',[['pendiente','Pendiente'],['en_proceso','En proceso'],['en_revision','En revisión'],['aprobada','Aprobada'],['terminada','Terminada']],t.estado||'pendiente')+FLD('mg_ps','Próximo seguimiento','date',followDate(t)||'')+'</div>'
-      +'<div class="fr2">'+FLD('mg_fi','Fecha de inicio','date',t.fecha_inicio||'')+FLD('mg_fv','Fecha de término','date',t.fecha_vencimiento||'')+'</div>'
-      +FLD('mg_sa','Siguiente acción','text',nextAction(t)||'')
-      +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Contacto</h3>'+contacts+'</div>'
-      +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Registrar actividad</h3>'+FTA('mg_note','Comentario / avance','')+'</div>'
-      +'<div style="border-top:1px solid var(--line);padding-top:14px"><h3 style="margin-bottom:10px">Historial ('+comments.length+')</h3><div class="pkw-log">'+timeline+'</div></div>'
-      +'<div class="fa">'+(adm()?'<button class="btn btnd" onclick="A.dt(\''+id+'\')">Eliminar tarea</button>':'')+'<button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A.saveManagedTask(\''+id+'\')">Guardar actualización</button></div>'
-      +'</div>',true);
-  },
-  saveManagedTask: async function(id){
-    var t=xid(DB.tareas,id); if(!t)return;
-    var action=fv('mg_sa'), follow=fv('mg_ps'), note=fv('mg_note').trim();
-    var description=buildDesc(t.descripcion,{accion:action,seguimiento:follow});
-    var data={estado:fv('mg_es'),fecha_inicio:fv('mg_fi')||null,fecha_vencimiento:fv('mg_fv')||null,descripcion:description};
-    if(crmEnabled()){data.siguiente_accion=action||null;data.fecha_proximo_seguimiento=follow||null;data.ultima_actividad=new Date().toISOString();}
-    var diff=taskDiffText(t,data);
-    var saved=await upd('tareas',id,data); if(!saved)return;
-    if(diff) await logTaskActivity(id,'Gestión actualizada: '+diff);
-    if(note){
-      var comment=await ins('comentarios',{tarea_id:id,usuario_id:SES.userId,texto:note});
-      if(!comment)return;
-    }
-    mClose();await refresh();toast('Tarea actualizada ✓','g');
   },
   td: function(id){
     var t = xid(DB.tareas,id); if(!t) return;
