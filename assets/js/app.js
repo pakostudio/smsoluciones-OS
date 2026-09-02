@@ -1143,9 +1143,12 @@ function operationalBoard(p,limit){
     var nextCell = objectivesBoard
       ? '<span class="objective-next-action" title="'+esc(nextLabel)+'">'+esc(nextLabel)+'</span>'
       : esc(nextLabel);
+    // SM OS 2.10.7: una sola acción con icono de lápiz en TODOS los tableros (igual que Montescano/
+    // objetivos), en vez de los 2 botones "Editar rápido" + "Gestionar". Es estructural (no depende
+    // del nombre del proyecto), así que aplica también a cualquier proyecto que se cree en el futuro.
     var actionButtons = objectivesBoard
       ? '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar objetivo" title="Gestionar objetivo" onclick="A.objectiveSheet(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>'
-      : '<div class="operational-actions"><button class="btn btns btnc" onclick="A.quickEdit(\''+t.id+'\')">Editar rápido</button><button class="btn btns btng" onclick="A.manageTask(\''+t.id+'\')">Gestionar</button></div>';
+      : '<div class="operational-actions strategic-action"><button class="btn btns btng strategic-manage-btn" aria-label="Gestionar" title="Gestionar" onclick="A.manageTask(\''+t.id+'\')">'+iconHtml('pencil')+'</button></div>';
     return '<tr>'
       +((ofunamBoard||objectivesBoard)?'':'<td><span class="badge bx_">'+esc(taskGroup(t))+'</span></td>')
       +'<td><button style="background:transparent;border:0;padding:0;color:var(--navy);font-weight:900;cursor:pointer;text-align:left" onclick="A.td(\''+t.id+'\')">'+esc(t.titulo)+'</button><div style="font-size:11px;color:var(--muted);margin-top:3px">Inicio '+fmt(t.fecha_inicio)+' · Término '+fmt(t.fecha_vencimiento)+'</div></td>'
