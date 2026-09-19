@@ -149,7 +149,6 @@ function reportToPdf(title,text){
   +'<script>window.onload=function(){window.print();};<\/script></body></html>');
   w.document.close();
   }
-}
 function xid(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return arr[i]; return null; }
 function uNm(id){ var u=xid(DB.usuarios,id); return u?u.nombre:'?'; }
 function cNm(id){ var c=xid(DB.clientes,id); return c?c.nombre:'?'; }
