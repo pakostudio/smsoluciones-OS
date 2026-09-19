@@ -139,6 +139,17 @@ function pd(n){ var d=new Date(); d.setDate(d.getDate()+n); return dateKey(d); }
 function fmt(s){ return s ? dateObj(s).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 function fmtdt(s){ return s ? new Date(s).toLocaleString('es-MX') : '—'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function reportToPdf(title,text){
+  var w=window.open('','_blank');
+  if(!w){ toast('Habilita ventanas emergentes para descargar el PDF','r'); return; }
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'
+  +'<style>@page{margin:18mm}body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#1a2333;padding:24px}'
+  +'h1{font-size:18px;margin:0 0 16px}pre{white-space:pre-wrap;word-wrap:break-word;font-family:inherit;font-size:12.5px;line-height:1.55}</style>'
+  +'</head><body><h1>'+esc(title)+'</h1><pre>'+esc(text)+'</pre>'
+  +'<script>window.onload=function(){window.print();};<\/script></body></html>');
+  w.document.close();
+  }
+}
 function xid(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return arr[i]; return null; }
 function uNm(id){ var u=xid(DB.usuarios,id); return u?u.nombre:'?'; }
 function cNm(id){ var c=xid(DB.clientes,id); return c?c.nombre:'?'; }
@@ -2276,7 +2287,7 @@ var A = {
   execReport: function(pid){
     var p=xid(DB.proyectos,pid); if(!p) return;
     var txt=executiveReportText(pid);
-    mOpen('Reporte ejecutivo · '+p.nombre, '<div class="report-box"><textarea id="exec-report-text" readonly>'+esc(txt)+'</textarea></div><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'exec-report-text\').value);toast(\'Reporte copiado ✓\',\'g\')">Copiar reporte</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>', true);
+    mOpen('Reporte ejecutivo · '+p.nombre, '<div class="report-box"><textarea id="exec-report-text" readonly>'+esc(txt)+'</textarea></div><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'exec-report-text\').value);toast(\'Reporte copiado ✓\',\'g\')">Copiar reporte</button><button class="btn btns btng" onclick="reportToPdf(\'Reporte ejecutivo · '+esc(p.nombre).replace(/'/g,"\\'")+'\',document.getElementById(\'exec-report-text\').value)">⬇ Descargar PDF</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>', true);
   },
 
   commandFilterRows: function(pid,type){
