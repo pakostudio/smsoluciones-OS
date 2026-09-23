@@ -139,16 +139,28 @@ function pd(n){ var d=new Date(); d.setDate(d.getDate()+n); return dateKey(d); }
 function fmt(s){ return s ? dateObj(s).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 function fmtdt(s){ return s ? new Date(s).toLocaleString('es-MX') : '—'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function reportToPdf(title,text){
-  var w=window.open('','_blank');
-  if(!w){ toast('Habilita ventanas emergentes para descargar el PDF','r'); return; }
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'
-  +'<style>@page{margin:18mm}body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#1a2333;padding:24px}'
-  +'h1{font-size:18px;margin:0 0 16px}pre{white-space:pre-wrap;word-wrap:break-word;font-family:inherit;font-size:12.5px;line-height:1.55}</style>'
-  +'</head><body><h1>'+esc(title)+'</h1><pre>'+esc(text)+'</pre>'
-  +'<script>window.onload=function(){window.print();};<\/script></body></html>');
-  w.document.close();
-  }
+function reportToPdf(title,contentHtml){
+  if(typeof html2pdf==='undefined'){ toast('No se pudo cargar el generador de PDF, revisa tu conexión','r'); return; }
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:24px';
+  box.innerHTML=contentHtml;
+  document.body.appendChild(box);
+  toast('Generando PDF…','g');
+  html2pdf().set({
+    margin:[12,12,12,12],
+    filename:(title||'reporte').replace(/[\\/:*?"<>|]+/g,'-')+'.pdf',
+    image:{type:'jpeg',quality:0.98},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    pagebreak:{mode:['css','avoid-all']}
+  }).from(box).save().then(function(){
+    document.body.removeChild(box);
+  }).catch(function(err){
+    document.body.removeChild(box);
+    toast('Error al generar el PDF','r');
+    console.error(err);
+  });
+}
 function xid(arr,id){ for(var i=0;i<arr.length;i++) if(arr[i].id===id) return arr[i]; return null; }
 function uNm(id){ var u=xid(DB.usuarios,id); return u?u.nombre:'?'; }
 function cNm(id){ var c=xid(DB.clientes,id); return c?c.nombre:'?'; }
@@ -1424,6 +1436,46 @@ function executiveReportText(pid){
   return lines.join('\n');
 }
 
+function executiveReportHtml(pid){
+  var p=xid(DB.proyectos,pid); if(!p) return '<p>Proyecto no encontrado.</p>';
+  var tasks=projectTasks(pid), open=tasks.filter(function(t){return t.estado!=='terminada';}), done=tasks.length-open.length;
+  var progress=tasks.length?Math.round(done/tasks.length*100):0;
+  var blocked=open.filter(function(t){return crmHealth(t).cl==='dr';});
+  var due7=open.filter(function(t){var d=t.fecha_vencimiento?dayDiff(t.fecha_vencimiento):999;return d>=0&&d<=7;});
+  var noAction=open.filter(function(t){return !nextAction(t);});
+  var noOwner=open.filter(function(t){return !t.owner_id;});
+  var recent=projectActivityItems(pid).slice(0,5);
+  var next=open.sort(function(a,b){return dayDiff((followDate(a)||a.fecha_vencimiento||pd(999)))-dayDiff((followDate(b)||b.fecha_vencimiento||pd(999)));}).slice(0,5);
+  var status = blocked.length ? 'Atención requerida' : (due7.length||noAction.length||noOwner.length ? 'Vigilancia' : 'En control');
+  var statusCl = blocked.length?'br_':(due7.length||noAction.length||noOwner.length?'by_':'bg_');
+  function kpi(label,val,cls){ return '<div class="rp-kpi'+(cls?(' '+cls):'')+'"><div class="rp-kl">'+esc(label)+'</div><div class="rp-kv">'+val+'</div></div>'; }
+  var kpis = kpi('Avance',progress+'%')+kpi('Riesgos críticos',blocked.length,blocked.length?'r':'')+kpi('Vencen ≤7 días',due7.length,due7.length?'y':'')+kpi('Sin siguiente acción',noAction.length,noAction.length?'y':'')+kpi('Sin responsable',noOwner.length,noOwner.length?'y':'');
+  var riesgosHtml = blocked.length ? blocked.slice(0,5).map(function(t){
+    return '<div class="rp-row"><div class="rp-row-main"><strong>'+esc(t.titulo)+'</strong><span class="badge br_">'+esc(crmHealth(t).txt)+'</span></div><div class="rp-row-sub">Responsable: '+esc(uNm(t.owner_id))+' · Fecha: '+fmt(followDate(t)||t.fecha_vencimiento)+'</div></div>';
+  }).join('') : '<div class="rp-empty">Sin riesgos críticos detectados.</div>';
+  var nextHtml = next.length ? next.map(function(t){
+    var h=crmHealth(t); var cl=h.cl==='dr'?'br_':(h.cl==='dy'?'by_':'bg_');
+    return '<div class="rp-row"><div class="rp-row-main"><strong>'+esc(t.titulo)+'</strong><span class="badge '+cl+'">'+esc(automationReason(t))+'</span></div><div class="rp-row-sub">'+esc(nextAction(t)||'Definir siguiente acción')+'</div><div class="rp-row-meta">Responsable: '+esc(uNm(t.owner_id))+' · Seguimiento: '+fmt(followDate(t)||t.fecha_vencimiento)+'</div></div>';
+  }).join('') : '<div class="rp-empty">Sin pendientes abiertos.</div>';
+  var decisions=[];
+  noOwner.slice(0,3).forEach(function(t){decisions.push('Asignar responsable para: '+esc(t.titulo));});
+  noAction.slice(0,5).forEach(function(t){decisions.push('Definir siguiente acción para: '+esc(t.titulo)+' (Responsable actual: '+esc(uNm(t.owner_id))+')');});
+  var decisionsHtml = decisions.length ? decisions.map(function(d){return '<div class="rp-row"><div class="rp-row-main">'+d+'</div></div>';}).join('') : '<div class="rp-empty">Sin decisiones urgentes registradas.</div>';
+  var recentHtml = recent.length ? recent.map(function(it){
+    return '<div class="rp-row"><div class="rp-row-main"><strong>'+esc(it.taskTitle||'Tarea')+'</strong><span class="rp-time">'+fmtdt(it.ts)+'</span></div><div class="rp-row-sub">'+esc(String(it.body||'').replace(/^SM OS ·\s*/,''))+'</div></div>';
+  }).join('') : '<div class="rp-empty">Sin actividad reciente.</div>';
+  var lead = blocked.length ? ('La prioridad inmediata es atender "'+esc(blocked[0].titulo)+'", asignada a '+esc(uNm(blocked[0].owner_id))+', por '+esc(crmHealth(blocked[0]).txt.toLowerCase())+'.') : (due7.length ? ('La prioridad de la semana es dar seguimiento a '+due7.length+' tarea(s) con vencimiento próximo.') : 'No se detectan riesgos críticos en este momento.');
+  return '<div class="rp" id="exec-report-html">'
+    +'<div class="rp-head"><div><div class="rp-title">'+esc(p.nombre)+'</div><div class="rp-sub">Reporte ejecutivo · '+fmtNow()+'</div></div><span class="badge '+statusCl+' rp-status">'+status+'</span></div>'
+    +'<p class="rp-lead">El proyecto registra '+tasks.length+' tareas, '+done+' cerradas y '+open.length+' activas. '+lead+'</p>'
+    +'<div class="rp-kpis">'+kpis+'</div>'
+    +'<div class="rp-sec"><h4>Riesgos principales</h4>'+riesgosHtml+'</div>'
+    +'<div class="rp-sec"><h4>Próximos pasos recomendados</h4>'+nextHtml+'</div>'
+    +'<div class="rp-sec"><h4>Decisiones requeridas</h4>'+decisionsHtml+'</div>'
+    +'<div class="rp-sec"><h4>Últimos movimientos</h4>'+recentHtml+'</div>'
+    +'</div>';
+}
+
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
   var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas',mainLabel,'list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
@@ -1505,11 +1557,21 @@ function projectWorkspace(p){
   var floridaCount=isProkicksProject(p)?pkFloridaRows().length:0;
   var mainButton = isProkicksProject(p) ? '<div class="prokicks-work-actions"><button class="btn florida-direct" onclick="nav(\'florida\')">'+iconHtml('map-pinned')+' Florida · Darío <span>'+floridaCount+'</span></button><button class="btn btnc" onclick="PKTAB=\'dashboard\';nav(\'prokicks\')">'+iconHtml('boxes')+' Operación</button></div>' : '<button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ '+(objectivesWorkspace?'Objetivo':'Registro')+'</button>';
   var pkUtilityBar = isProkicksProject(p) ? '<div class="prokicks-utility-bar"><button class="btn btng" onclick="A.pkManageFronts(\''+p.id+'\')">'+iconHtml('layers-3')+' Frentes</button><button class="btn btng" onclick="A.nt(\''+p.id+'\')">'+iconHtml('plus')+' Tarea</button></div>' : '';
-  var compactOfunamHead = '<div class="compact-board-summary"><div><h2>'+mainTitle+'</h2><div class="compact-board-metrics"><span class="metric">Registros <strong>'+s.tasks.length+'</strong></span><span class="metric">Sin acción <strong>'+s.noNext+'</strong></span><span class="metric">Riesgos <strong>'+(s.overdue+s.noNext)+'</strong></span><span class="metric">Resp. <strong>'+esc(uNm(p.owner_id))+'</strong></span></div></div>'+mainButton+'</div>';
+  var isBoardTab = (tab==='tareas');
+  var riskCount = s.overdue+s.noNext;
+  var titlebarMetrics = (isOfunamProject(p) && isBoardTab) ? (
+    '<div class="hdr-metrics">'
+    +'<div class="hdr-metric hdr-metric--info"><span class="hdr-metric-ico">'+iconHtml('list-checks')+'</span><span class="hdr-metric-val">'+s.tasks.length+'</span><span class="hdr-metric-lbl">Registros</span></div>'
+    +'<div class="hdr-metric hdr-metric--warn"><span class="hdr-metric-ico">'+iconHtml('circle-slash-2')+'</span><span class="hdr-metric-val">'+s.noNext+'</span><span class="hdr-metric-lbl">Sin acción</span></div>'
+    +'<div class="hdr-metric hdr-metric--risk'+(riskCount>0?' is-live':'')+'"><span class="hdr-metric-ico">'+iconHtml('flame')+(riskCount>0?'<i class="hdr-pulse"></i>':'')+'</span><span class="hdr-metric-val">'+riskCount+'</span><span class="hdr-metric-lbl">Riesgos</span></div>'
+    +'<div class="hdr-metric hdr-metric--owner"><span class="hdr-metric-ico">'+iconHtml('user-round')+'</span><span class="hdr-metric-val" style="font-size:13px">'+esc(uNm(p.owner_id))+'</span></div>'
+    +'</div>'
+  ) : '';
+  var titlebarActions = (titlebarMetrics || (isOfunamProject(p) && isBoardTab)) ? '<div class="project-titlebar-actions">'+titlebarMetrics+(isBoardTab?mainButton:'')+'</div>' : '';
   var regularHead = '<div class="sg project-kpis"><div class="sc"><div class="sl">'+(objectivesWorkspace?'Objetivos':'Registros')+'</div><div class="sn">'+s.tasks.length+'</div></div><div class="sc y"><div class="sl">Sin acción</div><div class="sn">'+s.noNext+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(s.overdue+s.noNext)+'</div></div><div class="sc"><div class="sl">Responsable</div><div class="sn compact-name">'+esc(headResponsable)+'</div></div></div>'
     +'<div class="sh board-title"><h2>'+mainTitle+'</h2>'+mainButton+'</div>';
   var prokicksHead='<div class="prokicks-work-head"><div><h2>'+mainTitle+'</h2><small>'+s.tasks.length+' tareas · '+(s.overdue+s.noNext)+' requieren atención</small></div>'+mainButton+'</div>';
-  var board = (isProkicksProject(p) ? prokicksHead : (isOfunamProject(p) ? compactOfunamHead : regularHead)) + pkUtilityBar + operationalBoard(p);
+  var board = (isProkicksProject(p) ? prokicksHead : (isOfunamProject(p) ? '' : regularHead)) + pkUtilityBar + operationalBoard(p);
   var body = tab==='mando'?projectCommandCenterHtml(p)
     : tab==='objetivos'?projectObjectivesHtml(p)
     : tab==='ejecucion'?projectExecutionBoardHtml(p)
@@ -1521,7 +1583,7 @@ function projectWorkspace(p){
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
-  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'</div>'
+  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+titlebarActions+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div>'+(projectDescriptionNeedsToggle(p)?'<button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button>':'')+'</div></div>'
     +workspaceModeSwitchHtml(p)
     +projectTabs(p)
@@ -2286,7 +2348,8 @@ var A = {
   execReport: function(pid){
     var p=xid(DB.proyectos,pid); if(!p) return;
     var txt=executiveReportText(pid);
-    mOpen('Reporte ejecutivo · '+p.nombre, '<div class="report-box"><textarea id="exec-report-text" readonly>'+esc(txt)+'</textarea></div><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'exec-report-text\').value);toast(\'Reporte copiado ✓\',\'g\')">Copiar reporte</button><button class="btn btns btng" onclick="reportToPdf(\'Reporte ejecutivo · '+esc(p.nombre).replace(/'/g,"\\'")+'\',document.getElementById(\'exec-report-text\').value)">⬇ Descargar PDF</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>', true);
+    var html=executiveReportHtml(pid);
+    mOpen('Reporte ejecutivo · '+p.nombre, html+'<textarea id="exec-report-text" style="position:absolute;left:-9999px;top:-9999px" readonly>'+esc(txt)+'</textarea><div class="fa"><button class="btn btng" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'exec-report-text\').value);toast(\'Reporte copiado ✓\',\'g\')">Copiar texto</button><button class="btn btns btng" onclick="reportToPdf(\'Reporte ejecutivo · '+esc(p.nombre).replace(/'/g,"\\'")+'\',document.getElementById(\'exec-report-html\').outerHTML)">⬇ Descargar PDF</button><button class="btn btnc" onclick="mClose()">Cerrar</button></div>', true);
   },
 
   commandFilterRows: function(pid,type){
