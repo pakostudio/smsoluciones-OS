@@ -1196,6 +1196,22 @@ tr:hover td{background:var(--surface2)}
 .kanban-col{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-width:180px}
 .strategic-hero h2{color:#fff}
 
+/* ── SELECCIÓN DE PROYECTOS (landing admin) ── */
+.proj-select-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:14px}
+.proj-select-card{text-align:left;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--project-color,var(--navy));border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;display:flex;flex-direction:column;gap:10px;font:inherit;color:inherit}
+.proj-select-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(11,37,71,.12)}
+.psc-top{display:flex;align-items:center;justify-content:space-between}
+.psc-top .project-mark{width:34px;height:34px;border-radius:10px;background:var(--project-color,var(--navy));color:#fff;display:flex;align-items:center;justify-content:center}
+.psc-name{font-size:16px;font-weight:900;color:var(--ink)}
+.psc-client{font-size:12px;color:var(--muted);margin-top:-6px}
+.psc-foot{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-top:auto}
+.proj-select-add{align-items:center;justify-content:center;color:var(--cyan);border-style:dashed;border-color:var(--line2);border-top-style:dashed;border-top-width:1px;font-weight:800;gap:8px;flex-direction:row;box-shadow:none}
+.proj-select-add:hover{background:var(--cyan-soft);border-color:var(--cyan)}
+
+/* ── USUARIO RESTRINGIDO: sin sidebar general, un solo proyecto ── */
+body.restricted-user #nav-general{display:none}
+body.restricted-user .project-search{display:none}
+
 /* SM OS 2.10.0 — ficha estratégica clara y progresiva (solo MONTESCANO) */
 .strategic-section{padding:0;overflow:hidden}
 .strategic-section-head{min-height:50px;margin:0;padding:12px 14px;cursor:pointer;list-style:none;user-select:none}
@@ -1231,3 +1247,69 @@ tr:hover td{background:var(--surface2)}
   .strategic-initiative-head small,.strategic-stage small{overflow-wrap:anywhere}
 }
 @media(prefers-reduced-motion:reduce){.strategic-sheet *{scroll-behavior:auto!important;transition:none!important}}
+
+/* ══ VISTA DE PROYECCIÓN (tracker horizontal imprimible, plantilla reutilizable) ══ */
+.pv-overlay{
+  --pv-bg:#0B2547; --pv-panel:#0F2E58; --pv-panel-2:#123467; --pv-line:rgba(255,255,255,0.10);
+  --pv-text:#F3F6FB; --pv-muted:#9FB2CE; --pv-accent:#E8B84B;
+  --pv-green:#3FBF7F; --pv-green-bg:rgba(63,191,127,0.14);
+  --pv-yellow:#E8B84B; --pv-yellow-bg:rgba(232,184,75,0.14);
+  --pv-red:#E5636B; --pv-red-bg:rgba(229,99,107,0.14);
+  --pv-gray:#8CA0BD; --pv-gray-bg:rgba(140,160,189,0.14);
+  display:none;position:fixed;inset:0;z-index:9000;overflow:auto;
+  background:var(--pv-bg);color:var(--pv-text);
+  font-family:'Inter Tight','Inter',system-ui,-apple-system,sans-serif;
+}
+.pv-overlay.open{display:block}
+body.pv-active{overflow:hidden}
+.pv-wrap{max-width:1400px;margin:0 auto;padding:18px 20px 30px}
+.pv-toolbar{display:flex;justify-content:space-between;gap:8px;margin-bottom:14px}
+.pv-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:14px;border-bottom:2px solid var(--pv-accent);margin-bottom:16px}
+.pv-hd-l{display:flex;align-items:center;gap:12px}
+.pv-logo{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,var(--pv-accent),#c9932c);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;color:#0B2547;font-size:15px;flex:none}
+.pv-title{font-family:'Fraunces',serif;font-weight:600;font-size:21px;letter-spacing:-0.01em}
+.pv-sub{color:var(--pv-muted);font-size:12.5px;margin-top:2px}
+.pv-hd-r{text-align:right}
+.pv-date{font-size:12px;color:var(--pv-muted);text-transform:uppercase;letter-spacing:.06em}
+.pv-date b{color:var(--pv-text);font-weight:600}
+.pv-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.pv-priority{background:var(--pv-panel);border:1px solid var(--pv-line);border-left:4px solid var(--pv-accent);border-radius:12px;padding:14px 16px 6px;margin-bottom:22px}
+.pv-priority h2{font-family:'Fraunces',serif;font-size:14px;font-weight:600;margin:0 0 10px;color:var(--pv-accent);text-transform:uppercase;letter-spacing:.04em}
+.pv-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+.pv-wrap th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--pv-muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--pv-line)}
+.pv-wrap td{padding:9px 10px;border-bottom:1px solid var(--pv-line);vertical-align:top}
+.pv-wrap tr:last-child td{border-bottom:none}
+.pv-org{font-weight:600}
+.pv-contact{color:var(--pv-muted);font-size:12px;margin-top:1px}
+.pv-next{color:var(--pv-text)}
+.pv-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;display:inline-block}
+.pv-badge.b-green{background:var(--pv-green-bg);color:var(--pv-green)}
+.pv-badge.b-yellow{background:var(--pv-yellow-bg);color:var(--pv-yellow)}
+.pv-badge.b-red{background:var(--pv-red-bg);color:var(--pv-red)}
+.pv-badge.b-gray{background:var(--pv-gray-bg);color:var(--pv-gray)}
+.pv-group{margin-bottom:20px}
+.pv-group h3{font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--pv-line);display:flex;align-items:center;gap:8px}
+.pv-count{font-family:'Inter',sans-serif;font-size:11px;color:var(--pv-muted);font-weight:600;background:var(--pv-panel-2);padding:2px 8px;border-radius:999px}
+.pv-panel{background:var(--pv-panel);border:1px solid var(--pv-line);border-radius:12px;overflow:hidden}
+.pv-tblwrap{overflow-x:auto}
+.pv-ft{margin-top:22px;padding-top:12px;border-top:1px solid var(--pv-line);color:var(--pv-muted);font-size:11px;text-align:center}
+@media(max-width:640px){
+  .pv-title{font-size:17px}
+  .pv-wrap th,.pv-wrap td{padding:7px 6px;font-size:12px}
+  .pv-contact{display:none}
+}
+
+@media print{
+  body *{visibility:hidden}
+  .pv-overlay.open, .pv-overlay.open *{visibility:visible}
+  .pv-overlay.open{
+    position:absolute;inset:0;display:block;overflow:visible;
+    --pv-bg:#fff; --pv-panel:#fff; --pv-panel-2:#F0F3F9; --pv-line:rgba(11,37,71,0.15);
+    --pv-text:#0B2547; --pv-muted:#5A6E8C;
+    background:#fff!important;color:#0B2547!important;
+  }
+  .pv-overlay .no-print{display:none!important}
+  .pv-wrap{max-width:none;padding:0}
+  .pv-priority,.pv-panel{border:1px solid var(--pv-line)!important}
+  @page{size:landscape;margin:12mm}
+}

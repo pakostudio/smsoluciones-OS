@@ -102,8 +102,10 @@ var FLTAB = 'tareas';
 var PK_INIT_BUSY = false;
 var PK_NEW_FRONT = '';
 var SESSION_KEY = 'sm_os_session_v1';
-var VALID_VIEWS = ['dashboard','alertas','ayuda','proyectos','tareas','kanban','gantt','calendario','pipeline','prokicks','florida','prokicksHistorial','floridaHistorial','clientes','usuarios','reportes'];
+var VALID_VIEWS = ['dashboard','alertas','ayuda','proyectos','tareas','kanban','gantt','calendario','pipeline','prokicks','florida','prokicksHistorial','floridaHistorial','clientes','usuarios','reportes','seleccion'];
 var VALID_PTABS = ['mando','objetivos','ejecucion','tareas','reporte','historial','kanban','calendario','gantt','pipeline'];
+// SM OS: etiquetas de las secciones internas de un proyecto, usadas por el control de accesos por usuario.
+var PTAB_LABELS = [['mando','Centro de Control'],['objetivos','Objetivos'],['ejecucion','Ejecución'],['tareas','Tablero operativo'],['reporte','Reporte'],['historial','Historial'],['kanban','Kanban'],['calendario','Calendario'],['gantt','Gantt'],['pipeline','Pipeline']];
 var VALID_FLTABS = ['mando','objetivos','ejecucion','tareas','reporte','kanban','calendario','gantt','pipeline'];
 function sanitizeSessionState(state){
   var view = state&&state.view; if(VALID_VIEWS.indexOf(view)<0) view='dashboard';
@@ -168,6 +170,22 @@ function pNm(id){ var p=xid(DB.proyectos,id); return p?p.nombre:'?'; }
 function ini(s){ var parts=(s||'?').split(' ').filter(function(w){return w.length>0;}); return (parts.length>=2?parts[0][0]+parts[1][0]:parts[0].slice(0,2)).toUpperCase(); }
 function me(){ return SES ? xid(DB.usuarios,SES.userId) : null; }
 function adm(){ var u=me(); return u && u.rol==='admin'; }
+// SM OS: acceso restringido — usuario no-admin con proyecto principal asignado.
+// Ese usuario aterriza directo en su proyecto y no navega a otras vistas ni proyectos.
+function userAllowedSections(u){
+  if(!u || !u.secciones_permitidas) return null; // null = ve todas las secciones del proyecto
+  try{ var a = JSON.parse(u.secciones_permitidas); return (Array.isArray(a) && a.length) ? a : null; }catch(e){ return null; }
+}
+function sectionAllowed(tab){
+  var u = me();
+  if(!u || u.rol==='admin') return true;
+  var allowed = userAllowedSections(u);
+  return !allowed || allowed.indexOf(tab)>=0;
+}
+function isRestrictedUser(){
+  var u = me();
+  return !!(u && u.rol!=='admin' && u.proyecto_principal_id);
+}
 function canEditTask(t){
   // Hotfix 2.0.2: operación ejecutiva.
   // Cualquier usuario autenticado que ya ve una tarea/proyecto puede gestionar sus tareas.
@@ -789,6 +807,7 @@ function myTasks(){
 }
 function activeClientProjectId(){
   if(!CLIENT_PROJECT_FOCUS) return '';
+  if(adm()) return ''; // Admin nunca queda forzado a un solo proyecto.
   // Modo cliente reforzado: si hay proyecto activo, solo se muestra ese proyecto,
   // sin importar la vista o pestaña donde esté parado el usuario.
   if(FPID) return FPID;
@@ -826,7 +845,7 @@ function updateProjectNavActive(){
 /* ── RENDER ENGINE ── */
 function render(){
   var vc = document.getElementById('vc');
-  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,florida:vFlorida,prokicksHistorial:vPKHistorial,floridaHistorial:vFloridaHistorial,clientes:vCL,usuarios:vUS,reportes:vRE};
+  var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,florida:vFlorida,prokicksHistorial:vPKHistorial,floridaHistorial:vFloridaHistorial,clientes:vCL,usuarios:vUS,reportes:vRE,seleccion:vSeleccion};
   vc.innerHTML = (map[VIEW]||vDB)();
   // Privacidad cliente 2.2.3: reconstruir el sidebar después de cualquier cambio de proyecto activo.
   // Antes solo se marcaba el activo; por eso podían quedar visibles proyectos cargados previamente.
@@ -838,8 +857,8 @@ function render(){
   setTimeout(maybeNotifyBrowser,50);
 }
 function updTopbar(){
-  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',florida:'Florida · Darío',prokicksHistorial:'Historial Operación',floridaHistorial:'Historial Florida',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes'};
-  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',florida:'Expansión Florida',prokicksHistorial:'Bitácora de inventario',floridaHistorial:'Bitácora de Florida',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto'};
+  var nm = {dashboard:'Mis proyectos',alertas:'Alertas',ayuda:'Ayuda / Manual',proyectos:'Proyectos',tareas:'Mis Tareas',kanban:'Kanban',gantt:'Gantt',calendario:'Calendario',pipeline:'Pipeline',prokicks:'ProKicks',florida:'Florida · Darío',prokicksHistorial:'Historial Operación',floridaHistorial:'Historial Florida',clientes:'Clientes',usuarios:'Usuarios',reportes:'Reportes',seleccion:'Selección de proyectos'};
+  var ar = {dashboard:'Centro de Trabajo',alertas:'Notificaciones',ayuda:'Centro de Soporte',proyectos:'Gestión de Proyectos',tareas:'Seguimiento',kanban:'Tablero Visual',gantt:'Cronograma',calendario:'Agenda',pipeline:'CRM Comercial',prokicks:'Operación Comercial',florida:'Expansión Florida',prokicksHistorial:'Bitácora de inventario',floridaHistorial:'Bitácora de Florida',clientes:'Administración',usuarios:'Administración',reportes:'Por Proyecto',seleccion:'Panel del administrador'};
   document.getElementById('tb-ey').textContent = ar[VIEW]||'SM OS';
   document.getElementById('tb-ti').textContent = nm[VIEW]||'—';
   updClock();
@@ -874,7 +893,10 @@ function storedSession(){
 }
 function nav(v){
   if(VALID_VIEWS.indexOf(v)<0) return;
+  // Usuario restringido: no puede salir de la vista de su proyecto asignado.
+  if(isRestrictedUser() && v!=='proyectos') v='proyectos';
   if(['proyectos','tareas','kanban','gantt','calendario','pipeline','reportes'].indexOf(v)<0) FPID='';
+  if(isRestrictedUser()) FPID = me().proyecto_principal_id;
   VIEW = v;
   document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===v); });
   render();
@@ -1476,9 +1498,53 @@ function executiveReportHtml(pid){
     +'</div>';
 }
 
+/* VISTA DE PROYECCIÓN — plantilla reutilizable, tracker horizontal imprimible para cualquier proyecto */
+var PV_PID = '';
+function pvBadge(t){
+  if(t.estado==='terminada') return {cl:'b-gray',txt:'Cerrada'};
+  var h = crmHealth(t);
+  if(h.cl==='dr') return {cl:'b-red',txt:h.txt};
+  if(h.cl==='dy') return {cl:'b-yellow',txt:h.txt};
+  return {cl:'b-green',txt:h.txt};
+}
+function pvGroupLabel(estado){
+  var m={pendiente:'Pendiente',en_proceso:'En proceso',en_revision:'En revisión',aprobada:'Aprobada',terminada:'Terminada / histórico'};
+  return m[estado]||estado||'Sin estado';
+}
+function renderProjectionView(pid){
+  var p = xid(DB.proyectos,pid);
+  if(!p) return '<div class="pv-wrap"><p>Proyecto no encontrado.</p></div>';
+  var tasks = projectTasks(pid).slice().sort(function(a,b){return String(a.titulo||'').localeCompare(String(b.titulo||''),'es');});
+  var priority = tasks.filter(function(t){return t.estado!=='terminada' && crmHealth(t).cl==='dr';});
+  var order=['pendiente','en_proceso','en_revision','aprobada','terminada'];
+  var groups={}; tasks.forEach(function(t){ var k=t.estado||'pendiente'; (groups[k]=groups[k]||[]).push(t); });
+  var priorityRows = priority.length ? priority.map(function(t){
+    return '<tr><td class="pv-org">'+esc(t.titulo)+'</td><td class="pv-contact">'+esc(uNm(t.owner_id))+'</td><td class="pv-next">'+esc(nextAction(t)||'Definir siguiente paso')+'</td></tr>';
+  }).join('') : '<tr><td colspan="3" style="color:var(--pv-muted)">Sin seguimientos prioritarios en riesgo.</td></tr>';
+  var groupsHtml = order.filter(function(k){return groups[k]&&groups[k].length;}).map(function(k){
+    var items=groups[k];
+    var rows=items.map(function(t){
+      var b=pvBadge(t);
+      return '<tr><td class="pv-org">'+esc(t.titulo)+'<div class="pv-contact">'+esc(uNm(t.owner_id))+'</div></td><td>'+esc(nextAction(t)||'—')+'</td><td><span class="pv-badge '+b.cl+'">'+esc(b.txt)+'</span></td></tr>';
+    }).join('');
+    return '<section class="pv-group"><h3>'+esc(pvGroupLabel(k))+' <span class="pv-count">'+items.length+'</span></h3><div class="pv-panel"><div class="pv-tblwrap"><table><tr><th>Registro</th><th>Siguiente paso</th><th>Estatus</th></tr>'+rows+'</table></div></div></section>';
+  }).join('') || '<section class="pv-group"><div class="pv-panel" style="padding:16px;color:var(--pv-muted)">Este proyecto no tiene registros todavía.</div></section>';
+  var hoy = new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  return '<div class="pv-wrap">'
+    +'<div class="pv-toolbar no-print"><button class="btn btng" onclick="A.closeProjection()">'+iconHtml('arrow-left')+' Volver al proyecto</button><button class="btn btnc" onclick="window.print()">'+iconHtml('printer')+' Imprimir</button></div>'
+    +'<header class="pv-hd"><div class="pv-hd-l"><div class="pv-logo">SM</div><div><div class="pv-title">'+esc(p.nombre)+' · Vista de proyección</div><div class="pv-sub">'+esc(projectDescription(p)||'Seguimiento operativo')+'</div></div></div>'
+    +'<div class="pv-hd-r"><div class="pv-date">Corte al <b>'+esc(hoy)+'</b></div><div class="pv-date">Preparado por SM Soluciones</div></div></header>'
+    +'<div class="pv-legend"><span class="pv-badge b-green">Verde · En control / activo</span><span class="pv-badge b-yellow">Amarillo · Requiere seguimiento</span><span class="pv-badge b-red">Rojo · Riesgo / sin acción</span><span class="pv-badge b-gray">Gris · Cerrado / histórico</span></div>'
+    +'<div class="pv-priority"><h2>Seguimiento activo prioritario</h2><div class="pv-tblwrap"><table><tr><th>Registro</th><th>Responsable</th><th>Siguiente paso</th></tr>'+priorityRows+'</table></div></div>'
+    +groupsHtml
+    +'<footer class="pv-ft">SM OS · Vista de proyección generada para presentación · '+esc(hoy)+'</footer>'
+    +'</div>';
+}
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
   var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas',mainLabel,'list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
+  // Un usuario con secciones restringidas solo ve sus tabs habilitados dentro del proyecto.
+  tabs = tabs.filter(function(t){return sectionAllowed(t[0]);});
   return '<nav class="project-tabs" aria-label="Módulos del proyecto">'+tabs.map(function(t,i){return (i===4?'<span class="project-tab-divider" aria-hidden="true"></span>':'')+'<button class="project-tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')" title="'+esc(t[1])+'">'+iconHtml(t[2])+'<span>'+esc(t[1])+'</span></button>';}).join('')+'</nav>';
 }
 function projectKanbanHtml(p){
@@ -1544,6 +1610,11 @@ function workspaceModeSwitchHtml(p){
 function projectWorkspace(p){
   var s=projectStats(p);
   var tab = PTAB || 'tareas';
+  if(!sectionAllowed(tab)){
+    var allowedTabs = userAllowedSections(me());
+    tab = (allowedTabs && allowedTabs[0]) || 'tareas';
+    PTAB = tab;
+  }
   var objectivesWorkspace = isObjectivesBoard(p);
   var headResponsable = uNm(p.owner_id);
   if(objectivesWorkspace && BOARD_FILTERS.responsable){
@@ -1583,7 +1654,7 @@ function projectWorkspace(p){
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
-  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+titlebarActions+'</div>'
+  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'<button class="btn btng" onclick="A.openProjection(\''+p.id+'\')" title="Vista de proyección para presentar en pantalla completa">'+iconHtml('presentation')+' Vista de proyección</button>'+titlebarActions+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div>'+(projectDescriptionNeedsToggle(p)?'<button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button>':'')+'</div></div>'
     +workspaceModeSwitchHtml(p)
     +projectTabs(p)
@@ -1658,6 +1729,25 @@ function vPR(){
   var projs = myProjs().slice().sort(function(a,b){return (a.estado==='cerrado')-(b.estado==='cerrado')||String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
   var html = projs.map(function(p){ return projectCard(p,false); }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos asignados</p></div></div>';
   return '<div class="sh"><div><h2>Administrar proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Entra, edita o da de baja proyectos desde una sola pantalla.</div></div>'+(adm()?'<button class="btn btnc" onclick="A.np()">'+iconHtml('plus')+' Nuevo proyecto</button>':'')+'</div>'+html;
+}
+
+/* SELECCIÓN DE PROYECTOS — landing exclusiva del administrador tras el login */
+function vSeleccion(){
+  if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
+  var projs = DB.proyectos.slice().sort(function(a,b){return (a.estado==='cerrado')-(b.estado==='cerrado')||String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
+  var cards = projs.map(function(p){
+    var v=projectVisual(p), s=projectStats(p);
+    var dot = s.overdue>0?'dr':s.noNext>0?'dy':'dg';
+    return '<button type="button" class="proj-select-card" style="--project-color:'+esc(v.color)+'" onclick="A.openProject(\''+p.id+'\')">'
+      +'<div class="psc-top"><span class="project-mark">'+iconHtml(v.icon)+'</span>'+bSt(p.estado)+'</div>'
+      +'<div class="psc-name">'+esc(p.nombre)+'</div>'
+      +'<div class="psc-client">'+esc(cNm(p.cliente_id))+'</div>'
+      +'<div class="psc-foot"><span class="dot '+dot+'"></span><span>'+s.progress+'% avance · '+s.tasks.length+' tareas</span></div>'
+      +'</button>';
+  }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos todavía</p></div></div>';
+  var addCard = '<button type="button" class="proj-select-card proj-select-add" onclick="A.np()">'+iconHtml('plus')+'<span>Nuevo proyecto</span></button>';
+  return '<div class="sh"><div><h2>Selección de proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Elige el proyecto que quieres abrir, o administra a qué proyecto y secciones tiene acceso cada usuario.</div></div><button class="btn btng" onclick="nav(\'usuarios\')">'+iconHtml('shield-check')+' Administrar usuarios y permisos</button></div>'
+    +'<div class="proj-select-grid">'+cards+addCard+'</div>';
 }
 
 /* TAREAS */
@@ -2207,6 +2297,19 @@ function projectAccessField(p){
   }).join('');
   return '<div class="fld"><label>¿Quién puede ver este proyecto?</label><div class="access-check-list">'+(boxes||'<p style="color:var(--muted);font-size:12px">No hay usuarios activos para asignar.</p>')+'</div><p style="color:var(--muted);font-size:11px;margin-top:4px">Además de quien ya tenga tareas asignadas aquí. Los administradores siempre ven todos los proyectos.</p></div>';
 }
+function userPrimaryAccessField(u){
+  var projects = DB.proyectos.filter(function(p){ return p.estado!=='cerrado'; });
+  var currentPid = u && u.proyecto_principal_id || '';
+  var opts = '<option value="">Sin asignar (usa el acceso por tareas/proyectos de abajo)</option>'+projects.map(function(p){
+    return '<option value="'+esc(p.id)+'"'+(p.id===currentPid?' selected':'')+'>'+esc(p.nombre)+'</option>';
+  }).join('');
+  var currentSecciones = u ? (userAllowedSections(u)||[]) : [];
+  var boxes = PTAB_LABELS.map(function(t){
+    return '<label class="access-check"><input type="checkbox" data-access-seccion value="'+t[0]+'" '+(currentSecciones.indexOf(t[0])>=0?'checked':'')+'> '+esc(t[1])+'</label>';
+  }).join('');
+  return '<div class="fld"><label>Proyecto asignado (landing automático — solo rol Usuario)</label><select id="f_pp">'+opts+'</select></div>'
+    +'<div class="fld"><label>Secciones visibles en ese proyecto</label><div class="access-check-list">'+boxes+'</div><p style="color:var(--muted);font-size:11px;margin-top:4px">Si no marcas ninguna, el usuario ve todas las secciones del proyecto. Solo aplica cuando el rol es Usuario y hay un proyecto asignado.</p></div>';
+}
 function userProjectAccessField(u){
   var projects = DB.proyectos.filter(function(p){ return p.estado!=='cerrado'; });
   var current = u ? DB.proyecto_usuarios.filter(function(pu){ return pu.usuario_id===u.id; }).map(function(pu){ return pu.proyecto_id; }) : [];
@@ -2508,12 +2611,35 @@ var A = {
     var empty=document.getElementById('help-empty'); if(empty) empty.style.display=any?'none':'block';
   },
   openProject: function(id,tab){
+    var u = me();
+    // Usuario restringido: solo puede abrir su proyecto asignado, y solo en secciones permitidas.
+    if(u && u.rol!=='admin' && u.proyecto_principal_id) id = u.proyecto_principal_id;
     var was = FPID;
     FPID = id;
-    PTAB = tab || 'tareas';
+    var reqTab = tab || 'tareas';
+    if(!sectionAllowed(reqTab)){
+      var allowed = userAllowedSections(u);
+      reqTab = (allowed && allowed[0]) || 'tareas';
+    }
+    PTAB = reqTab;
     if(was!==id || PTAB!=='calendario') CAL_OFF = 0;
     nav('proyectos');
     trackEvent('project_opened',{project_id:id,tab:PTAB});
+  },
+  openProjection: function(id){
+    PV_PID = id;
+    var el = document.getElementById('pv');
+    el.innerHTML = renderProjectionView(id);
+    el.classList.add('open');
+    document.body.classList.add('pv-active');
+    hydrateIcons();
+    trackEvent('projection_opened',{project_id:id});
+  },
+  closeProjection: function(){
+    var el = document.getElementById('pv');
+    el.classList.remove('open');
+    document.body.classList.remove('pv-active');
+    PV_PID = '';
   },
   setControlFilter: function(key,value){
     if(Object.prototype.hasOwnProperty.call(CONTROL_FILTERS,key)) CONTROL_FILTERS[key]=value||'';
@@ -3367,6 +3493,7 @@ var A = {
       +'<div class="user-role-help"><strong>Administrador</strong> puede ver y modificar todos los proyectos. <strong>Usuario</strong> solo accede a proyectos o tareas asignadas.</div>'
       +'<div class="fr2">'+FLD('em','Correo para alertas','email',pref.email)+FLD('dh','Hora del resumen diario','number',pref.digest_hour)+'</div>'
       +'<div class="fr2">'+FSL('ne','Alertas por correo',[['true','Activadas'],['false','Desactivadas']],String(pref.email_enabled))+FSL('nd','Resumen diario',[['true','Activado'],['false','Desactivado']],String(pref.daily_digest))+'</div>'
+      +(adm()?userPrimaryAccessField(u):'')
       +(adm()?userProjectAccessField(u):'')
       +'<div class="fa"><button class="btn btng" onclick="mClose()">Cancelar</button><button class="btn btnc" onclick="A._su(\''+( id||'')+'\')">Guardar</button></div>'
       +'</div>');
@@ -3375,7 +3502,8 @@ var A = {
     var nm=fv('nm'),us=fv('us'),pi=fv('pi');
     if(!nm||!us||!pi){toast('Todos los campos son requeridos','r');return;}
     if(!id && DB.usuarios.some(function(u){return u.username===us;})){toast('Ese usuario ya existe','r');return;}
-    var data = {nombre:nm,username:us,pin:pi,rol:fv('ro'),activo:fv('ac')==='true'};
+    var seccionesChecked = Array.prototype.map.call(document.querySelectorAll('[data-access-seccion]:checked'),function(el){return el.value;});
+    var data = {nombre:nm,username:us,pin:pi,rol:fv('ro'),activo:fv('ac')==='true',proyecto_principal_id:fv('pp')||null,secciones_permitidas:seccionesChecked.length?JSON.stringify(seccionesChecked):null};
     var r = id ? await upd('usuarios',id,data) : await ins('usuarios',Object.assign({activo:true},data));
     if(r){
       await sb.from('notification_preferences').upsert({user_id:r.id,email:fv('em')||null,email_enabled:fv('ne')==='true',browser_enabled:true,daily_digest:fv('nd')==='true',digest_hour:Math.max(0,Math.min(23,Number(fv('dh'))||8)),timezone:'America/Mexico_City',updated_at:new Date().toISOString()},{onConflict:'user_id'});
@@ -3497,7 +3625,11 @@ async function doLogin(){
     resetOtpBoxes(true);
     return;
   }
-  activateSession(found,{view:'dashboard',fpid:'',ptab:'tareas',pktab:'dashboard'});
+  // Landing tras login: admin entra a la pantalla de selección de proyectos;
+  // usuario con proyecto asignado entra directo a ese proyecto (activateSession lo fuerza igual).
+  var landing = found.rol==='admin' ? {view:'seleccion',fpid:'',ptab:'tareas',pktab:'dashboard'}
+    : {view:'proyectos',fpid:found.proyecto_principal_id||'',ptab:'tareas',pktab:'dashboard'};
+  activateSession(found,landing);
 }
 
 function activateSession(found,state){
@@ -3513,8 +3645,17 @@ function activateSession(found,state){
     if(found.rol==='admin') document.getElementById('nav-admin').style.display = 'block';
     else document.getElementById('nav-admin').style.display = 'none';
     document.getElementById('tb-live').style.display = 'block';
-    buildProjectNav();
     var st = sanitizeSessionState(state);
+    // Usuario no-admin con proyecto asignado: aterriza siempre ahí, sin sidebar general,
+    // y solo con las secciones que se le hayan habilitado.
+    var restricted = found.rol!=='admin' && !!found.proyecto_principal_id;
+    if(restricted){
+      st.view = 'proyectos'; st.fpid = found.proyecto_principal_id;
+      var allowed = userAllowedSections(found);
+      if(allowed && allowed.indexOf(st.ptab)<0) st.ptab = allowed[0]||'tareas';
+    }
+    document.body.classList.toggle('restricted-user', restricted);
+    buildProjectNav();
     VIEW = st.view; FPID = st.fpid; PTAB = st.ptab; PKTAB = st.pktab; FLTAB = st.fltab;
     document.querySelectorAll('.nbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.v===VIEW); });
     render();
@@ -3541,6 +3682,7 @@ function doLogout(){
   clearSession();
   SES=null; SELUID='';
   document.body.classList.remove('logged');
+  document.body.classList.remove('restricted-user');
   document.getElementById('nav-admin').style.display = 'none';
   document.getElementById('tb-live').style.display = 'none';
   buildProjectNav();

@@ -10,12 +10,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="https://browser.sentry-cdn.com/8.47.0/bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
 <script>
 if(!window.supabase){
   document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\\/script>');
 }
 </script>
 <link rel="stylesheet" href="assets/css/styles.css?v=2.10.7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 </head>
 <body>
@@ -67,20 +70,21 @@ if(!window.supabase){
         <div class="sbt"><span class="sm2">SM OS</span><span class="os">Soluciones</span></div>
       </div>
     </div>
-    <div class="nav-sec">
+    <div class="nav-sec" id="nav-general">
       <div class="nav-lbl">General</div>
       <button class="nbtn active" data-v="dashboard"><span class="ni"><i data-lucide="layout-grid"></i></span>Mis proyectos</button>
       <button class="nbtn" data-v="tareas"><span class="ni"><i data-lucide="circle-check-big"></i></span>Mis tareas</button>
       <button class="nbtn" data-v="alertas"><span class="ni"><i data-lucide="bell"></i></span>Alertas<span id="abadge" style="margin-left:auto;background:var(--red);border-radius:999px;padding:1px 7px;font-size:11px;font-weight:800;color:#fff;display:none">0</span></button>
       <button class="nbtn" data-v="ayuda"><span class="ni"><i data-lucide="life-buoy"></i></span>Ayuda / Manual</button>
     </div>
-    <div class="nav-sec">
+    <div class="nav-sec" id="nav-projects-sec">
       <div class="nav-lbl">Proyectos</div>
       <div class="project-search"><i data-lucide="search"></i><input id="project-search-input" type="search" placeholder="Buscar proyecto" aria-label="Buscar proyecto"></div>
       <div id="project-nav"></div>
     </div>
     <div class="nav-sec" id="nav-admin" style="display:none">
       <div class="nav-lbl">Administración</div>
+      <button class="nbtn" data-v="seleccion"><span class="ni"><i data-lucide="layout-panel-left"></i></span>Selección de proyectos</button>
       <button class="nbtn" data-v="clientes"><span class="ni"><i data-lucide="building-2"></i></span>Clientes</button>
       <button class="nbtn" data-v="usuarios"><span class="ni"><i data-lucide="users"></i></span>Usuarios</button>
     </div>
@@ -118,6 +122,9 @@ if(!window.supabase){
     <div class="mbody" id="mbody"></div>
   </div>
 </div>
+<!-- VISTA DE PROYECCIÓN (tracker horizontal imprimible, reutilizable para cualquier proyecto) -->
+<div class="pv-overlay" id="pv"></div>
+
 <div class="toast" id="toast"></div>
 
 <script src="assets/js/app.js?v=2.10.7" defer></script>
