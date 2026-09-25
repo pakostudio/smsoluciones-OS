@@ -1212,6 +1212,16 @@ tr:hover td{background:var(--surface2)}
 body.restricted-user #nav-general{display:none}
 body.restricted-user .project-search{display:none}
 
+/* ── PROYECTO ABIERTO: pantalla completa, sin sidebar general ── */
+body.project-fullscreen #app{grid-template-columns:1fr}
+body.project-fullscreen .sidebar{display:none}
+body.project-fullscreen .main{width:100%}
+.project-back-exit{background:var(--ink);color:#fff;border-color:var(--ink)}
+.project-back-exit:hover{opacity:.88}
+@media(max-width:900px){
+  body.project-fullscreen .mobile-nav-toggle{display:none}
+}
+
 /* SM OS 2.10.0 — ficha estratégica clara y progresiva (solo MONTESCANO) */
 .strategic-section{padding:0;overflow:hidden}
 .strategic-section-head{min-height:50px;margin:0;padding:12px 14px;cursor:pointer;list-style:none;user-select:none}
