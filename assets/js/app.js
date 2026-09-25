@@ -1287,6 +1287,102 @@ function projectExecutionBoardHtml(p){
   }).join('');
   return '<section class="control-board"><div class="control-board-head"><div><span class="sl">Centro de Control del Proyecto</span><h2>Tablero de ejecución</h2><p>Avance, responsables, bloqueos y decisiones en una sola vista.</p></div><button class="btn btnc" onclick="A.nt(\''+p.id+'\')">+ Acción</button></div>'+summary+filters+(tasks.length?(rows||noResults):empty)+'</section>';
 }
+function reporteEstadoInfo(t){
+  var e=t.estado;
+  if(e==='terminada'||e==='completada'||e==='aprobada') return {key:'terminado',label:'Terminado'};
+  if(e==='en_proceso'||e==='en_revision') return {key:'en_proceso',label:'En proceso'};
+  if(e==='cancelada'||e==='rechazada') return {key:'rechazado',label:'Rechazado'};
+  return {key:'por_iniciar',label:'Por iniciar'};
+}
+function reportePeriodo(t){
+  var ini=t.fecha_inicio, fin=t.fecha_vencimiento;
+  var one=function(s){return dateObj(s).toLocaleDateString('es-MX',{day:'numeric',month:'short'});};
+  if(ini&&fin) return one(ini)+' → '+one(fin);
+  if(ini) return one(ini);
+  if(fin) return one(fin);
+  return '—';
+}
+function reporteSlug(s){
+  return String(s||'proyecto').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||'proyecto';
+}
+function buildReporteAvance(pid){
+  var p=xid(DB.proyectos,pid); if(!p) return null;
+  var tasks=projectTasks(pid);
+  var order=[], groups={};
+  tasks.forEach(function(t){var a=controlArea(t); if(!groups[a]){groups[a]=[];order.push(a);} groups[a].push(t);});
+  var sections=order.map(function(area){
+    var arr=groups[area];
+    var ownerIds=[]; arr.forEach(function(t){if(t.owner_id&&ownerIds.indexOf(t.owner_id)<0) ownerIds.push(t.owner_id);});
+    var ownerName = ownerIds.length===1 ? uNm(ownerIds[0]) : '';
+    var tally={terminado:0,en_proceso:0,por_iniciar:0,rechazado:0};
+    arr.forEach(function(t){tally[reporteEstadoInfo(t).key]++;});
+    var tallyParts=[];
+    if(tally.terminado) tallyParts.push(tally.terminado+' terminada'+(tally.terminado===1?'':'s'));
+    if(tally.en_proceso) tallyParts.push(tally.en_proceso+' en proceso');
+    if(tally.por_iniciar) tallyParts.push(tally.por_iniciar+' por iniciar');
+    if(tally.rechazado) tallyParts.push(tally.rechazado+' rechazada'+(tally.rechazado===1?'':'s'));
+    return {area:area,owner:ownerName,tallyText:tallyParts.join(' · '),tasks:arr};
+  });
+  return {p:p,sections:sections,folio:p.reporte_folio||0};
+}
+function renderReporteAvanceView(pid){
+  var data=buildReporteAvance(pid);
+  if(!data) return '<div class="ra-wrap"><p>Proyecto no encontrado.</p></div>';
+  var p=data.p;
+  var folioTxt='#'+String(data.folio||0).padStart(3,'0');
+  var fechaTxt=new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  var sectionsHtml=data.sections.map(function(s){
+    var rows=s.tasks.map(function(t){
+      var info=reporteEstadoInfo(t);
+      return '<tr><td class="ra-tarea">'+esc(t.titulo)+'</td><td>'+esc(reportePeriodo(t))+'</td><td><span class="ra-pill ra-'+info.key+'">'+esc(info.label)+'</span></td><td>'+esc(nextAction(t)||t.siguiente_accion||'—')+'</td><td>'+(t.fecha_proximo_seguimiento?esc(fmt(t.fecha_proximo_seguimiento)):'—')+'</td></tr>';
+    }).join('');
+    return '<section class="ra-section"><div class="ra-section-head"><strong>'+esc(s.area)+'</strong>'+(s.owner?'<span class="ra-owner">'+esc(s.owner)+'</span>':'')+'<span class="ra-tally">'+esc(s.tallyText)+'</span></div><div class="ra-tblwrap"><table><thead><tr><th>Tarea</th><th>Período</th><th>Estado</th><th>Siguiente acción</th><th>Próximo seguimiento</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;color:var(--pv-muted)">Sin tareas</td></tr>')+'</tbody></table></div></section>';
+  }).join('') || '<div class="ra-empty">Este proyecto no tiene tareas registradas todavía.</div>';
+  return '<div class="ra-wrap">'
+    +'<div class="pv-toolbar no-print"><button class="btn btng" onclick="A.closeProjection()">'+iconHtml('arrow-left')+' Volver al proyecto</button><button class="btn btnc" onclick="window.print()">'+iconHtml('printer')+' Descargar PDF</button></div>'
+    +'<header class="ra-hd"><div class="ra-hd-l"><div class="ra-logo">SM</div><div><div class="ra-eyebrow">SM SOLUCIONES · '+esc(String(p.nombre||'').toUpperCase())+'</div><div class="ra-title">Reporte de Avances del Proyecto</div></div></div>'
+    +'<div class="ra-hd-r"><div class="ra-datebox"><span class="ra-lbl">Fecha</span><b>'+esc(fechaTxt)+'</b></div><div class="ra-datebox"><span class="ra-lbl">Reporte</span><b>'+esc(folioTxt)+'</b></div></div></header>'
+    +'<div class="ra-legend"><span>ESTADO:</span><span class="ra-lg"><i class="ra-dot ra-terminado"></i>Terminado</span><span class="ra-lg"><i class="ra-dot ra-en_proceso"></i>En proceso</span><span class="ra-lg"><i class="ra-dot ra-por_iniciar"></i>Por iniciar</span><span class="ra-lg"><i class="ra-dot ra-rechazado"></i>Pendiente de autorización / Rechazado</span></div>'
+    +sectionsHtml
+    +'<footer class="ra-ft">SM Soluciones · '+esc(projectDescription(p)||p.nombre)+' · Confidencial</footer>'
+    +'</div>';
+}
+function buildReporteAvanceExcelHtml(pid){
+  var data=buildReporteAvance(pid); if(!data) return '';
+  var p=data.p;
+  var folioTxt='#'+String(data.folio||0).padStart(3,'0');
+  var fechaTxt=new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  var pillColors={terminado:'#3FBF7F',en_proceso:'#E8B84B',por_iniciar:'#3B82C4',rechazado:'#E5636B'};
+  var rowsHtml='';
+  data.sections.forEach(function(s){
+    rowsHtml+='<tr><td colspan="5" style="background:#0B2547;color:#fff;font-weight:bold;padding:6px">'+esc(s.area)+(s.owner?' — '+esc(s.owner):'')+(s.tallyText?' ('+esc(s.tallyText)+')':'')+'</td></tr>';
+    rowsHtml+='<tr style="background:#F0F3F9;font-weight:bold"><td>Tarea</td><td>Período</td><td>Estado</td><td>Siguiente acción</td><td>Próximo seguimiento</td></tr>';
+    s.tasks.forEach(function(t){
+      var info=reporteEstadoInfo(t);
+      rowsHtml+='<tr><td style="font-weight:bold">'+esc(t.titulo)+'</td><td>'+esc(reportePeriodo(t))+'</td><td style="color:'+pillColors[info.key]+';font-weight:bold">'+esc(info.label)+'</td><td>'+esc(nextAction(t)||t.siguiente_accion||'—')+'</td><td>'+(t.fecha_proximo_seguimiento?esc(fmt(t.fecha_proximo_seguimiento)):'—')+'</td></tr>';
+    });
+  });
+  return '<html><head><meta charset="utf-8"></head><body>'
+    +'<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px" border="1" cellpadding="4">'
+    +'<tr><td colspan="5" style="background:#0B2547;color:#fff;font-size:16px;font-weight:bold;padding:10px">Reporte de Avances del Proyecto — '+esc(p.nombre)+'</td></tr>'
+    +'<tr><td colspan="5">Fecha: '+esc(fechaTxt)+' · Reporte '+esc(folioTxt)+'</td></tr>'
+    +rowsHtml
+    +'<tr><td colspan="5" style="color:#5A6E8C;font-size:11px;padding-top:10px">SM Soluciones · '+esc(projectDescription(p)||p.nombre)+' · Confidencial</td></tr>'
+    +'</table></body></html>';
+}
+function downloadReporteAvanceExcel(pid){
+  var data=buildReporteAvance(pid); if(!data) return;
+  var html=buildReporteAvanceExcelHtml(pid);
+  var blob=new Blob([html],{type:'application/vnd.ms-excel'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='Reporte_Avances_'+reporteSlug(data.p.nombre)+'_#'+String(data.folio||0).padStart(3,'0')+'.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
 function projectReportHtml(pid){
   var p=xid(DB.proyectos,pid); if(!p) return '<div class="card"><div class="empty"><p>Selecciona un proyecto</p></div></div>';
   var tasks=projectTasks(pid), done=tasks.filter(function(t){return t.estado==='terminada';}).length;
@@ -1297,7 +1393,8 @@ function projectReportHtml(pid){
   var pays=DB.pagos.filter(function(pay){return pay.proyecto_id===pid;});
   var paid=pays.filter(function(pay){return pay.estado==='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
   var pending=pays.filter(function(pay){return pay.estado!=='pagado';}).reduce(function(s,pay){return s+Number(pay.monto||0);},0);
-  return '<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
+  return '<div class="ch" style="margin-bottom:12px"><div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btns btng" onclick="A.exportReportePDF(\''+p.id+'\')">'+iconHtml('file-text')+' Exportar PDF</button><button class="btn btns btng" onclick="A.exportReporteExcel(\''+p.id+'\')">'+iconHtml('file-spreadsheet')+' Exportar Excel</button></div></div>'
+    +'<div class="sg"><div class="sc"><div class="sl">Avance</div><div class="sn">'+pct+'%</div><div class="ss">'+done+'/'+tasks.length+' tareas</div></div><div class="sc y"><div class="sl">En proceso</div><div class="sn">'+inP+'</div></div><div class="sc r"><div class="sl">Riesgos</div><div class="sn">'+(over+noNext)+'</div><div class="ss">'+over+' vencidas · '+noNext+' sin acción</div></div><div class="sc g"><div class="sl">Cobrado / pendiente</div><div class="sn" style="font-size:22px">$'+paid.toLocaleString('es-MX')+'</div><div class="ss">$'+pending.toLocaleString('es-MX')+' por cobrar</div></div></div>'
     +'<div class="card"><div class="ch"><h3>'+(isProkicksProject(p)?'Frentes, tareas y seguimiento':'Grupos, registros y seguimiento')+'</h3></div>'+projectTree(p)+'</div>';
 }
 function projectHistoryHtml(p){
@@ -2741,8 +2838,40 @@ var A = {
   closeProjection: function(){
     var el = document.getElementById('pv');
     el.classList.remove('open');
+    el.classList.remove('report-mode');
     document.body.classList.remove('pv-active');
+    var pageStyle = document.getElementById('ra-page-style');
+    if(pageStyle) pageStyle.remove();
     PV_PID = '';
+  },
+  exportReportePDF: async function(id){
+    var p=xid(DB.proyectos,id); if(!p) return;
+    var next=(p.reporte_folio||0)+1;
+    var ok=await upd('proyectos',id,{reporte_folio:next});
+    if(ok) await refresh();
+    PV_PID = id;
+    var el = document.getElementById('pv');
+    el.innerHTML = renderReporteAvanceView(id);
+    el.classList.add('open');
+    el.classList.add('report-mode');
+    document.body.classList.add('pv-active');
+    // El reporte se imprime en formato carta vertical, a diferencia de la Vista de proyección (horizontal).
+    if(!document.getElementById('ra-page-style')){
+      var st=document.createElement('style');
+      st.id='ra-page-style';
+      st.innerHTML='@media print{ @page{ size:portrait; margin:14mm } }';
+      document.head.appendChild(st);
+    }
+    hydrateIcons();
+    trackEvent('reporte_avance_pdf_opened',{project_id:id});
+  },
+  exportReporteExcel: async function(id){
+    var p=xid(DB.proyectos,id); if(!p) return;
+    var next=(p.reporte_folio||0)+1;
+    var ok=await upd('proyectos',id,{reporte_folio:next});
+    if(ok) await refresh();
+    downloadReporteAvanceExcel(id);
+    trackEvent('reporte_avance_excel_downloaded',{project_id:id});
   },
   setControlFilter: function(key,value){
     if(Object.prototype.hasOwnProperty.call(CONTROL_FILTERS,key)) CONTROL_FILTERS[key]=value||'';
