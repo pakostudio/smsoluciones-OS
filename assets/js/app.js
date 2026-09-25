@@ -625,7 +625,7 @@ function getAlerts(){
 /* ── DB CRUD ── */
 async function loadUsersForLogin(){
   try{
-    var u = await sb.from('usuarios').select('*').order('nombre');
+    var u = await sb.from('usuarios').select('id,nombre,username,rol,activo,created_at,updated_at,proyecto_principal_id,secciones_permitidas').order('nombre');
     if(u.error) throw u.error;
     DB.usuarios = u.data || [];
     return DB.usuarios.length > 0;
@@ -637,7 +637,7 @@ async function loadUsersForLogin(){
 async function loadAll(){
   try {
     var [u,c,p,t,st,cm,en,pa,re] = await Promise.all([
-      sb.from('usuarios').select('*').order('nombre'),
+      sb.from('usuarios').select('id,nombre,username,rol,activo,created_at,updated_at,proyecto_principal_id,secciones_permitidas').order('nombre'),
       sb.from('clientes').select('*').order('nombre'),
       sb.from('proyectos').select('*').order('created_at',{ascending:false}),
       sb.from('tareas').select('*').order('created_at',{ascending:false}),
@@ -711,13 +711,14 @@ async function normalizeProjectGroups(){
   }
   return changed;
 }
+var SAFE_SELECT_COLS = { usuarios: 'id,nombre,username,rol,activo,created_at,updated_at,proyecto_principal_id,secciones_permitidas' };
 async function ins(tbl,data){
-  var r = await sb.from(tbl).insert(data).select().single();
+  var r = await sb.from(tbl).insert(data).select(SAFE_SELECT_COLS[tbl]||'*').single();
   if(r.error){ toast('Error: '+r.error.message,'r'); return null; }
   return r.data;
 }
 async function upd(tbl,id,data){
-  var r = await sb.from(tbl).update(data).eq('id',id).select().single();
+  var r = await sb.from(tbl).update(data).eq('id',id).select(SAFE_SELECT_COLS[tbl]||'*').single();
   if(r.error){ toast('Error al actualizar','r'); return null; }
   return r.data;
 }
