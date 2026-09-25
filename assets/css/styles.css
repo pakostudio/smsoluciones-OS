@@ -1326,3 +1326,45 @@ body.pv-active{overflow:hidden}
   .pv-priority,.pv-panel{border:1px solid var(--pv-line)!important}
   @page{size:landscape;margin:12mm}
 }
+
+/* ══ REPORTE DE AVANCES DEL PROYECTO (plantilla imprimible, reutilizable por proyecto) ══ */
+.pv-overlay.report-mode{background:#fff;color:#0B2547}
+.ra-wrap{max-width:1000px;margin:0 auto;padding:18px 20px 30px}
+.ra-hd{background:#0B2547;color:#F3F6FB;border-radius:12px;padding:20px 24px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.ra-hd-l{display:flex;align-items:center;gap:12px}
+.ra-logo{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,#E8B84B,#c9932c);display:flex;align-items:center;justify-content:center;font-weight:700;color:#0B2547;font-size:15px;flex:none}
+.ra-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9FB2CE;font-weight:700}
+.ra-title{font-size:21px;font-weight:700;letter-spacing:-0.01em;margin-top:2px}
+.ra-hd-r{display:flex;gap:18px;text-align:right}
+.ra-datebox{display:flex;flex-direction:column;gap:2px}
+.ra-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9FB2CE;font-weight:700}
+.ra-hd-r b{font-size:14px;font-weight:700}
+.ra-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#F0F3F9;border-radius:10px;padding:8px 14px;margin-bottom:18px;font-size:12px;font-weight:700;color:#5A6E8C}
+.ra-lg{display:flex;align-items:center;gap:6px;font-weight:600}
+.ra-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.ra-dot.ra-terminado{background:#3FBF7F}
+.ra-dot.ra-en_proceso{background:#E8B84B}
+.ra-dot.ra-por_iniciar{background:#3B82C4}
+.ra-dot.ra-rechazado{background:#E5636B}
+.ra-section{margin-bottom:20px}
+.ra-section-head{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:2px solid #0B2547;margin-bottom:8px}
+.ra-section-head strong{font-size:13px}
+.ra-owner{color:#5A6E8C;font-size:12px}
+.ra-tally{margin-left:auto;color:#5A6E8C;font-size:11.5px;font-weight:600;white-space:nowrap}
+.ra-tblwrap{overflow-x:auto}
+.ra-wrap table{width:100%;border-collapse:collapse;font-size:12.5px}
+.ra-wrap th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5A6E8C;font-weight:700;padding:6px 8px;border-bottom:1px solid #E2E8F0}
+.ra-wrap td{padding:8px;border-bottom:1px solid #E2E8F0;vertical-align:top}
+.ra-tarea{font-weight:700}
+.ra-pill{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;display:inline-block}
+.ra-pill.ra-terminado{background:rgba(63,191,127,0.14);color:#2f9d67}
+.ra-pill.ra-en_proceso{background:rgba(232,184,75,0.18);color:#9a7317}
+.ra-pill.ra-por_iniciar{background:rgba(59,130,196,0.14);color:#2f6fa0}
+.ra-pill.ra-rechazado{background:rgba(229,99,107,0.14);color:#c23b46}
+.ra-ft{margin-top:22px;padding-top:12px;border-top:1px solid #E2E8F0;color:#5A6E8C;font-size:11px;text-align:center}
+.ra-empty{padding:24px;text-align:center;color:#5A6E8C}
+@media(max-width:640px){
+  .ra-hd{flex-direction:column;align-items:flex-start}
+  .ra-hd-r{text-align:left}
+  .ra-wrap th,.ra-wrap td{padding:6px}
+}
