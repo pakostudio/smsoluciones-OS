@@ -1340,7 +1340,7 @@ function renderReporteAvanceView(pid){
   }).join('') || '<div class="ra-empty">Este proyecto no tiene tareas registradas todavía.</div>';
   return '<div class="ra-wrap">'
     +'<div class="pv-toolbar no-print"><button class="btn btng" onclick="A.closeProjection()">'+iconHtml('arrow-left')+' Volver al proyecto</button><button class="btn btnc" onclick="window.print()">'+iconHtml('printer')+' Descargar PDF</button></div>'
-    +'<header class="ra-hd"><div class="ra-hd-l"><div class="ra-logo">SM</div><div><div class="ra-eyebrow">SM SOLUCIONES · '+esc(String(p.nombre||'').toUpperCase())+'</div><div class="ra-title">Reporte de Avances del Proyecto</div></div></div>'
+    +'<header class="ra-hd"><div class="ra-hd-l"><div class="ra-logo"><img src="assets/sm-logo.png" alt="SM Soluciones"></div><div><div class="ra-eyebrow">SM SOLUCIONES · '+esc(String(p.nombre||'').toUpperCase())+'</div><div class="ra-title">Reporte de Avances del Proyecto</div></div></div>'
     +'<div class="ra-hd-r"><div class="ra-datebox"><span class="ra-lbl">Fecha</span><b>'+esc(fechaTxt)+'</b></div><div class="ra-datebox"><span class="ra-lbl">Reporte</span><b>'+esc(folioTxt)+'</b></div></div></header>'
     +'<div class="ra-legend"><span>ESTADO:</span><span class="ra-lg"><i class="ra-dot ra-terminado"></i>Terminado</span><span class="ra-lg"><i class="ra-dot ra-en_proceso"></i>En proceso</span><span class="ra-lg"><i class="ra-dot ra-por_iniciar"></i>Por iniciar</span><span class="ra-lg"><i class="ra-dot ra-rechazado"></i>Pendiente de autorización / Rechazado</span></div>'
     +sectionsHtml
@@ -1636,7 +1636,7 @@ function renderProjectionView(pid){
   var hoy = new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
   return '<div class="pv-wrap">'
     +'<div class="pv-toolbar no-print"><button class="btn btng" onclick="A.closeProjection()">'+iconHtml('arrow-left')+' Volver al proyecto</button><button class="btn btnc" onclick="window.print()">'+iconHtml('printer')+' Imprimir</button></div>'
-    +'<header class="pv-hd"><div class="pv-hd-l"><div class="pv-logo">SM</div><div><div class="pv-title">'+esc(p.nombre)+' · Vista de proyección</div><div class="pv-sub">'+esc(projectDescription(p)||'Seguimiento operativo')+'</div></div></div>'
+    +'<header class="pv-hd"><div class="pv-hd-l"><div class="pv-logo"><img src="assets/sm-logo.png" alt="SM Soluciones"></div><div><div class="pv-title">'+esc(p.nombre)+' · Vista de proyección</div><div class="pv-sub">'+esc(projectDescription(p)||'Seguimiento operativo')+'</div></div></div>'
     +'<div class="pv-hd-r"><div class="pv-date">Corte al <b>'+esc(hoy)+'</b></div><div class="pv-date">Preparado por SM Soluciones</div></div></header>'
     +'<div class="pv-legend"><span class="pv-badge b-green">Verde · En control / activo</span><span class="pv-badge b-yellow">Amarillo · Requiere seguimiento</span><span class="pv-badge b-red">Rojo · Riesgo / sin acción</span><span class="pv-badge b-gray">Gris · Cerrado / histórico</span></div>'
     +'<div class="pv-priority"><h2>Seguimiento activo prioritario</h2><div class="pv-tblwrap"><table><tr><th>Registro</th><th>Responsable</th><th>Siguiente paso</th></tr>'+priorityRows+'</table></div></div>'
