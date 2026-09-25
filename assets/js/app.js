@@ -126,6 +126,7 @@ var CONTROL_FILTERS = {estado:'',responsable:'',area:'',foco:''};
 var WORKSPACE_MODE = 'mine';
 var CLIENT_PROJECT_FOCUS = true; // Privacidad cliente: al estar dentro de un proyecto, la navegación lateral solo muestra ese proyecto.
 var SHOW_ARCHIVED = false; // Selección de proyectos: los proyectos "Cerrado" quedan ocultos del tablero salvo que el admin los muestre.
+var SHOW_INACTIVE_USERS = false; // Usuarios: los usuarios "Inactivo" quedan ocultos de la tabla salvo que el admin los muestre.
 
 /* ── UTILS ── */
 function dateObj(s){
@@ -2540,7 +2541,9 @@ function vCL(){
 function vUS(){
   if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
   var activeUsers=DB.usuarios.filter(function(u){return u.activo;}).length, admins=DB.usuarios.filter(function(u){return u.activo&&u.rol==='admin';}).length;
-  var rows = DB.usuarios.map(function(u){
+  var inactiveUsers=DB.usuarios.filter(function(u){return !u.activo;});
+  var visibleUsers = SHOW_INACTIVE_USERS ? DB.usuarios : DB.usuarios.filter(function(u){return u.activo;});
+  var rows = visibleUsers.map(function(u){
     var projectIds=[];
     DB.proyectos.forEach(function(p){if(p.owner_id===u.id&&projectIds.indexOf(p.id)<0)projectIds.push(p.id);});
     DB.tareas.forEach(function(t){if(t.owner_id===u.id&&projectIds.indexOf(t.proyecto_id)<0)projectIds.push(t.proyecto_id);});
@@ -2554,8 +2557,9 @@ function vUS(){
       +'<td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btns btng" onclick="A.eu(\''+u.id+'\')">'+iconHtml('user-cog')+' Editar acceso</button>'
       +(u.id!==SES.userId?'<button class="btn btns btnd" onclick="A.tu(\''+u.id+'\')">'+( u.activo?'Desactivar':'Activar')+'</button>':'')
       +'</div></td></tr>';
-  }).join('');
-  return '<div class="sh"><div><h2>Usuarios y permisos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Altas, bajas y roles desde un solo lugar.</div></div><button class="btn btnc" onclick="A.nu()">'+iconHtml('user-plus')+' Nuevo usuario</button></div>'
+  }).join('') || '<tr><td colspan="6"><div class="empty"><p>Sin usuarios activos</p></div></td></tr>';
+  var inactiveToggle = inactiveUsers.length ? '<button class="btn btng" onclick="A.toggleInactiveUsers()">'+iconHtml(SHOW_INACTIVE_USERS?'chevron-up':'archive')+' '+(SHOW_INACTIVE_USERS?'Ocultar':'Ver')+' inactivos ('+inactiveUsers.length+')</button>' : '';
+  return '<div class="sh"><div><h2>Usuarios y permisos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Altas, bajas y roles desde un solo lugar.</div></div><div style="display:flex;gap:8px">'+inactiveToggle+'<button class="btn btnc" onclick="A.nu()">'+iconHtml('user-plus')+' Nuevo usuario</button></div></div>'
     +'<div class="user-access-note">'+iconHtml('shield-check')+'<div><strong>Modelo de acceso actual</strong><span>Administrador: ve y gestiona todo. Usuario: ve proyectos o tareas que tiene asignados. Cambiar un responsable interno de ProKicks no crea acceso.</span></div></div>'
     +'<div class="sg user-kpis"><div class="sc"><div class="sl">Usuarios</div><div class="sn">'+DB.usuarios.length+'</div></div><div class="sc g"><div class="sl">Activos</div><div class="sn">'+activeUsers+'</div></div><div class="sc"><div class="sl">Administradores</div><div class="sn">'+admins+'</div></div><div class="sc y"><div class="sl">Inactivos</div><div class="sn">'+(DB.usuarios.length-activeUsers)+'</div></div></div>'
     +'<div class="card user-admin-table"><div class="tw"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Proyectos</th><th>Administración</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
@@ -2981,6 +2985,7 @@ var A = {
     if(ok){await refresh();toast('Proyecto reactivado ✓','g');}
   },
   toggleArchived: function(){ SHOW_ARCHIVED=!SHOW_ARCHIVED; render(); },
+  toggleInactiveUsers: function(){ SHOW_INACTIVE_USERS=!SHOW_INACTIVE_USERS; render(); },
   pd: function(id){
     var p = xid(DB.proyectos,id); if(!p) return;
     var tasks = DB.tareas.filter(function(t){return t.proyecto_id===id;});
