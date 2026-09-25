@@ -90,6 +90,7 @@ window.addEventListener('unhandledrejection', function(ev){
 
 /* ── STATE ── */
 var DB = {usuarios:[],clientes:[],proyectos:[],tareas:[],subtareas:[],comentarios:[],entregables:[],pagos:[],reuniones:[],prokicks_records:[],prokicks_settings:[],notification_preferences:[],usage_events:[],proyecto_usuarios:[]};
+var RYS_CANDIDATOS = [];
 var SES = null;  // {userId}
 var VIEW = 'dashboard';
 var FPID = '';   // filter project id
@@ -403,6 +404,7 @@ var PROKICKS_PLAN = [
 ];
 function isOfunamProject(p){ return !!p && /ofunam/i.test(String(p.nombre||'')); }
 function isProkicksProject(p){ return !!p && /prokicks/i.test(String(p.nombre||'')); }
+function isRysLuckyProject(p){ return !!p && (p.id==='abaa6762-8a99-492f-a61e-64579b81a61f' || String(p.nombre||'')==='Dashboard RYS Lucky'); }
 function isObjectivesBoard(p){ return !!p && /^objetivos$/i.test(String(descVal(p,'Vista')||'')); }
 function taskProject(t){ return t ? xid(DB.proyectos,t.proyecto_id) : null; }
 function configuredProjectGroups(p){
@@ -654,6 +656,8 @@ async function loadAll(){
     DB.notification_preferences = prefs.error ? [] : (prefs.data||[]);
     var pu = await sb.from('proyecto_usuarios').select('*');
     DB.proyecto_usuarios = pu.error ? [] : (pu.data||[]);
+    var rysc = await sb.from('rys_lucky_candidatos').select('*').order('folio');
+    RYS_CANDIDATOS = rysc.error ? [] : (rysc.data||[]);
     if(await normalizeProjectGroups()){
       var [t2,st2] = await Promise.all([
         sb.from('tareas').select('*').order('created_at',{ascending:false}),
@@ -1545,6 +1549,7 @@ function renderProjectionView(pid){
 function projectTabs(p){
   var mainLabel = isProkicksProject(p) ? 'Plan de trabajo' : (isOfunamProject(p) ? 'Grupos y registros' : 'Tablero operativo');
   var tabs=[['mando','Centro de Control','gauge'],['objetivos','Objetivos','target'],['ejecucion','Ejecución','activity'],['tareas',mainLabel,'list-checks'],['reporte','Reporte','file-chart-column'],['historial','Historial','history'],['kanban','Kanban','columns-3'],['calendario','Calendario','calendar-days'],['gantt','Gantt','chart-no-axes-gantt'],['pipeline','Pipeline','git-branch']];
+  if(isRysLuckyProject(p)) tabs.push(['candidatos','Candidatos','user-round']);
   // Un usuario con secciones restringidas solo ve sus tabs habilitados dentro del proyecto.
   tabs = tabs.filter(function(t){return sectionAllowed(t[0]);});
   return '<nav class="project-tabs" aria-label="Módulos del proyecto">'+tabs.map(function(t,i){return (i===4?'<span class="project-tab-divider" aria-hidden="true"></span>':'')+'<button class="project-tab '+(PTAB===t[0]?'active':'')+'" onclick="A.openProject(\''+p.id+'\',\''+t[0]+'\')" title="'+esc(t[1])+'">'+iconHtml(t[2])+'<span>'+esc(t[1])+'</span></button>';}).join('')+'</nav>';
@@ -1585,6 +1590,86 @@ function projectPipelineHtml(p){
   }
   var tasks=projectTasks(p.id);
   return '<div class="pipeline">'+stages.map(function(st){var items=tasks.filter(function(t){return (t.etapa_crm||descVal(t,'Etapa')||'por_contactar')===st[0];}); return '<div class="pstage"><div class="psh"><span class="psn">'+st[1]+'</span><span class="badge bx_">'+items.length+'</span></div>'+items.map(function(t){return '<div class="pcard" onclick="A.td(\''+t.id+'\')"><div class="pcn">'+esc(t.titulo)+'</div><div class="pcc">'+esc(nextAction(t)||'Sin siguiente acción')+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px">'+fmt(t.fecha_vencimiento)+'</div></div>';}).join('')+'</div>';}).join('')+'</div>';
+}
+var RYS_FILTERS = {q:'',estado:''};
+function rysDiasSinGestion(c){
+  var t = xid(DB.tareas,c.tarea_id);
+  var base = (t && t.updated_at) ? t.updated_at : c.updated_at;
+  if(!base) return '—';
+  var d = -dayDiff(base);
+  return d<0 ? 0 : d;
+}
+function bRysEstado(s){
+  var m = {
+    'Por revisar':'bx_','Contactado':'bb_','Entrevista programada':'by_','En evaluación':'by_',
+    'No responde':'br_','No se presentó':'br_','No interesado':'bx_','Descartado':'bx_',
+    'Posible duplicado':'by_','Contratado':'bg_'
+  };
+  return '<span class="badge '+(m[s]||'bx_')+'">'+esc(s||'—')+'</span>';
+}
+function bRysBbva(s){
+  var m = {'Aprobado':'bg_','No aprobado':'br_','Sin dato':'bx_'};
+  return '<span class="badge '+(m[s]||'bx_')+'">'+esc(s||'—')+'</span>';
+}
+function vRysLuckyCandidatos(p){
+  var all = RYS_CANDIDATOS.filter(function(c){return c.proyecto_id===p.id;}).slice().sort(function(a,b){return (a.folio||0)-(b.folio||0);});
+  var q = (RYS_FILTERS.q||'').trim().toLowerCase();
+  var rows = all.filter(function(c){
+    if(RYS_FILTERS.estado && c.estado!==RYS_FILTERS.estado) return false;
+    if(q){
+      var hay = [c.nombre,c.folio,c.telefono,c.observaciones].join(' ').toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+  var estadoOpts = ['Por revisar','Contactado','Entrevista programada','En evaluación','No responde','No se presentó','No interesado','Descartado','Posible duplicado','Contratado'];
+  var kpi = {
+    total: all.length,
+    proceso: all.filter(function(c){return ['Contactado','Entrevista programada','En evaluación'].indexOf(c.estado)>=0;}).length,
+    noResponde: all.filter(function(c){return ['No responde','No se presentó'].indexOf(c.estado)>=0;}).length,
+    descartado: all.filter(function(c){return ['Descartado','No interesado'].indexOf(c.estado)>=0;}).length,
+    porValidar: all.filter(function(c){return c.validar_captura==='Sí';}).length
+  };
+  var kpiHtml = '<div class="sg project-kpis">'
+    +'<div class="sc"><div class="sl">Total candidatos</div><div class="sn">'+kpi.total+'</div></div>'
+    +'<div class="sc"><div class="sl">Contactados / en proceso</div><div class="sn">'+kpi.proceso+'</div></div>'
+    +'<div class="sc y"><div class="sl">No responden</div><div class="sn">'+kpi.noResponde+'</div></div>'
+    +'<div class="sc r"><div class="sl">Descartados</div><div class="sn">'+kpi.descartado+'</div></div>'
+    +'<div class="sc"><div class="sl">Por validar captura</div><div class="sn">'+kpi.porValidar+'</div></div>'
+    +'</div>';
+  var filterHtml = '<div class="board-filter-panel" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
+    +'<input type="search" value="'+esc(RYS_FILTERS.q)+'" placeholder="Buscar nombre, folio, teléfono u observaciones" style="min-width:260px" onchange="A.rysSetFilter(\'q\',this.value)">'
+    +'<select onchange="A.rysSetFilter(\'estado\',this.value)"><option value=""'+(RYS_FILTERS.estado?'':' selected')+'>Todos los estados</option>'
+    +estadoOpts.map(function(e){return '<option value="'+esc(e)+'"'+(RYS_FILTERS.estado===e?' selected':'')+'>'+esc(e)+'</option>';}).join('')
+    +'</select><span style="font-size:12px;color:var(--muted)">'+rows.length+' de '+all.length+'</span></div>';
+  var trs = rows.map(function(c){
+    return '<tr style="cursor:pointer" onclick="A.td(\''+c.tarea_id+'\')">'
+      +'<td>'+(c.folio||'—')+'</td>'
+      +'<td style="font-weight:700">'+esc(c.nombre)+'</td>'
+      +'<td style="text-align:center">'+(c.edad||'—')+'</td>'
+      +'<td>'+bRysBbva(c.resultado_bbva)+'</td>'
+      +'<td>'+esc(c.sucursal||'—')+'</td>'
+      +'<td>'+esc(c.vacante||'—')+'</td>'
+      +'<td>'+esc(c.etapa||'—')+'</td>'
+      +'<td>'+bRysEstado(c.estado)+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+esc(c.ultima_gestion||'—')+'</td>'
+      +'<td>'+esc(c.proxima_accion||'—')+'</td>'
+      +'<td>'+fmt(c.fecha_proxima_accion)+'</td>'
+      +'<td>'+esc(c.responsable||'—')+'</td>'
+      +'<td>'+esc(c.telefono||'—')+'</td>'
+      +'<td>'+esc(c.fuente||'—')+'</td>'
+      +'<td style="max-width:220px;font-size:12px;color:var(--muted)">'+esc(c.observaciones||'—')+'</td>'
+      +'<td style="text-align:center">'+esc(c.validar_captura||'—')+'</td>'
+      +'<td>'+fmt(c.fecha_ingreso)+'</td>'
+      +'<td style="text-align:center">'+rysDiasSinGestion(c)+'</td>'
+      +'<td onclick="event.stopPropagation()"><button class="btn btns btng" onclick="A.td(\''+c.tarea_id+'\')">'+iconHtml('history')+' Ver seguimiento</button></td>'
+      +'</tr>';
+  }).join('') || '<tr><td colspan="19"><div class="empty"><p>Sin candidatos que coincidan con el filtro</p></div></td></tr>';
+  return '<div class="sh"><h2>Candidatos · '+esc(p.nombre)+'</h2></div>'
+    +kpiHtml+filterHtml
+    +'<div class="card" style="padding:0"><div class="tw"><table><thead><tr>'
+    +'<th>Folio</th><th>Nombre</th><th>Edad</th><th>Resultado BBVA</th><th>Sucursal</th><th>Vacante</th><th>Etapa</th><th>Estado</th><th>Última gestión</th><th>Próxima acción</th><th>Fecha próxima acción</th><th>Responsable</th><th>Teléfono</th><th>Fuente</th><th>Observaciones</th><th>Validar captura</th><th>Fecha de ingreso</th><th>Días sin gestión</th><th></th>'
+    +'</tr></thead><tbody>'+trs+'</tbody></table></div></div>';
 }
 function projectCard(p,compact){
   var s=projectStats(p);
@@ -1655,6 +1740,7 @@ function projectWorkspace(p){
     : tab==='calendario'?projectCalendarHtml(p)
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
+    : tab==='candidatos'?vRysLuckyCandidatos(p)
     : board;
   return '<div class="project-shell"><div class="project-head"><div class="project-titlebar">'+(adm()?'<button class="project-back project-back-exit" onclick="nav(\'seleccion\')" title="Volver a Selección de proyectos" aria-label="Volver a Selección de proyectos">'+iconHtml('layout-panel-left')+' <span>Proyectos</span></button>':'')+'<button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'<button class="btn btng" onclick="A.openProjection(\''+p.id+'\')" title="Vista de proyección para presentar en pantalla completa">'+iconHtml('presentation')+' Vista de proyección</button>'+titlebarActions+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div>'+(projectDescriptionNeedsToggle(p)?'<button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button>':'')+'</div></div>'
@@ -2538,6 +2624,10 @@ var A = {
   /* PROYECTO */
   setBoardFilter: function(key,value){
     BOARD_FILTERS[key]=value||'';
+    render();
+  },
+  rysSetFilter: function(key,value){
+    RYS_FILTERS[key]=value||'';
     render();
   },
   setOwnerTab: function(el){
