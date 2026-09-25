@@ -1206,6 +1206,9 @@ tr:hover td{background:var(--surface2)}
 .psc-client{font-size:12px;color:var(--muted);margin-top:-6px}
 .psc-foot{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-top:auto}
 .proj-select-add{align-items:center;justify-content:center;color:var(--cyan);border-style:dashed;border-color:var(--line2);border-top-style:dashed;border-top-width:1px;font-weight:800;gap:8px;flex-direction:row;box-shadow:none}
+.proj-select-archived{opacity:.68;cursor:default}
+.proj-select-archived:hover{transform:none;box-shadow:var(--shadow)}
+.psc-archived-actions{display:flex;gap:8px;margin-top:2px}
 .proj-select-add:hover{background:var(--cyan-soft);border-color:var(--cyan)}
 
 /* ── USUARIO RESTRINGIDO: sin sidebar general, un solo proyecto ── */
