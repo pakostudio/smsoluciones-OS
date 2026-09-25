@@ -846,6 +846,8 @@ function updateProjectNavActive(){
 function render(){
   var vc = document.getElementById('vc');
   var map = {dashboard:vDB,alertas:vAL,ayuda:vAY,proyectos:vPR,tareas:vTA,kanban:vKA,gantt:vGA,calendario:vCA,pipeline:vPI,prokicks:vPK,florida:vFlorida,prokicksHistorial:vPKHistorial,floridaHistorial:vFloridaHistorial,clientes:vCL,usuarios:vUS,reportes:vRE,seleccion:vSeleccion};
+  // Proyecto abierto en pantalla completa: sin sidebar general, panel a ancho completo.
+  document.body.classList.toggle('project-fullscreen', VIEW==='proyectos' && !!FPID);
   vc.innerHTML = (map[VIEW]||vDB)();
   // Privacidad cliente 2.2.3: reconstruir el sidebar después de cualquier cambio de proyecto activo.
   // Antes solo se marcaba el activo; por eso podían quedar visibles proyectos cargados previamente.
@@ -1654,7 +1656,7 @@ function projectWorkspace(p){
     : tab==='gantt'?projectGanttHtml(p)
     : tab==='pipeline'?projectPipelineHtml(p)
     : board;
-  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar"><button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'<button class="btn btng" onclick="A.openProjection(\''+p.id+'\')" title="Vista de proyección para presentar en pantalla completa">'+iconHtml('presentation')+' Vista de proyección</button>'+titlebarActions+'</div>'
+  return '<div class="project-shell"><div class="project-head"><div class="project-titlebar">'+(adm()?'<button class="project-back project-back-exit" onclick="nav(\'seleccion\')" title="Volver a Selección de proyectos" aria-label="Volver a Selección de proyectos">'+iconHtml('layout-panel-left')+' <span>Proyectos</span></button>':'')+'<button class="project-back" onclick="A.openProject(\''+p.id+'\',\'tareas\')" title="Volver a Plan de trabajo" aria-label="Volver a Plan de trabajo">'+iconHtml('home')+' <span>Inicio</span></button><span class="project-mark" style="--project-color:'+esc(projectVisual(p).color)+'">'+iconHtml(projectVisual(p).icon)+'</span><h2>'+esc(p.nombre)+'</h2>'+(adm()?'<button class="btn btng" onclick="A.ep(\''+p.id+'\')">'+iconHtml('settings-2')+' Editar proyecto</button>':'')+'<button class="btn btng" onclick="A.openProjection(\''+p.id+'\')" title="Vista de proyección para presentar en pantalla completa">'+iconHtml('presentation')+' Vista de proyección</button>'+titlebarActions+'</div>'
     +'<div style="display:flex;align-items:center;gap:6px"><div class="pdesc '+(PROJECT_DESC_EXPANDED?'expanded':'')+'">'+esc(projectDescription(p))+'</div>'+(projectDescriptionNeedsToggle(p)?'<button class="desc-toggle" onclick="PROJECT_DESC_EXPANDED=!PROJECT_DESC_EXPANDED;render()">'+(PROJECT_DESC_EXPANDED?'Ver menos':'Ver más')+'</button>':'')+'</div></div>'
     +workspaceModeSwitchHtml(p)
     +projectTabs(p)
