@@ -125,6 +125,7 @@ var CONTROL_FILTERS = {estado:'',responsable:'',area:'',foco:''};
 // Los administradores nunca quedan acotados por este modo (siempre ven todo, como antes).
 var WORKSPACE_MODE = 'mine';
 var CLIENT_PROJECT_FOCUS = true; // Privacidad cliente: al estar dentro de un proyecto, la navegación lateral solo muestra ese proyecto.
+var SHOW_ARCHIVED = false; // Selección de proyectos: los proyectos "Cerrado" quedan ocultos del tablero salvo que el admin los muestre.
 
 /* ── UTILS ── */
 function dateObj(s){
@@ -1822,20 +1823,30 @@ function vPR(){
 /* SELECCIÓN DE PROYECTOS — landing exclusiva del administrador tras el login */
 function vSeleccion(){
   if(!adm()) return '<div class="card"><div class="empty"><p>Solo administradores</p></div></div>';
-  var projs = DB.proyectos.slice().sort(function(a,b){return (a.estado==='cerrado')-(b.estado==='cerrado')||String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
-  var cards = projs.map(function(p){
+  var all = DB.proyectos.slice().sort(function(a,b){return String(a.nombre||'').localeCompare(String(b.nombre||''),'es');});
+  var activos = all.filter(function(p){return p.estado!=='cerrado';});
+  var archivados = all.filter(function(p){return p.estado==='cerrado';});
+  function cardHtml(p){
     var v=projectVisual(p), s=projectStats(p);
     var dot = s.overdue>0?'dr':s.noNext>0?'dy':'dg';
-    return '<button type="button" class="proj-select-card" style="--project-color:'+esc(v.color)+'" onclick="A.openProject(\''+p.id+'\')">'
-      +'<div class="psc-top"><span class="project-mark">'+iconHtml(v.icon)+'</span>'+bSt(p.estado)+'</div>'
+    var body = '<div class="psc-top"><span class="project-mark">'+iconHtml(v.icon)+'</span>'+bSt(p.estado)+'</div>'
       +'<div class="psc-name">'+esc(p.nombre)+'</div>'
       +'<div class="psc-client">'+esc(cNm(p.cliente_id))+'</div>'
-      +'<div class="psc-foot"><span class="dot '+dot+'"></span><span>'+s.progress+'% avance · '+s.tasks.length+' tareas</span></div>'
-      +'</button>';
-  }).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos todavía</p></div></div>';
+      +'<div class="psc-foot"><span class="dot '+dot+'"></span><span>'+s.progress+'% avance · '+s.tasks.length+' tareas</span></div>';
+    if(p.estado==='cerrado'){
+      return '<div class="proj-select-card proj-select-archived" style="--project-color:'+esc(v.color)+'">'+body
+        +'<div class="psc-archived-actions"><button type="button" class="btn btns btng" onclick="A.openProject(\''+p.id+'\')">'+iconHtml('eye')+' Ver</button><button type="button" class="btn btns btng" onclick="event.stopPropagation();A.restoreProject(\''+p.id+'\')">'+iconHtml('archive-restore')+' Reactivar</button></div>'
+        +'</div>';
+    }
+    return '<button type="button" class="proj-select-card" style="--project-color:'+esc(v.color)+'" onclick="A.openProject(\''+p.id+'\')">'+body+'</button>';
+  }
+  var cards = activos.map(cardHtml).join('') || '<div class="card"><div class="empty"><div class="ei">📁</div><p>Sin proyectos activos</p></div></div>';
   var addCard = '<button type="button" class="proj-select-card proj-select-add" onclick="A.np()">'+iconHtml('plus')+'<span>Nuevo proyecto</span></button>';
-  return '<div class="sh"><div><h2>Selección de proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Elige el proyecto que quieres abrir, o administra a qué proyecto y secciones tiene acceso cada usuario.</div></div><button class="btn btng" onclick="nav(\'usuarios\')">'+iconHtml('shield-check')+' Administrar usuarios y permisos</button></div>'
-    +'<div class="proj-select-grid">'+cards+addCard+'</div>';
+  var archivedToggle = archivados.length ? '<button class="btn btng" onclick="A.toggleArchived()">'+iconHtml(SHOW_ARCHIVED?'chevron-up':'archive')+' '+(SHOW_ARCHIVED?'Ocultar':'Ver')+' archivados ('+archivados.length+')</button>' : '';
+  var archivedSection = (SHOW_ARCHIVED && archivados.length) ? '<div class="sh" style="margin-top:22px"><h3 style="margin:0">Proyectos archivados</h3><div style="font-size:12px;color:var(--muted);margin-top:2px">Ya no aparecen en el tablero principal. Puedes reactivarlos en cualquier momento.</div></div><div class="proj-select-grid">'+archivados.map(cardHtml).join('')+'</div>' : '';
+  return '<div class="sh"><div><h2>Selección de proyectos</h2><div style="font-size:13px;color:var(--muted);margin-top:3px">Elige el proyecto que quieres abrir, o administra a qué proyecto y secciones tiene acceso cada usuario.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+archivedToggle+'<button class="btn btng" onclick="nav(\'usuarios\')">'+iconHtml('shield-check')+' Administrar usuarios y permisos</button></div></div>'
+    +'<div class="proj-select-grid">'+cards+addCard+'</div>'
+    +archivedSection;
 }
 
 /* TAREAS */
@@ -2840,6 +2851,7 @@ var A = {
     var ok=await upd('proyectos',id,{estado:'activo'});
     if(ok){await refresh();toast('Proyecto reactivado ✓','g');}
   },
+  toggleArchived: function(){ SHOW_ARCHIVED=!SHOW_ARCHIVED; render(); },
   pd: function(id){
     var p = xid(DB.proyectos,id); if(!p) return;
     var tasks = DB.tareas.filter(function(t){return t.proyecto_id===id;});
